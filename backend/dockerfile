@@ -1,33 +1,21 @@
-# 1. Start with a base image
-# This tells Docker to start with an official Python 3.9 image.
-# The "-slim" variant is a good practice as it's smaller than the full version.
+# Import a base python image, use the slim version because it's smaller
 FROM python:3.9-slim
 
-# 2. Set the working directory inside the container
-# This is where your application's code will live inside the container.
+# Set the working directory
 WORKDIR /app
 
-# 3. Copy only the dependency file first
-# This is a key optimization. Docker caches layers. As long as your requirements.txt doesn't change,
-# Docker won't re-install the dependencies every time you build the image, saving a lot of time.
+# Copy the requirements file over first, as long as the requirments haven't changed then this won't be re-run
 COPY requirements.txt .
 
-# 4. Install the dependencies
-# This command reads the requirements.txt file and installs all the necessary Python libraries.
-# The --no-cache-dir flag helps keep the image size smaller.
+# Install the dependencies, the --no-cache-dir flag helps keep the image size smaller
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy the rest of your application code
-# Now, copy all the files from your project directory into the container's /app directory.
+# Copy the rest of the code
+# TODO Include more copy layers for optimisation as needed
 COPY ./app ./app
 
-# 6. Expose the port the app runs on
-# This informs Docker that the container listens on port 8000.
-# FastAPI's default development server (Uvicorn) often uses this port.
+# Expose the port that uvicorn uses
 EXPOSE 8000
 
-# 7. Define the command to run the application
-# This is the command that will be executed when the container starts.
-# It tells Uvicorn to run the FastAPI application defined in the 'main.py' file.
-# The host 0.0.0.0 makes the server accessible from outside the container.
+# Define the command to run the application. The host 0.0.0.0 makes the server accessible from outside the container
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
