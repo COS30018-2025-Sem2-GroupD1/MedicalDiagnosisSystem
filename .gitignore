@@ -1,0 +1,11 @@
+**/__pycache__/
+
+**/.venv/
+**/env/
+**/venv/
+
+.vscode/
+
+**drawio.bkp
+backend/.env
+backend/.env
