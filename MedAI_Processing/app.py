@@ -84,85 +84,82 @@ def root():
       <style>
         body {{ font-family: Arial, sans-serif; max-width: 900px; margin: 2rem auto; line-height: 1.5; }}
         h1, h2 {{ color: #2c3e50; }}
-        code {{ background: #f5f5f5; padding: 2px 5px; border-radius: 4px; }}
-        pre {{ background: #272822; color: #f8f8f2; padding: 1rem; border-radius: 6px; overflow-x: auto; }}
+        button {{
+          background: #2d89ef; color: white; border: none; padding: 8px 16px;
+          border-radius: 5px; cursor: pointer; margin: 5px 0;
+        }}
+        button:hover {{ background: #1b5dab; }}
         .section {{ margin-bottom: 2rem; }}
-        table {{ border-collapse: collapse; width: 100%; margin-top: 0.5rem; }}
-        th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
-        th {{ background: #f2f2f2; }}
+        #log {{ background:#f5f5f5; padding:10px; border-radius:6px; margin-top:10px; font-size:0.9rem; }}
+        a {{ color:#2d89ef; text-decoration:none; }}
+        a:hover {{ text-decoration:underline; }}
       </style>
     </head>
     <body>
       <h1>📊 {SPACE_NAME} – Medical Dataset Augmenter</h1>
-      <p>This Hugging Face Space processes medical QA/dialogue datasets into a <b>centralised fine-tuning format</b>
-         (JSONL + CSV), with optional <i>data augmentation</i> (paraphrasing, back-translation, style standardisation, etc.).</p>
+      <p>This Hugging Face Space processes medical datasets into a <b>centralised fine-tuning format</b>
+         (JSONL + CSV), with optional <i>data augmentation</i>.</p>
 
       <div class="section">
-        <h2>Available Endpoints</h2>
-        <table>
-          <tr><th>Method</th><th>Path</th><th>Description</th></tr>
-          <tr><td>GET</td><td><code>/</code></td><td>This instruction page</td></tr>
-          <tr><td>POST</td><td><code>/process/{{dataset_key}}</code></td><td>Start a job (dataset_key listed below)</td></tr>
-          <tr><td>GET</td><td><code>/status</code></td><td>Check current job status/progress</td></tr>
-          <tr><td>GET</td><td><code>/files</code></td><td>List generated artifacts (CSV/JSONL)</td></tr>
-        </table>
+        <h2>⚡ Quick Actions</h2>
+        <p>Click a button below to start processing a dataset with default augmentation parameters.</p>
+        <button onclick="startJob('healthcaremagic')">▶ Process HealthCareMagic</button><br>
+        <button onclick="startJob('icliniq')">▶ Process iCliniq</button><br>
+        <button onclick="startJob('pubmedqa_l')">▶ Process PubMedQA (Labelled)</button><br>
+        <button onclick="startJob('pubmedqa_u')">▶ Process PubMedQA (Unlabelled)</button><br>
+        <button onclick="startJob('pubmedqa_map')">▶ Process PubMedQA (Map)</button>
       </div>
 
       <div class="section">
-        <h2>Dataset Keys</h2>
+        <h2>📂 Monitoring</h2>
         <ul>
-          <li><code>healthcaremagic</code> – 100k doctor-patient dialogues</li>
-          <li><code>icliniq</code> – 10k doctor-patient dialogues</li>
-          <li><code>pubmedqa_l</code> – PubMedQA labelled</li>
-          <li><code>pubmedqa_u</code> – PubMedQA unlabelled</li>
-          <li><code>pubmedqa_map</code> – PubMedQA triplets</li>
+          <li><a href="/status" target="_blank">Check current job status</a></li>
+          <li><a href="/files" target="_blank">List generated artifacts</a></li>
+          <li><a href="https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/blob/main/REQUEST.md" target="_blank">📑 Request Doc (all curl examples)</a></li>
         </ul>
       </div>
 
       <div class="section">
-        <h2>Example Usage with <code>curl</code></h2>
-        <p>Base URL: <code>https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing</code></p>
-
-        <h3>1. Process HealthCareMagic (with augmentation)</h3>
-        <pre>curl -X POST \\
-  -H "Content-Type: application/json" \\
-  -d '{{
-        "augment": {{
-          "paraphrase_ratio": 0.1,
-          "backtranslate_ratio": 0.05,
-          "paraphrase_outputs": false,
-          "style_standardize": true,
-          "deidentify": true,
-          "dedupe": true,
-          "max_chars": 5000,
-          "consistency_check_ratio": 0.0
-        }},
-        "sample_limit": 2000,
-        "seed": 42
-      }}' \\
-  https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/process/healthcaremagic
-</pre>
-
-        <h3>2. Check Status</h3>
-        <pre>curl https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/status</pre>
-
-        <h3>3. List Output Files</h3>
-        <pre>curl https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/files</pre>
+        <h2>📝 Log</h2>
+        <div id="log">Click a button above to run a job...</div>
       </div>
 
-      <div class="section">
-        <h2>Output</h2>
-        <p>Each run produces:</p>
-        <ul>
-          <li><b>JSONL</b> – centralised SFT format (instruction/input/output/meta)</li>
-          <li><b>CSV</b> – flat format for spreadsheet inspection</li>
-          <li>Both files are also uploaded automatically to Google Drive (folder ID: <code>1JvW7its63E58fLxurH8ZdhxzdpcMrMbt</code>)</li>
-        </ul>
-      </div>
+      <script>
+        async function startJob(dataset) {{
+          const log = document.getElementById("log");
+          log.innerHTML = "⏳ Starting job for <b>" + dataset + "</b>...";
+          try {{
+            const resp = await fetch("/process/" + dataset, {{
+              method: "POST",
+              headers: {{ "Content-Type": "application/json" }},
+              body: JSON.stringify({{
+                augment: {{
+                  paraphrase_ratio: 0.1,
+                  backtranslate_ratio: 0.05,
+                  paraphrase_outputs: false,
+                  style_standardize: true,
+                  deidentify: true,
+                  dedupe: true,
+                  max_chars: 5000
+                }},
+                sample_limit: 500,
+                seed: 42
+              }})
+            }});
+            const data = await resp.json();
+            if (resp.ok) {{
+              log.innerHTML = "✅ " + JSON.stringify(data);
+            }} else {{
+              log.innerHTML = "❌ Error: " + JSON.stringify(data);
+            }}
+          }} catch (err) {{
+            log.innerHTML = "❌ JS Error: " + err;
+          }}
+        }}
+      </script>
     </body>
     </html>
     """
-
 
 @app.get("/status")
 def status():

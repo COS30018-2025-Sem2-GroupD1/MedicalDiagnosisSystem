@@ -9,7 +9,7 @@ license: apache-2.0
 short_description: Process and centralise medical doc for llm finetuning
 ---
 
-Quick Access:
+## Quick Access:
 
 [HF Space](https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing)
 
@@ -23,4 +23,10 @@ Quick Access:
 
 [PubMedQA-Mapper](https://huggingface.co/datasets/BinKhoaLe1812/PubMedQA-MAP)
 
+
+## CURL Request Instruction
+[Request Doc](https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/blob/main/REQUEST.md)
+
+## License
 [Apache-2.0 LICENSE](https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/blob/main/LICENSE.txt)
+
