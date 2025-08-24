@@ -74,17 +74,95 @@ def set_state(**kwargs):
 def now_iso():
     return dt.datetime.utcnow().isoformat()
 
+# Instructional UI
 @app.get("/", response_class=HTMLResponse)
 def root():
     return f"""
-    <h2>{SPACE_NAME} – Medical Dataset Augmenter</h2>
-    <p>POST /process/{{dataset_key}} to start a job (one at a time).</p>
-    <ul>
-      <li>Dataset keys: healthcaremagic, icliniq, pubmedqa_l, pubmedqa_u, pubmedqa_map</li>
-      <li>GET /status – job state</li>
-      <li>GET /files – generated artifacts</li>
-    </ul>
+    <html>
+    <head>
+      <title>{SPACE_NAME} – Medical Dataset Augmenter</title>
+      <style>
+        body {{ font-family: Arial, sans-serif; max-width: 900px; margin: 2rem auto; line-height: 1.5; }}
+        h1, h2 {{ color: #2c3e50; }}
+        code {{ background: #f5f5f5; padding: 2px 5px; border-radius: 4px; }}
+        pre {{ background: #272822; color: #f8f8f2; padding: 1rem; border-radius: 6px; overflow-x: auto; }}
+        .section {{ margin-bottom: 2rem; }}
+        table {{ border-collapse: collapse; width: 100%; margin-top: 0.5rem; }}
+        th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
+        th {{ background: #f2f2f2; }}
+      </style>
+    </head>
+    <body>
+      <h1>📊 {SPACE_NAME} – Medical Dataset Augmenter</h1>
+      <p>This Hugging Face Space processes medical QA/dialogue datasets into a <b>centralised fine-tuning format</b>
+         (JSONL + CSV), with optional <i>data augmentation</i> (paraphrasing, back-translation, style standardisation, etc.).</p>
+
+      <div class="section">
+        <h2>Available Endpoints</h2>
+        <table>
+          <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+          <tr><td>GET</td><td><code>/</code></td><td>This instruction page</td></tr>
+          <tr><td>POST</td><td><code>/process/{{dataset_key}}</code></td><td>Start a job (dataset_key listed below)</td></tr>
+          <tr><td>GET</td><td><code>/status</code></td><td>Check current job status/progress</td></tr>
+          <tr><td>GET</td><td><code>/files</code></td><td>List generated artifacts (CSV/JSONL)</td></tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>Dataset Keys</h2>
+        <ul>
+          <li><code>healthcaremagic</code> – 100k doctor-patient dialogues</li>
+          <li><code>icliniq</code> – 10k doctor-patient dialogues</li>
+          <li><code>pubmedqa_l</code> – PubMedQA labelled</li>
+          <li><code>pubmedqa_u</code> – PubMedQA unlabelled</li>
+          <li><code>pubmedqa_map</code> – PubMedQA triplets</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Example Usage with <code>curl</code></h2>
+        <p>Base URL: <code>https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing</code></p>
+
+        <h3>1. Process HealthCareMagic (with augmentation)</h3>
+        <pre>curl -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+        "augment": {{
+          "paraphrase_ratio": 0.1,
+          "backtranslate_ratio": 0.05,
+          "paraphrase_outputs": false,
+          "style_standardize": true,
+          "deidentify": true,
+          "dedupe": true,
+          "max_chars": 5000,
+          "consistency_check_ratio": 0.0
+        }},
+        "sample_limit": 2000,
+        "seed": 42
+      }}' \\
+  https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/process/healthcaremagic
+</pre>
+
+        <h3>2. Check Status</h3>
+        <pre>curl https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/status</pre>
+
+        <h3>3. List Output Files</h3>
+        <pre>curl https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/files</pre>
+      </div>
+
+      <div class="section">
+        <h2>Output</h2>
+        <p>Each run produces:</p>
+        <ul>
+          <li><b>JSONL</b> – centralised SFT format (instruction/input/output/meta)</li>
+          <li><b>CSV</b> – flat format for spreadsheet inspection</li>
+          <li>Both files are also uploaded automatically to Google Drive (folder ID: <code>1JvW7its63E58fLxurH8ZdhxzdpcMrMbt</code>)</li>
+        </ul>
+      </div>
+    </body>
+    </html>
     """
+
 
 @app.get("/status")
 def status():
