@@ -2,10 +2,18 @@
 import json
 import random
 import hashlib
+import logging
 from typing import Callable, Optional, Dict, Tuple
 
 from utils.schema import sft_row
 from utils import augment as A
+
+# Logger
+logger = logging.getLogger("processor")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler())
+
 
 def _hash_id(*parts) -> str:
     h = hashlib.sha256()
@@ -44,27 +52,67 @@ def process_file_into_sft(
         "dedup_skipped": 0,
         "consistency_failed": 0
     }
+    # Start processing SFT
+    key_summary = {k: augment_opts.get(k) for k in (
+        "paraphrase_ratio","backtranslate_ratio","paraphrase_outputs",
+        "style_standardize","deidentify","dedupe",
+        "consistency_check_ratio","distill_fraction"
+    )}
+    logger.info(
+        f"[PROC] Begin dataset={dataset_key} sample_limit={sample_limit} opts={key_summary}"
+    )
+    # If deduplicating enabled
     dedupe_seen = set() if augment_opts.get("dedupe", True) else None
 
     key = dataset_key.lower()
     if key in ("healthcaremagic", "icliniq"):
         count = _proc_med_dialog(source=key, path=input_path, writer=writer,
                                  paraphraser=paraphraser, opts=augment_opts,
-                                 sample_limit=sample_limit, stats=stats, cb=progress_cb)
+                                 sample_limit=sample_limit, stats=stats, cb=progress_cb, dedupe_seen=dedupe_seen)
     elif key == "pubmedqa_l":
-        count = _proc_pubmedqa_l(input_path, writer, paraphraser, augment_opts, sample_limit, stats, progress_cb)
+        count = _proc_pubmedqa_l(input_path, writer, paraphraser, augment_opts, sample_limit, stats, progress_cb, dedupe_seen=dedupe_seen)
     elif key == "pubmedqa_u":
-        count = _proc_pubmedqa_u(input_path, writer, paraphraser, augment_opts, sample_limit, stats, progress_cb)
+        count = _proc_pubmedqa_u(input_path, writer, paraphraser, augment_opts, sample_limit, stats, progress_cb, dedupe_seen=dedupe_seen)
     elif key == "pubmedqa_map":
-        count = _proc_pubmedqa_map(input_path, writer, paraphraser, augment_opts, sample_limit, stats, progress_cb)
+        count = _proc_pubmedqa_map(input_path, writer, paraphraser, augment_opts, sample_limit, stats, progress_cb, dedupe_seen=dedupe_seen)
     else:
         raise ValueError(f"Unknown dataset: {dataset_key}")
+    logger.info(f"[PROC] End dataset={dataset_key} stats={stats}")
     return count, stats
 
 # ——————————— helpers ———————————
+def _build_variants(user: str, out: str, paraphraser, opts: Dict, stats: Dict):
+    """Return a list of (user_variant, out_variant, applied_tags) not including the original."""
+    variants = []
+    max_k = max(0, int(opts.get("max_aug_per_sample", 1)))
+    for _ in range(max_k):
+        applied = []
+        u2, did_p = A.maybe_paraphrase(user, opts.get("paraphrase_ratio", 0.0), paraphraser, "easy")
+        if did_p: applied.append("paraphrase_input"); stats["paraphrased_input"] += 1
+        u3, did_bt = A.maybe_backtranslate(u2, opts.get("backtranslate_ratio", 0.0), paraphraser)
+        if did_bt: applied.append("backtranslate_input"); stats["backtranslated_input"] += 1
+
+        o3 = out
+        if opts.get("paraphrase_outputs", False):
+            o2, did_p2 = A.maybe_paraphrase(out, opts.get("paraphrase_ratio", 0.0), paraphraser, "hard")
+            if did_p2: applied.append("paraphrase_output"); stats["paraphrased_output"] += 1
+            o3b, did_bt2 = A.maybe_backtranslate(o2, opts.get("backtranslate_ratio", 0.0), paraphraser)
+            if did_bt2: applied.append("backtranslate_output"); stats["backtranslated_output"] += 1
+            o3 = o3b
+
+        # If nothing applied, skip this variant
+        if not applied:
+            continue
+        # Style standardize and punctuation for the variant too
+        if opts.get("style_standardize", True):
+            o3 = A.style_standardize_answer(o3)
+        u3 = A.ensure_terminal_punct(u3) if u3 else u3
+        o3 = A.ensure_terminal_punct(o3) if o3 else o3
+        variants.append((u3, o3, applied))
+    return variants
 
 def _apply_aug(instr: str, user: str, out: str, source: str, opts: Dict, paraphraser, stats: Dict):
-    # Base cleanup & caps
+    # Base cleanup & caps (returns cleaned strings)
     user = A.base_cleanup(user, opts.get("max_chars", 5000), opts.get("deidentify", True))
     out  = A.base_cleanup(out,  opts.get("max_chars", 5000), opts.get("deidentify", True))
     instr = A.base_cleanup(instr, opts.get("max_chars", 5000), False)
@@ -73,24 +121,10 @@ def _apply_aug(instr: str, user: str, out: str, source: str, opts: Dict, paraphr
     if not A.lang_is_english(user):  # very rare
         return instr, user, out, []
 
+    # Stack list of entries that has been applied augmentation and stylings
     applied = []
 
-    # Paraphrase & Back-translate (inputs)
-    u2, did_p = A.maybe_paraphrase(user, opts.get("paraphrase_ratio", 0.0), paraphraser, "easy")
-    if did_p: applied.append("paraphrase_input"); stats["paraphrased_input"] += 1
-    u3, did_bt = A.maybe_backtranslate(u2, opts.get("backtranslate_ratio", 0.0), paraphraser)
-    if did_bt: applied.append("backtranslate_input"); stats["backtranslated_input"] += 1
-    user = u3
-
-    # Outputs (optional)
-    if opts.get("paraphrase_outputs", False):
-        o2, did_p2 = A.maybe_paraphrase(out, opts.get("paraphrase_ratio", 0.0), paraphraser, "hard")
-        if did_p2: applied.append("paraphrase_output"); stats["paraphrased_output"] += 1
-        o3, did_bt2 = A.maybe_backtranslate(o2, opts.get("backtranslate_ratio", 0.0), paraphraser)
-        if did_bt2: applied.append("backtranslate_output"); stats["backtranslated_output"] += 1
-        out = o3
-
-    # Style standardise the answer
+    # Style standardizing the answer
     if opts.get("style_standardize", True):
         out = A.style_standardize_answer(out)
         applied.append("style_standardize")
@@ -102,7 +136,7 @@ def _apply_aug(instr: str, user: str, out: str, source: str, opts: Dict, paraphr
     return instr, user, out, applied
 
 def _commit_row(writer, source, rid, task, instr, user, out, opts, stats, aug_applied, extra_meta=None, dedupe_seen=None):
-    # Dedup
+    # Dedup entry
     if dedupe_seen is not None:
         fp = A.fingerprint(instr, user, out)
         if fp in dedupe_seen:
@@ -121,7 +155,7 @@ def _commit_row(writer, source, rid, task, instr, user, out, opts, stats, aug_ap
 
 # ——————————— dataset processors ———————————
 
-def _proc_med_dialog(source, path, writer, paraphraser, opts, sample_limit, stats, cb):
+def _proc_med_dialog(source, path, writer, paraphraser, opts, sample_limit, stats, cb, dedupe_seen=None):
     count = 0
     written = 0
     for i, obj in enumerate(_iter_json_or_jsonl(path), start=1):
@@ -132,14 +166,22 @@ def _proc_med_dialog(source, path, writer, paraphraser, opts, sample_limit, stat
 
         instr, user, out, applied = _apply_aug(instr, user, out, source, opts, paraphraser, stats)
 
+        # 1) ALWAYS write the original (cleaned/style-standardised only)
         # Optional consistency spot-check (cheap)
         if not A.consistency_ok(user, out, opts.get("consistency_check_ratio", 0.0), paraphraser):
             stats["consistency_failed"] += 1
             # keep the sample but tag it
             applied.append("consistency_flag")
 
-        _commit_row(writer, source, rid, "medical_dialogue", instr, user, out, opts, stats, applied)
-
+        # 2) If expansion is enabled, add augmented copies
+        _commit_row(writer, source, rid, "medical_dialogue", instr, user, out, opts, stats, ["base"] + applied, dedupe_seen=dedupe_seen)
+        # Add augmented copies if expand
+        if opts.get("expand", True):
+            for (u_aug, o_aug, aug_tags) in _build_variants(user, out, paraphraser, opts, stats):
+                rid_aug = f"{rid}-aug{random.randint(1000,9999)}"
+                _commit_row(writer, source, rid_aug, "medical_dialogue", instr, u_aug, o_aug, opts, stats, aug_tags, dedupe_seen=dedupe_seen)
+        
+        # Iteration
         count += 1
         if sample_limit and count >= sample_limit:
             break
@@ -147,9 +189,10 @@ def _proc_med_dialog(source, path, writer, paraphraser, opts, sample_limit, stat
             cb(min(0.9, 0.05 + i/200000), f"{source}: processed {i} rows")
     if cb:
         cb(0.92, f"{source} done ({count})")
+    logger.info(f"[PROC] {source} done count={count} written={stats['written']} dedup_skipped={stats['dedup_skipped']}")
     return count
 
-def _proc_pubmedqa_l(path, writer, paraphraser, opts, sample_limit, stats, cb):
+def _proc_pubmedqa_l(path, writer, paraphraser, opts, sample_limit, stats, cb, dedupe_seen=None):
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     count = 0
@@ -167,8 +210,14 @@ def _proc_pubmedqa_l(path, writer, paraphraser, opts, sample_limit, stats, cb):
 
         instr, user, out, applied = _apply_aug(instr, user, out, "pubmedqa_l", opts, paraphraser, stats)
         _commit_row(writer, "pubmedqa_l", rid, "biomedical_qa", instr, user, out, opts, stats, applied,
-                    extra_meta={"year": v.get("YEAR"), "meshes": v.get("MESHES"), "labels": v.get("LABELS")})
+                    extra_meta={"year": v.get("YEAR"), "meshes": v.get("MESHES"), "labels": v.get("LABELS")}, dedupe_seen=dedupe_seen)
+        if opts.get("expand", True):
+            for (u_aug, o_aug, aug_tags) in _build_variants(user, out, paraphraser, opts, stats):
+                rid_aug = f"{rid}-aug{random.randint(1000,9999)}"
+                _commit_row(writer, "pubmedqa_l", rid_aug, "biomedical_qa",
+                            instr, u_aug, o_aug, opts, stats, aug_tags, dedupe_seen=dedupe_seen)
 
+        # Iteration
         count += 1
         if sample_limit and count >= sample_limit:
             break
@@ -176,9 +225,10 @@ def _proc_pubmedqa_l(path, writer, paraphraser, opts, sample_limit, stats, cb):
             cb(min(0.9, 0.05 + count/60000), f"pubmedqa_l processed {count}")
     if cb:
         cb(0.93, f"pubmedqa_l done ({count})")
+    logger.info(f"[PROC] pubmedqa_l done count={count} written={stats['written']} dedup_skipped={stats['dedup_skipped']}")
     return count
 
-def _proc_pubmedqa_u(path, writer, paraphraser, opts, sample_limit, stats, cb):
+def _proc_pubmedqa_u(path, writer, paraphraser, opts, sample_limit, stats, cb, dedupe_seen=None):
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     count = 0
@@ -190,6 +240,7 @@ def _proc_pubmedqa_u(path, writer, paraphraser, opts, sample_limit, stats, cb):
         instr = "Rewrite the context into a succinct note, then answer the question. If unknown, say 'insufficient evidence'."
         user  = f"Question: {q}\n\nContext:\n{context}" if context else f"Question: {q}"
         out   = ""  # unlabeled
+        rid   = str(k)
 
         # Optional KD/distillation for a small fraction
         if opts.get("distill_fraction", 0.0) > 0.0 and random.random() < float(opts["distill_fraction"]):
@@ -199,8 +250,13 @@ def _proc_pubmedqa_u(path, writer, paraphraser, opts, sample_limit, stats, cb):
                 out = guess.strip()
 
         instr, user, out, applied = _apply_aug(instr, user, out, "pubmedqa_u", opts, paraphraser, stats)
-        _commit_row(writer, "pubmedqa_u", str(k), "biomedical_qa_unlabeled", instr, user, out, opts, stats, applied)
-
+        _commit_row(writer, "pubmedqa_u", str(k), "biomedical_qa_unlabeled", instr, user, out, opts, stats, applied, dedupe_seen=dedupe_seen)
+        if opts.get("expand", True):
+            for (u_aug, o_aug, aug_tags) in _build_variants(user, out, paraphraser, opts, stats):
+                rid_aug = f"{rid}-aug{random.randint(1000,9999)}"
+                _commit_row(writer, "pubmedqa_u", rid_aug, "biomedical_qa",
+                            instr, u_aug, o_aug, opts, stats, aug_tags, dedupe_seen=dedupe_seen)
+        # Iteration
         count += 1
         if sample_limit and count >= sample_limit:
             break
@@ -208,12 +264,13 @@ def _proc_pubmedqa_u(path, writer, paraphraser, opts, sample_limit, stats, cb):
             cb(min(0.9, 0.05 + count/80000), f"pubmedqa_u processed {count}")
     if cb:
         cb(0.94, f"pubmedqa_u done ({count})")
+    logger.info(f"[PROC] pubmedqa_u done count={count} written={stats['written']} dedup_skipped={stats['dedup_skipped']}")
     return count
 
-def _proc_pubmedqa_map(path, writer, paraphraser, opts, sample_limit, stats, cb):
+def _proc_pubmedqa_map(path, writer, paraphraser, opts, sample_limit, stats, cb, dedupe_seen=None):
     with open(path, "r", encoding="utf-8") as f:
         obj = json.load(f)
-
+    # Iteration of items
     def iter_items():
         if isinstance(obj, list):
             for it in obj: yield it
@@ -237,8 +294,14 @@ def _proc_pubmedqa_map(path, writer, paraphraser, opts, sample_limit, stats, cb)
         rid   = _hash_id("pubmedqa_map", i, len(q))
 
         instr, user, out, applied = _apply_aug(instr, user, out, "pubmedqa_map", opts, paraphraser, stats)
-        _commit_row(writer, "pubmedqa_map", rid, "biomedical_qa", instr, user, out, opts, stats, applied)
-
+        _commit_row(writer, "pubmedqa_map", rid, "biomedical_qa", instr, user, out, opts, stats, applied, dedupe_seen=dedupe_seen)
+        if opts.get("expand", True):
+            for (u_aug, o_aug, aug_tags) in _build_variants(user, out, paraphraser, opts, stats):
+                rid_aug = f"{rid}-aug{random.randint(1000,9999)}"
+                _commit_row(writer, "pubmedqa_map", rid_aug, "biomedical_qa",
+                            instr, u_aug, o_aug, opts, stats, aug_tags, dedupe_seen=dedupe_seen)
+        
+        # Iteration
         count += 1
         if sample_limit and count >= sample_limit:
             break
@@ -246,4 +309,5 @@ def _proc_pubmedqa_map(path, writer, paraphraser, opts, sample_limit, stats, cb)
             cb(min(0.9, 0.05 + i/120000), f"pubmedqa_map processed {i}")
     if cb:
         cb(0.95, f"pubmedqa_map done ({count})")
+    logger.info(f"[PROC] pubmedqa_map done count={count} written={stats['written']} dedup_skipped={stats['dedup_skipped']}")
     return count

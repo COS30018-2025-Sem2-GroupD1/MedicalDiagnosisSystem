@@ -2,6 +2,14 @@
 import os
 from typing import Optional
 from huggingface_hub import hf_hub_download
+import logging
+
+# Logger
+logger = logging.getLogger("datasets")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler())
+
 
 DATASETS = {
     "healthcaremagic": {
@@ -37,11 +45,22 @@ def resolve_dataset(key: str) -> Optional[dict]:
 
 
 def hf_download_dataset(repo_id: str, filename: str, repo_type: str = "dataset") -> str:
+    token = os.getenv("HF_TOKEN")
+    logger.info(
+        f"[HF] Download {repo_id}/{filename} (type={repo_type}) token={'yes' if token else 'no'}"
+    )
     path = hf_hub_download(
         repo_id=repo_id,
         filename=filename,
         repo_type=repo_type,
+        token=token,
         local_dir=os.path.abspath("cache/hf"),
         local_dir_use_symlinks=False
     )
+    try:
+        size = os.path.getsize(path)
+        logger.info(f"[HF] Downloaded to {path} size={size} bytes")
+    except Exception:
+        logger.info(f"[HF] Downloaded to {path}")
     return path
+

@@ -1,12 +1,12 @@
 # Root FastAPI
 import os
 import json
-import time
+import time, logging
 import threading
 import datetime as dt
 from typing import Optional, Dict
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request 
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -16,6 +16,14 @@ from utils.processor import process_file_into_sft
 from utils.drive_saver import DriveSaver
 from utils.llm import Paraphraser
 from utils.schema import CentralisedWriter
+from utils.token import get_credentials, exchange_code, build_auth_url
+
+# ────────── Log ───────────
+logger = logging.getLogger("app")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    logger.addHandler(handler)
 
 # ────────── Boot ──────────
 load_dotenv(override=True)
@@ -26,11 +34,18 @@ LOG_DIR = os.path.abspath(os.getenv("LOG_DIR", "logs"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
-drive = DriveSaver(default_folder_id=os.getenv(
-    "GDRIVE_FOLDER_ID",
-    "1JvW7its63E58fLxurH8ZdhxzdpcMrMbt"
-))
+# --- Bootstrap Google OAuth ---
+try:
+    creds = get_credentials()
+    if creds:
+        logger.info("✅ OAuth credentials loaded and valid")
+except Exception as e:
+    logger.warning(f"⚠️ OAuth not initialized yet: {e}")
 
+# --- Bootstrap Google Drive ---
+drive = DriveSaver(default_folder_id=os.getenv("GDRIVE_FOLDER_ID"))
+
+# LLM rotator with paraphraser nodes
 paraphraser = Paraphraser(
     nvidia_model=os.getenv("NVIDIA_MODEL", "meta/llama-3.1-8b-instruct"),
     gemini_model_easy=os.getenv("GEMINI_MODEL_EASY", "gemini-2.5-flash-lite"),
@@ -61,10 +76,12 @@ class AugmentOptions(BaseModel):
     consistency_check_ratio: float = 0.0  # small ratio e.g. 0.01
     # KD / distillation (optional, keeps default off)
     distill_fraction: float = 0.0         # for unlabeled only
+    expand: bool = True                   # Enable back-translation and complex augmentation
+    max_aug_per_sample: int = 2           # Between 1-3, number of LLM call to augment/paraphrase data
 
 class ProcessParams(BaseModel):
     augment: AugmentOptions = AugmentOptions()
-    sample_limit: Optional[int] = None
+    sample_limit: Optional[int] = None    # Set data sampling if needed 
     seed: int = 42
 
 def set_state(**kwargs):
@@ -103,8 +120,8 @@ def root():
       <div class="section">
         <h2>⚡ Quick Actions</h2>
         <p>Click a button below to start processing a dataset with default augmentation parameters.</p>
-        <button onclick="startJob('healthcaremagic')">▶ Process HealthCareMagic</button><br>
-        <button onclick="startJob('icliniq')">▶ Process iCliniq</button><br>
+        <button onclick="startJob('healthcaremagic')">▶ Process HealthCareMagic (100k)</button><br>
+        <button onclick="startJob('icliniq')">▶ Process iCliniq (10k-derived)</button><br>
         <button onclick="startJob('pubmedqa_l')">▶ Process PubMedQA (Labelled)</button><br>
         <button onclick="startJob('pubmedqa_u')">▶ Process PubMedQA (Unlabelled)</button><br>
         <button onclick="startJob('pubmedqa_map')">▶ Process PubMedQA (Map)</button>
@@ -115,6 +132,7 @@ def root():
         <ul>
           <li><a href="/status" target="_blank">Check current job status</a></li>
           <li><a href="/files" target="_blank">List generated artifacts</a></li>
+          <li><a href="https://binkhoale1812-medai-processing.hf.space/oauth2/start" target="_blank">Authorize your GCS credential</a></li>
           <li><a href="https://huggingface.co/spaces/BinKhoaLe1812/MedAI_Processing/blob/main/REQUEST.md" target="_blank">📑 Request Doc (all curl examples)</a></li>
         </ul>
       </div>
@@ -135,14 +153,16 @@ def root():
               body: JSON.stringify({{
                 augment: {{
                   paraphrase_ratio: 0.1,
-                  backtranslate_ratio: 0.05,
+                  backtranslate_ratio: 0.00, // Increase to 0.05-0.1 for back-translation
                   paraphrase_outputs: false,
                   style_standardize: true,
                   deidentify: true,
                   dedupe: true,
-                  max_chars: 5000
+                  max_chars: 5000,
+                  expand: true,
+                  max_aug_per_sample: 2
                 }},
-                sample_limit: 500,
+                sample_limit: null,          // Sample down (currently disabled)
                 seed: 42
               }})
             }});
@@ -165,6 +185,63 @@ def root():
 def status():
     with STATE_LOCK:
         return JSONResponse(STATE)
+    
+# ──────── GCS token ────────
+@app.get("/oauth2/start")
+def oauth2_start(request: Request):
+    # Compute redirect URI dynamically from the actual host the Space is using
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    scheme = "https"  # Spaces are HTTPS at the edge
+    redirect_uri = f"{scheme}://{host}/oauth2/callback"
+
+    try:
+        url = build_auth_url(redirect_uri)
+        return JSONResponse({"authorize_url": url})
+    except Exception as e:
+        raise HTTPException(500, f"OAuth init failed: {e}")
+
+# Display your token
+@app.get("/oauth2/callback")
+def oauth2_callback(request: Request, code: str = "", state: str = ""):
+    if not code:
+        raise HTTPException(400, "Missing 'code'")
+    # Send req
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    scheme = "https"
+    redirect_uri = f"{scheme}://{host}/oauth2/callback"
+    # Parse and show token code
+    try:
+        creds = exchange_code(code, redirect_uri)
+        refresh = creds.refresh_token or os.getenv("GDRIVE_REFRESH_TOKEN", "")
+        # UI
+        html = f"""
+        <html>
+        <head>
+          <style>
+            body {{ font-family: sans-serif; margin: 2em; }}
+            .token-box {{
+              padding: 1em; border: 1px solid #ccc; border-radius: 6px;
+              background: #f9f9f9; font-family: monospace;
+              word-break: break-all; white-space: pre-wrap;
+            }}
+            .note {{ margin-top: 1em; color: #555; }}
+          </style>
+        </head>
+        <body>
+          <h2>✅ Google Drive Authorized</h2>
+          <p>Your refresh token is:</p>
+          <div class="token-box">{refresh}</div>
+          <p class="note">
+            👉 Copy this token and save it into your Hugging Face Space Secrets
+            as <code>GDRIVE_REFRESH_TOKEN</code>.  
+            This ensures persistence across rebuilds.
+          </p>
+        </body>
+        </html>
+        """
+        return HTMLResponse(html)
+    except Exception as e:
+        raise HTTPException(500, f"OAuth exchange failed: {e}")
 
 @app.get("/files")
 def files():
@@ -178,6 +255,10 @@ def files():
 def process_dataset(dataset_key: str, params: ProcessParams, background: BackgroundTasks):
     with STATE_LOCK:
         if STATE["running"]:
+            logger.warning(
+                f"[JOB] Rejecting new job dataset={dataset_key} "
+                f"current={STATE['dataset']} started_at={STATE['started_at']}"
+            )
             raise HTTPException(409, detail="Another job is running.")
         STATE["running"] = True
         STATE["dataset"] = dataset_key
@@ -185,7 +266,13 @@ def process_dataset(dataset_key: str, params: ProcessParams, background: Backgro
         STATE["progress"] = 0.0
         STATE["message"] = "starting"
         STATE["last_result"] = None
-
+        logger.info(
+            f"[JOB] Queued dataset={dataset_key} "
+            f"params={{'sample_limit': {params.sample_limit}, 'seed': {params.seed}, "
+            f"'augment': {params.augment.dict()} }}"
+        )
+    # Start job to background runner thread
+    logger.info(f"[JOB] Started dataset={dataset_key}")
     background.add_task(_run_job, dataset_key, params)
     return {"ok": True, "message": f"Job for '{dataset_key}' started."}
 
@@ -196,17 +283,21 @@ def _run_job(dataset_key: str, params: ProcessParams):
         if not ds:
             set_state(running=False, message="unknown dataset")
             return
-
+        
+        # Download HF Dataset and start processing units
         set_state(message="downloading")
         local_path = hf_download_dataset(ds["repo_id"], ds["filename"], ds["repo_type"])
+        logger.info(f"[JOB] Downloaded {ds['repo_id']}/{ds['filename']} → {local_path}")
 
+        # Prepare timestamp for fire writing
         ts = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         stem = f"{dataset_key}-{ts}"
         jsonl_path = os.path.join(OUTPUT_DIR, f"{stem}.jsonl")
         csv_path   = os.path.join(OUTPUT_DIR, f"{stem}.csv")
-
+        # Change state
         set_state(message="processing", progress=0.05)
 
+        # STF writer
         writer = CentralisedWriter(jsonl_path=jsonl_path, csv_path=csv_path)
         count, stats = process_file_into_sft(
             dataset_key=dataset_key,
@@ -218,12 +309,19 @@ def _run_job(dataset_key: str, params: ProcessParams):
             seed=params.seed,
             progress_cb=lambda p, msg=None: set_state(progress=p, message=msg or STATE["message"])
         )
+        logger.info(f"[JOB] Processed dataset={dataset_key} rows={count} stats={stats}")
         writer.close()
 
+        # Upload to GDrive
         set_state(message="uploading to Google Drive", progress=0.95)
         up1 = drive.upload_file_to_drive(jsonl_path, mimetype="application/json")
         up2 = drive.upload_file_to_drive(csv_path,   mimetype="text/csv")
-
+        logger.info(
+            f"[JOB] Uploads complete uploaded={bool(up1 and up2)} "
+            f"jsonl={jsonl_path} csv={csv_path}"
+        )
+        
+        # Finalize a task
         result = {
             "dataset": dataset_key,
             "processed_rows": count,
@@ -233,6 +331,10 @@ def _run_job(dataset_key: str, params: ProcessParams):
             "duration_sec": round(time.time() - t0, 2)
         }
         set_state(message="done", progress=1.0, last_result=result, running=False)
-
+        logger.info(
+            f"[JOB] Finished dataset={dataset_key} "
+            f"duration_sec={round(time.time()-t0, 2)}"
+        )
     except Exception as e:
+        logger.exception(f"[JOB] Error for dataset={dataset_key}: {e}")
         set_state(message=f"error: {e}", running=False)

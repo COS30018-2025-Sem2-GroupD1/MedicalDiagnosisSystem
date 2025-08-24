@@ -11,6 +11,12 @@ if not logger.handlers:
     handler = logging.StreamHandler()
     logger.addHandler(handler)
 
+# LLM parser limit text to log-out
+def snip(s: str, n: int = 12) -> str:
+    if not isinstance(s, str): return "∅"
+    parts = s.strip().split()
+    return " ".join(parts[:n]) + (" …" if len(parts) > n else "")
+
 class KeyRotator:
     def __init__(self, env_prefix: str, max_keys: int = 5):
         keys = []
@@ -55,7 +61,10 @@ class GeminiClient:
                 model=model or self.default_model,
                 contents=prompt
             )
-            return getattr(res, "text", None)
+            text = getattr(res, "text", None)
+            if text:
+                logger.info(f"[LLM][Gemini] out={snip(text)}")
+            return text
         except Exception as e:
             logger.error(f"[LLM][Gemini] {e}")
             self.rotator.mark_bad(key)
@@ -66,6 +75,21 @@ class NvidiaClient:
         self.rotator = rotator
         self.default_model = default_model
         self.url = os.getenv("NVIDIA_API_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
+
+    # Regex-based cleaning resp from quotes
+    def _clean_resp(self, resp: str) -> str:
+        if not resp: return resp
+        txt = resp.strip()
+        # Remove common boilerplate prefixes
+        for pat in [
+            r"^Here is (a|the) .*?:\s*",
+            r"^Paraphrased(?: version)?:\s*",
+            r"^Sure[,.]?\s*",
+            r"^Okay[,.]?\s*"
+        ]:
+            import re
+            txt = re.sub(pat, "", txt, flags=re.I)
+        return txt.strip()
 
     def generate(self, prompt: str, model: Optional[str] = None, temperature: float = 0.2, max_tokens: int = 512) -> Optional[str]:
         key = self.rotator.next_key()
@@ -83,7 +107,10 @@ class NvidiaClient:
             if r.status_code >= 400:
                 raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
             data = r.json()
-            return data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"]["content"]
+            clean = self._clean_resp(text)
+            logger.info(f"[LLM][NVIDIA] out={snip(clean)}")
+            return clean        
         except Exception as e:
             logger.error(f"[LLM][NVIDIA] {e}")
             self.rotator.mark_bad(key)
@@ -96,19 +123,35 @@ class Paraphraser:
         self.gm_easy = GeminiClient(KeyRotator("GEMINI_API"), gemini_model_easy)
         self.gm_hard = GeminiClient(KeyRotator("GEMINI_API"), gemini_model_hard)
 
+    # Regex-based cleaning resp from quotes
+    def _clean_resp(self, resp: str) -> str:
+        if not resp: return resp
+        txt = resp.strip()
+        # Remove common boilerplate prefixes
+        for pat in [
+            r"^Here is (a|the) .*?:\s*",
+            r"^Paraphrased(?: version)?:\s*",
+            r"^Sure[,.]?\s*",
+            r"^Okay[,.]?\s*"
+        ]:
+            import re
+            txt = re.sub(pat, "", txt, flags=re.I)
+        return txt.strip()
+
     # ————— Paraphrase —————
     def paraphrase(self, text: str, difficulty: str = "easy") -> str:
         if not text or len(text) < 12:
             return text
         prompt = (
-            "Paraphrase the following medical text concisely, preserving meaning and clinical terms. "
-            "Do not fabricate or remove factual claims.\n\n" + text
+            "Paraphrase the following medical text concisely, preserve meaning and clinical terms.\n"
+            "Do not fabricate or remove factual claims.\n" 
+            "Return ONLY the rewritten text, without any introduction, commentary.\n"+ text
         )
         out = self.nv.generate(prompt, temperature=0.1, max_tokens=min(600, max(128, len(text)//2)))
-        if out: return out.strip()
+        if out: return self._clean_resp(out)
         gm = self.gm_easy if difficulty == "easy" else self.gm_hard
         out = gm.generate(prompt, max_output_tokens=min(600, max(128, len(text)//2)))
-        return out.strip() if out else text
+        return self._clean_resp(out) if out else text
 
     # ————— Translate & Backtranslate —————
     def translate(self, text: str, target_lang: str = "de") -> Optional[str]:

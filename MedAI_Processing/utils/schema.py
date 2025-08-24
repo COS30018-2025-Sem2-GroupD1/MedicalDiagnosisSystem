@@ -2,6 +2,13 @@
 import csv
 import orjson
 from typing import Optional, Dict
+import logging
+
+# Logger
+logger = logging.getLogger("schema")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler())
 
 def sft_row(instruction: str, user_input: str, output: str, source: str, rid: str, task: str, meta: Optional[dict] = None):
     return {
@@ -36,6 +43,11 @@ class CentralisedWriter:
 
     def write(self, row: dict):
         if not is_valid_row(row):
+            s = row.get("sft", {})
+            logger.warning(
+                f"[WRITER] Skipping invalid row id={row.get('id')} "
+                f"(len instr={len(s.get('instruction',''))}, input={len(s.get('input',''))}, output={len(s.get('output',''))})"
+            )
             return
         self.jsonl_fp.write(orjson.dumps(row))
         self.jsonl_fp.write(b"\n")
