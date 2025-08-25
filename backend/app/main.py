@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import model_interface
 
 api_path = "/api/v1/endpoints"
 
@@ -66,4 +67,16 @@ async def root():
 @app.get(api_path)
 async def base_api():
 	"""Displays a message when the api endpoint is reached."""
-	return {"Result": "Welcome to the api"}
+	return { "Result": "Welcome to the api" }
+
+@app.get(api_path + "/chat")
+async def chat(query):
+	"""Chat window."""
+	result = model_interface.call_model(query)
+	return {
+		"Result": {
+			"Chat": "yes",
+			"Query": query,
+			"Result": result
+		}
+	}
