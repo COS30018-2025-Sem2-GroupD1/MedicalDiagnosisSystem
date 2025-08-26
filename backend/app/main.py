@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import model_interface
 
-api_path = "/api/v1/endpoints"
+from app.core.model_route import model_route
+from app.utils.settings import API_PATH, SETTINGS
 
 # === SETUP ===
 
@@ -31,6 +31,11 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
 	"""Log HTTP requests into the console."""
 	start_time = time.time()
+	if request.url.path == "/":
+		request.scope["path"] = "/docs"
+		headers = dict(request.scope['headers'])
+		headers[b'custom-header'] = b'my custom header'
+		request.scope['headers'] = [(k, v) for k, v in headers.items()]
 	response = await call_next(request)
 	process_time = time.time() - start_time
 	print(f"Request: {request.url} - Duration: {process_time} seconds")
@@ -44,39 +49,28 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 		content={"Detail": exc.detail, "Error": "An error occurred"},
 	)
 
-# === API PATHS ===
+# === WEB PAGES ===
 
-@app.get("/")
-async def root():
-	"""Displays a message when viewing the root of the website."""
-	return {
-		"Result": {
-			"Root": {
-				"Type": "GET",
-				"Path": "/",
-				"Description": "Display all avaiable endpoints.",
-			},
-			"Api path": {
-				"Type": "GET",
-				"Path": api_path,
-				"Description": "Test endpoint.",
-			},
-		}
-	}
-
-@app.get(api_path)
-async def base_api():
-	"""Displays a message when the api endpoint is reached."""
-	return { "Result": "Welcome to the api" }
-
-@app.get(api_path + "/chat")
+@app.get("/chat")
 async def chat(query):
 	"""Chat window."""
-	result = model_interface.call_model(query)
 	return {
 		"Result": {
 			"Chat": "yes",
 			"Query": query,
-			"Result": result
+			"Result": "N/A"
 		}
 	}
+
+@app.get("/retrieval/search")
+async def search():
+	return
+
+# === API PATHS ===
+
+@app.get(API_PATH)
+async def base_api():
+	"""Displays a message when the api endpoint is reached."""
+	return { "Result": "Welcome to the api" }
+
+app.include_router(model_route)
