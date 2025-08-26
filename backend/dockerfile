@@ -1,5 +1,5 @@
 # Import a base python image, use the slim version because it's smaller
-FROM python:3.9-slim
+FROM python:3.13-slim
 
 # Set the working directory
 WORKDIR /app
@@ -9,6 +9,9 @@ COPY requirements.txt .
 
 # Install the dependencies, the --no-cache-dir flag helps keep the image size smaller
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the environment file next
+COPY .env .env
 
 # Copy the rest of the code
 # TODO Include more copy layers for optimisation as needed
