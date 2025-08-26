@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+   backend:
+      build:
+         context: ./backend
+         dockerfile: dockerfile
+      ports:
+         - "8000:8000"
+      volumes:
+         - ./backend/app:/app/app  # Only mount the app directory for live development
+      env_file:
+         - ./backend/.env
+      restart: unless-stopped
