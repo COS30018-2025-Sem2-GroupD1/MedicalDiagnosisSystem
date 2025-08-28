@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Awaitable, Callable
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
+#from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.api_base import api_route
@@ -22,14 +22,14 @@ app = FastAPI(
 	version="0.1.0"
 )
 
-# Add CORS middleware, required for frontend connection to work
-app.add_middleware(
-	CORSMiddleware,
-	allow_origins=["*"],  # URL of React application
-	allow_credentials=True,
-	allow_methods=["*"],
-	allow_headers=["*"],
-)
+## Add CORS middleware, required for frontend connection to work
+#app.add_middleware(
+#	CORSMiddleware,
+#	allow_origins=["*"],  # URL frontend application
+#	allow_credentials=True,
+#	allow_methods=["*"],
+#	allow_headers=["*"],
+#)
 
 @app.middleware("http")
 async def log_requests(
