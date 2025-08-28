@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user for security
 RUN useradd -m -u 1000 user
 ENV HOME=/home/user
-WORKDIR $HOME/app
+ENV APP_PATH=$HOME/medical_diagnosis_system
+WORKDIR $APP_PATH
 
 # Copy requirements first for better layer caching
 COPY --chown=user requirements.txt .
@@ -24,8 +25,8 @@ ENV SENTENCE_TRANSFORMERS_HOME="$HF_HOME/sentence-transformers"
 
 # Create necessary directories with correct permissions
 RUN mkdir -p \
-	$HOME/app/logs \
-	$HOME/app/cache \
+	$APP_PATH/logs \
+	$APP_PATH/cache \
 	$HOME/.cache/huggingface \
 	&& chown -R user:user $HOME
 

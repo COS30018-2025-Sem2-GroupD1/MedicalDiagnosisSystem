@@ -6,7 +6,7 @@ services:
       ports:
          - "7860:7860"
       volumes:
-         - ./backend/app:/app/app  # Only mount the app directory for live development
+         - ./backend/app:/home/user/medical_diagnosis_system/app
       env_file:
          - ./backend/.env
       restart: unless-stopped
