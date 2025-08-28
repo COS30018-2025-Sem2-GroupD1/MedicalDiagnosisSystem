@@ -1,9 +1,7 @@
 from fastapi import APIRouter
 
-from ..utils.settings import API_PATH, SETTINGS
-
 retrieval_route = APIRouter(
-	prefix=API_PATH + "/retrieval",
+	prefix="/retrieval",
 	tags=["retrieval"]
 )
 

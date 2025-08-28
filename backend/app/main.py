@@ -5,12 +5,8 @@ from typing import Awaitable, Callable
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute
 
-from app.core.chat_route import chat_route
-from app.core.model_route import model_route
-from app.core.retrieval_route import retrieval_route
-from app.utils.settings import API_PATH, SETTINGS
+from app.api.api_base import api_route
 
 # === SETUP ===
 
@@ -69,22 +65,4 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 # === API PATHS ===
 
-@app.get(API_PATH)
-async def base_api():
-	"""Displays a message when the api endpoint is reached."""
-	routes: list[str] = []
-	for route in app.routes:
-		# Check if the route is an APIRoute before accessing its path
-		if isinstance(route, APIRoute) and route.path.startswith(API_PATH):
-			routes.append(route.path)
-
-	return {
-		"Result": {
-			"Message:": "Welcome to the api! See the docs by redirecting to /docs or /redocs",
-			"Endpoints": routes
-		}
-	}
-
-app.include_router(model_route)
-app.include_router(chat_route)
-app.include_router(retrieval_route)
+app.include_router(api_route)

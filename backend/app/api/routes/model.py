@@ -1,14 +1,13 @@
 from fastapi import APIRouter
 
-from ..utils.settings import API_PATH, SETTINGS
-
 model_route = APIRouter(
-	prefix=API_PATH + "/model",
+	prefix="/model",
 	tags=["model"]
 )
 
 @model_route.get("/student")
 async def student():
+	"""Returns the student model (I assume)."""
 	return {
 		"Result" : "Works!"
 	}

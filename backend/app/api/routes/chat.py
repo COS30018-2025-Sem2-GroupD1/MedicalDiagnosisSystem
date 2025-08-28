@@ -1,9 +1,7 @@
 from fastapi import APIRouter
 
-from ..utils.settings import API_PATH, SETTINGS
-
 chat_route = APIRouter(
-	prefix=API_PATH + "/chat",
+	prefix="/chat",
 	tags=["chat"]
 )
 

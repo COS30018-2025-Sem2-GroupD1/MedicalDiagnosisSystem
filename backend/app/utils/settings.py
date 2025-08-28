@@ -1,8 +1,5 @@
 from pydantic_settings import BaseSettings
 
-# Hard coded api path
-API_PATH = "/api/v1/endpoints"
-
 class Settings(BaseSettings):
 	"""Add values you want to copy from the .env file into here."""
 	has_been_copied: str
