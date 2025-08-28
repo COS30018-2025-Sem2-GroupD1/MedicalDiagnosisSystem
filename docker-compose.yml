@@ -4,7 +4,7 @@ services:
          context: ./backend
          dockerfile: dockerfile
       ports:
-         - "8000:8000"
+         - "7860:7860"
       volumes:
          - ./backend/app:/app/app  # Only mount the app directory for live development
       env_file:

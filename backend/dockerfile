@@ -1,24 +1,43 @@
-# Import a base python image, use the slim version because it's smaller
+# Use Python slim image for smaller size
 FROM python:3.13-slim
 
-# Set the working directory
-WORKDIR /app
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	ca-certificates \
+	curl \
+	&& rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file over first, as long as the requirments haven't changed then this won't be re-run
-COPY requirements.txt .
+# Create non-root user for security
+RUN useradd -m -u 1000 user
+ENV HOME=/home/user
+WORKDIR $HOME/app
 
-# Install the dependencies, the --no-cache-dir flag helps keep the image size smaller
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements first for better layer caching
+COPY --chown=user requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Copy the environment file next
-COPY .env .env
+# Set up Hugging Face cache directories
+ENV HF_HOME="$HOME/.cache/huggingface"
+ENV TRANSFORMERS_CACHE="$HF_HOME/transformers"
+ENV HUGGINGFACE_HUB_CACHE="$HF_HOME/hub"
+ENV SENTENCE_TRANSFORMERS_HOME="$HF_HOME/sentence-transformers"
 
-# Copy the rest of the code
-# TODO Include more copy layers for optimisation as needed
-COPY ./app ./app
+# Create necessary directories with correct permissions
+RUN mkdir -p \
+	$HOME/app/logs \
+	$HOME/app/cache \
+	$HOME/.cache/huggingface \
+	&& chown -R user:user $HOME
 
-# Expose the port that uvicorn uses
-EXPOSE 8000
+# Copy application code
+COPY --chown=user ./app ./app
+COPY --chown=user .env .env
 
-# Define the command to run the application. The host 0.0.0.0 makes the server accessible from outside the container
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Switch to non-root user
+USER user
+
+# HF Spaces uses port 7860
+EXPOSE 7860
+
+# Start command using HF Spaces port
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
