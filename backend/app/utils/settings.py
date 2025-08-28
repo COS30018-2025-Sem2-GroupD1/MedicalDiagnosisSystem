@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 
+# Hard coded api path
 API_PATH = "/api/v1/endpoints"
 
 class Settings(BaseSettings):
