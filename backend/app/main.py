@@ -1,13 +1,15 @@
 import time
 from contextlib import asynccontextmanager
+from typing import Awaitable, Callable
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-from app.core.model_route import model_route
 from app.core.chat_route import chat_route
+from app.core.model_route import model_route
+from app.core.retrieval_route import retrieval_route
 from app.utils.settings import API_PATH, SETTINGS
 
 # === SETUP ===
@@ -34,7 +36,10 @@ app.add_middleware(
 )
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(
+	request: Request,
+	call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
 	"""Log HTTP requests into the console."""
 	start_time = time.time()
 
@@ -50,6 +55,7 @@ async def log_requests(request: Request, call_next):
 	# Log request time into console
 	# TODO proper logging
 	process_time = time.time() - start_time
+	response.headers["X-Process-Time"] = str(process_time)
 	print(f"Request: {request.url} - Duration: {process_time} seconds")
 	return response
 
@@ -60,12 +66,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 		status_code=exc.status_code,
 		content={"Detail": exc.detail, "Error": "An error occurred"},
 	)
-
-# === REFERENCE ===
-
-@app.get("/retrieval/search")
-async def search():
-	return {"Result": "Idk what this is."}
 
 # === API PATHS ===
 
@@ -87,3 +87,4 @@ async def base_api():
 
 app.include_router(model_route)
 app.include_router(chat_route)
+app.include_router(retrieval_route)
