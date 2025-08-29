@@ -38,7 +38,6 @@ ENV EMBEDDING_HALF="0"
 
 # Preload embedding model and warmup
 RUN test -f /app/dw_model.py && python /app/dw_model.py || true
-RUN test -f /app/warmup.py && python /app/warmup.py || true
 
 # Ensure ownership stays correct
 RUN chown -R user:user /app/model_cache
