@@ -18,8 +18,6 @@ async def list_paths():
 			routes.append(route.path)
 
 	return {
-		"Result": {
-			"Message:": "Welcome to the api! See the docs by redirecting to /docs or /redocs",
-			"Endpoints": routes
-		}
+		"message:": "Welcome to the api! See the docs by redirecting to /docs or /redocs",
+		"endpoints": routes
 	}

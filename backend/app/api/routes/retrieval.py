@@ -8,4 +8,4 @@ retrieval_route = APIRouter(
 @retrieval_route.get("/search")
 async def search():
 	"""Idk what this is supposed to be for."""
-	return {"Result": "Idk what this is."}
+	return {"result": "Not implemented"}

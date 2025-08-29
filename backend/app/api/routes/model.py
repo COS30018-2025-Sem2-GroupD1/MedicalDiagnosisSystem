@@ -9,5 +9,5 @@ model_route = APIRouter(
 async def student():
 	"""Returns the student model (I assume)."""
 	return {
-		"Result" : "Works!"
+		"result" : "Not implemented."
 	}
