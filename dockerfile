@@ -30,6 +30,11 @@ RUN mkdir -p \
 	$HOME/.cache/huggingface \
 	&& chown -R user:user $HOME
 
+# Expose the secret google_api_key at buildtime and use its value as git remote URL
+RUN --mount=type=secret,id=google_api_key,mode=0444,required=true \
+	git init && \
+	git remote add origin $(cat /run/secrets/google_api_key)
+
 # Copy application code
 COPY --chown=user ./app ./app
 COPY --chown=user .env .env
