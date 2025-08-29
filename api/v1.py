@@ -1,6 +1,6 @@
-from app.api.routes.chat import chat_route
-from app.api.routes.model import model_route
-from app.api.routes.retrieval import retrieval_route
+from api.routes.chat import chat_route
+from api.routes.model import model_route
+from api.routes.retrieval import retrieval_route
 from fastapi import APIRouter
 
 v1_route = APIRouter(

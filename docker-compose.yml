@@ -7,9 +7,6 @@ services:
             - SPACES_BUILD=false
       ports:
          - "7860:7860"
-      volumes:
-         - .:/home/user/medical_diagnosis_system  # Mount entire project
-         - ${HOME}/.cache/huggingface:/home/user/.cache/huggingface  # HF cache persistence
       env_file:
          - ./.env
       environment:

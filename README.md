@@ -69,13 +69,12 @@ cp .env.example .env
 ```
 MedicalDiagnosisSystem/
 ├── .venv/                  # Virtual environment
-├── app/                    # Application code
-│   ├── main.py             # Entry point
-│   ├── api/                # API routes
-│   │   ├── api_base.py     # Base router
-│   │   ├── v1.py           # v1 API routes
-│   │   └── routes/         # Route modules
-│   └── utils/              # Utility functions
+├── main.py             # Entry point
+├── api/                # API routes
+│   ├── api_base.py     # Base router
+│   ├── v1.py           # v1 API routes
+│   └── routes/         # Route modules
+└── utils/              # Utility functions
 ├── .env.example            # Environment template
 ├── dockerfile              # Docker configuration
 ├── docker-compose.yml      # Docker Compose config
@@ -87,7 +86,7 @@ MedicalDiagnosisSystem/
 
 ### Local Development
 ```bash
-uvicorn app.main:app --reload
+uvicorn app:app --reload
 ```
 The service will be available at `http://localhost:8000`
 

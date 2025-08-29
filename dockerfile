@@ -41,8 +41,10 @@ RUN if [ "$SPACES_BUILD" = "true" ]; then \
 fi
 
 # Copy application code
-COPY --chown=user ./app ./app
-COPY --chown=user .env .env
+COPY --chown=user ./api ./api
+COPY --chown=user ./utils ./utils
+COPY --chown=user ./app.py ./app.py
+COPY --chown=user ./.env ./.env
 
 # Switch to non-root user
 USER user
@@ -51,4 +53,4 @@ USER user
 EXPOSE 7860
 
 # Start command using HF Spaces port
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]

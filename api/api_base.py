@@ -1,4 +1,4 @@
-from app.api.v1 import v1_route
+from api.v1 import v1_route
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
 
