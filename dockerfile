@@ -30,10 +30,15 @@ RUN mkdir -p \
 	$HOME/.cache/huggingface \
 	&& chown -R user:user $HOME
 
+# Only perform the below step while on huggingface spaces
+ARG SPACES_BUILD=false
+
 # Expose the secret google_api_key at buildtime and use its value as git remote URL
-RUN --mount=type=secret,id=google_api_key,mode=0444,required=true \
+RUN if [ "$SPACES_BUILD" = "true" ]; then \
+	--mount=type=secret,id=google_api_key,mode=0444,required=true \
 	git init && \
-	git remote add origin $(cat /run/secrets/google_api_key)
+	git remote add origin $(cat /run/secrets/google_api_key); \
+fi
 
 # Copy application code
 COPY --chown=user ./app ./app
@@ -46,4 +51,4 @@ USER user
 EXPOSE 7860
 
 # Start command using HF Spaces port
-CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]

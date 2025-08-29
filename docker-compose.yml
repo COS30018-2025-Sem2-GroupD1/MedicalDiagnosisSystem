@@ -1,12 +1,20 @@
 services:
-   backend:
+   app:
       build:
          context: .
          dockerfile: dockerfile
+         args:
+            - SPACES_BUILD=false
       ports:
          - "7860:7860"
       volumes:
-         - ./app:/home/user/medical_diagnosis_system/app
+         - .:/home/user/medical_diagnosis_system  # Mount entire project
+         - ${HOME}/.cache/huggingface:/home/user/.cache/huggingface  # HF cache persistence
       env_file:
          - ./.env
+      environment:
+         - HF_HOME=/home/user/.cache/huggingface
+         - TRANSFORMERS_CACHE=/home/user/.cache/huggingface/transformers
+         - HUGGINGFACE_HUB_CACHE=/home/user/.cache/huggingface/hub
+         - SENTENCE_TRANSFORMERS_HOME=/home/user/.cache/huggingface/sentence-transformers
       restart: unless-stopped
