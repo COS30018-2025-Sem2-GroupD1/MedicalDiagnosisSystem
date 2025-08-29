@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from google import genai
 from google.genai import types
 
+# Google api resources: https://googleapis.github.io/python-genai/
+
 chat_route = APIRouter(
 	prefix="/chat",
 	tags=["chat"]
