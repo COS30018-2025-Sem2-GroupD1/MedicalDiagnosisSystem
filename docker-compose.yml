@@ -1,12 +1,12 @@
 services:
    backend:
       build:
-         context: ./backend
+         context: .
          dockerfile: dockerfile
       ports:
          - "7860:7860"
       volumes:
-         - ./backend/app:/home/user/medical_diagnosis_system/app
+         - ./app:/home/user/medical_diagnosis_system/app
       env_file:
-         - ./backend/.env
+         - ./.env
       restart: unless-stopped
