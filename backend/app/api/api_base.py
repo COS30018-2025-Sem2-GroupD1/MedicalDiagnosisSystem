@@ -1,7 +1,6 @@
+from app.api.v1 import v1_route
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
-
-from app.api.v1 import v1_route
 
 api_route = APIRouter(
 	prefix="/api"
