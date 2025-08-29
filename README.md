@@ -8,6 +8,7 @@ pinned: false
 license: mit
 short_description: Group project for uni work
 python_version: 3.13
+app_port: 7860
 ---
 
 # Medical Diagnosis System
