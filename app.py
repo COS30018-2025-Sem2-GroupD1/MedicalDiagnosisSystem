@@ -30,7 +30,7 @@ logger.setLevel(logging.DEBUG)
 logger.info("🚀 Starting Medical Chatbot API...")
 
 # ✅ Environment Variables
-mongo_uri = os.getenv("MONGO_URI")
+# mongo_uri = os.getenv("MONGO_URI")           # TODO: Create MongoDB cluster
 gemini_flash_api_key = os.getenv("GEMINI_API")
 # Validate environment endpoint
 if not all([gemini_flash_api_key, mongo_uri]):
@@ -92,7 +92,7 @@ SYMPTOM_DOCS = None
 
 # ✅ Setup MongoDB Connection
 # QA data
-client = MongoClient(mongo_uri)
+# client = MongoClient(mongo_uri) # REACTIVATE after MongoDB creation
 
 # ✅ Load Index (Lazy Load) with gridfs
 import gridfs
@@ -100,7 +100,7 @@ import gridfs
 
 # ✅ RAG
 def retrieve_medical_info(query, k=5, min_sim=0.9): # Min similarity between query and kb is to be 80%
-    '''God Work here'''
+    '''TODO: Implement your RAG pipeline'''
 
 
 # ✅ Gemini Flash API Call
