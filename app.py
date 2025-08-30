@@ -10,9 +10,6 @@ from pymongo import MongoClient
 from google import genai
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
-from memory import MemoryManager
-from translation import translate_query
-from vlm import process_medical_image
 
 # ✅ Enable Logging for Debugging
 import logging
