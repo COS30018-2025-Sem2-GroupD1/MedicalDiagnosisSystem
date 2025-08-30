@@ -31,7 +31,7 @@ logger.info("🚀 Starting Medical Chatbot API...")
 
 # ✅ Environment Variables
 mongo_uri = os.getenv("MONGO_URI")
-gemini_flash_api_key = os.getenv("FlashAPI")
+gemini_flash_api_key = os.getenv("GEMINI_API")
 # Validate environment endpoint
 if not all([gemini_flash_api_key, mongo_uri]):
     raise ValueError("❌ Missing API keys! Set them in Hugging Face Secrets.")
