@@ -59,7 +59,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # ✅ Initialize FastAPI app
 app = FastAPI(title="Medical Chatbot API", version="0.1.0")
-memory = MemoryManager()
+# Commented out due to memory management not being implemented
+# memory = MemoryManager()
 
 from fastapi.middleware.cors import CORSMiddleware # Bypassing CORS origin
 
