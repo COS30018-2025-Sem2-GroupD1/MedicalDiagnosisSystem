@@ -39,19 +39,35 @@ python -m venv .venv
 
 2. **Activate Virtual Environment**
 
-Linux/MacOS:
+a. Linux/MacOS (bash/zsh):
 ```bash
 source .venv/bin/activate
 ```
-
-Windows PowerShell:
+b. Windows PowerShell:
 ```bash
 .\.venv\Scripts\Activate.ps1
 ```
-
-Fish Shell:
+c. Fish Shell:
 ```bash
 source .venv/bin/activate.fish
+```
+
+3. **Check the environment before continuing**
+```bash
+echo $VIRTUAL_ENV # It should return your .venv path
+which python # It should also return your .venv path
+which pip # Same as the above
+```
+If one of any is not working, a potential solution is to append `sudo` when creating virtual environment:
+```bash
+sudo python -m venv .venv
+source .venv/bin/activate
+# check with the commands above
+```
+Since the environment is installed using super user, following commands to install the required libraries will also needed to be under super user, and because of that, it can install locally on your device instead of within the environment.
+To ensure that it doesn't happen, run this command to change the ownership to your username
+```bash
+sudo chown -R your_username:your_username path/to/virtuaelenv/
 ```
 
 3. **Install Dependencies**
