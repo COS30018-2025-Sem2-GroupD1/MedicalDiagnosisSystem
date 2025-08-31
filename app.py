@@ -33,7 +33,7 @@ logger.info("🚀 Starting Medical Chatbot API...")
 # mongo_uri = os.getenv("MONGO_URI")           # TODO: Create MongoDB cluster
 gemini_flash_api_key = os.getenv("GEMINI_API")
 # Validate environment endpoint
-if not all([gemini_flash_api_key, mongo_uri]):
+if not all([gemini_flash_api_key]):
     raise ValueError("❌ Missing API keys! Set them in Hugging Face Secrets.")
 
 
@@ -120,7 +120,7 @@ class RAGMedicalChatbot:
         self.retrieve = retrieve_function
 
     def chat() -> str:
-        # Build prompt 
+        # Build prompt
         parts = ["You are a medical chatbot, designed to answer medical questions."]
         parts.append("Please format your answer using MarkDown.")
         parts.append("**Bold for titles**, *italic for emphasis*, and clear headings.")
