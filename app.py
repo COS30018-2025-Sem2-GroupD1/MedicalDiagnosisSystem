@@ -144,8 +144,7 @@ async def generate_medical_response_with_gemini(user_message: str, user_role: st
             return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
         
         # Configure Gemini
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        client = genai.Client(api_key=api_key)
         
         # Build context-aware prompt
         prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
@@ -174,7 +173,7 @@ async def generate_medical_response_with_gemini(user_message: str, user_role: st
 Remember: This is for educational purposes only. Always emphasize consulting healthcare professionals for medical advice."""
 
         # Generate response
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         
         if response.text:
             # Add medical disclaimer if not already present
