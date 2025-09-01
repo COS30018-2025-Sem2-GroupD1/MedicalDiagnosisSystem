@@ -139,8 +139,19 @@ class MedicalHistoryManager:
         Process a medical Q&A exchange and store it in memory
         """
         try:
-            # Create summary using NVIDIA
-            summary = await summarize_qa_with_nvidia(question, answer, rotator)
+            # Check if we have valid API keys
+            if not rotator or not rotator.get_key() or rotator.get_key() == "":
+                logger.info("No valid API keys available, using fallback summary")
+                summary = f"q: {question}\na: {answer}"
+            else:
+                # Try to create summary using NVIDIA
+                try:
+                    summary = await summarize_qa_with_nvidia(question, answer, rotator)
+                    if not summary or summary.strip() == "":
+                        summary = f"q: {question}\na: {answer}"
+                except Exception as e:
+                    logger.warning(f"Failed to create NVIDIA summary: {e}")
+                    summary = f"q: {question}\na: {answer}"
             
             # Store in memory
             self.memory.add(user_id, summary)
@@ -161,10 +172,11 @@ class MedicalHistoryManager:
         except Exception as e:
             logger.error(f"Error processing medical exchange: {e}")
             # Fallback: store without summary
-            self.memory.add(user_id, f"q: {question}\na: {answer}")
+            summary = f"q: {question}\na: {answer}"
+            self.memory.add(user_id, summary)
             self.memory.add_message_to_session(session_id, "user", question)
             self.memory.add_message_to_session(session_id, "assistant", answer)
-            return f"q: {question}\na: {answer}"
+            return summary
     
     def get_conversation_context(self, user_id: str, session_id: str, question: str) -> str:
         """

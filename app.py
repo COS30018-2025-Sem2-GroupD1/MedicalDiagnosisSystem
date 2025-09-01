@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     message: str
     user_role: Optional[str] = "Medical Professional"
     user_specialty: Optional[str] = ""
+    title: Optional[str] = "New Chat"  # Added missing title field
 
 class ChatResponse(BaseModel):
     response: str
@@ -75,17 +76,35 @@ MEDICAL_KB = {
         "fever": "Fever is a temporary increase in body temperature, often due to illness. Normal body temperature is around 98.6°F (37°C).",
         "headache": "Headache is pain in the head or upper neck. Common types include tension headaches, migraines, and cluster headaches.",
         "cough": "Cough is a sudden expulsion of air from the lungs. It can be dry or productive (bringing up mucus).",
-        "fatigue": "Fatigue is extreme tiredness that doesn't improve with rest. It can be caused by various medical conditions."
+        "fatigue": "Fatigue is extreme tiredness that doesn't improve with rest. It can be caused by various medical conditions.",
+        "nausea": "Nausea is a feeling of sickness with an inclination to vomit. It can be caused by various conditions including infections, medications, and pregnancy.",
+        "dizziness": "Dizziness is a sensation of lightheadedness or unsteadiness. It can be caused by inner ear problems, low blood pressure, or neurological conditions.",
+        "chest pain": "Chest pain can have many causes, from muscle strain to serious heart conditions. Any unexplained chest pain should be evaluated by a healthcare provider.",
+        "shortness of breath": "Shortness of breath, or dyspnea, is difficulty breathing. It can be caused by respiratory, cardiac, or other medical conditions."
     },
     "conditions": {
         "hypertension": "Hypertension (high blood pressure) is a common condition that affects the arteries. It's often called the 'silent killer' because it usually has no symptoms.",
         "diabetes": "Diabetes is a chronic disease that affects how your body turns food into energy. There are two main types: Type 1 and Type 2.",
-        "asthma": "Astma is a condition that affects the airways in the lungs. It can cause wheezing, shortness of breath, chest tightness, and coughing."
+        "asthma": "Asthma is a condition that affects the airways in the lungs. It can cause wheezing, shortness of breath, chest tightness, and coughing.",
+        "pneumonia": "Pneumonia is an infection that inflames the air sacs in one or both lungs. It can be caused by bacteria, viruses, or fungi.",
+        "heart disease": "Heart disease refers to various conditions affecting the heart, including coronary artery disease, heart failure, and arrhythmias.",
+        "arthritis": "Arthritis is inflammation of the joints, causing pain and stiffness. The most common types are osteoarthritis and rheumatoid arthritis.",
+        "depression": "Depression is a mental health disorder characterized by persistently depressed mood or loss of interest in activities.",
+        "anxiety": "Anxiety disorders involve excessive fear or worry that can interfere with daily activities and relationships."
     },
     "medications": {
         "aspirin": "Aspirin is a common medication used to treat pain, fever, and inflammation. It's also used to prevent heart attacks and strokes.",
         "ibuprofen": "Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) used to reduce fever and treat pain or inflammation.",
-        "acetaminophen": "Acetaminophen is used to treat pain and reduce fever. It's generally safe when used as directed."
+        "acetaminophen": "Acetaminophen is used to treat pain and reduce fever. It's generally safe when used as directed.",
+        "antibiotics": "Antibiotics are medications that fight bacterial infections. They don't work against viral infections like colds or flu.",
+        "insulin": "Insulin is a hormone that helps control blood sugar levels. It's essential for people with Type 1 diabetes and some with Type 2.",
+        "statins": "Statins are medications that help lower cholesterol levels in the blood, reducing the risk of heart disease and stroke."
+    },
+    "procedures": {
+        "blood test": "Blood tests can check for various conditions, monitor organ function, and assess overall health. Common types include CBC, metabolic panels, and lipid profiles.",
+        "x-ray": "X-rays use radiation to create images of bones and some soft tissues. They're commonly used to diagnose fractures, pneumonia, and other conditions.",
+        "mri": "MRI (Magnetic Resonance Imaging) uses magnetic fields and radio waves to create detailed images of organs and tissues.",
+        "ct scan": "CT scans use X-rays and computer technology to create cross-sectional images of the body, useful for diagnosing various conditions."
     }
 }
 
@@ -112,24 +131,76 @@ def generate_medical_response(user_message: str, user_role: str, user_specialty:
     # Build response based on available information
     response_parts = []
     
+    # Analyze the question to provide more specific responses
+    question_lower = user_message.lower()
+    
     if kb_info:
         response_parts.append(f"Based on your question about medical topics, here's what I found:\n\n{kb_info}")
+        
+        # Add specific guidance based on the medical topic
+        if any(word in question_lower for word in ["fever", "temperature", "hot"]):
+            response_parts.append("\n\n**Key Points about Fever:**")
+            response_parts.append("• Normal body temperature is around 98.6°F (37°C)")
+            response_parts.append("• Fever is often a sign of infection or inflammation")
+            response_parts.append("• Monitor for other symptoms that accompany fever")
+            response_parts.append("• Seek medical attention for high fevers (>103°F/39.4°C) or persistent fevers")
+            
+        elif any(word in question_lower for word in ["headache", "head pain", "migraine"]):
+            response_parts.append("\n\n**Key Points about Headaches:**")
+            response_parts.append("• Tension headaches are the most common type")
+            response_parts.append("• Migraines often have specific triggers and symptoms")
+            response_parts.append("• Sudden, severe headaches require immediate medical attention")
+            response_parts.append("• Keep a headache diary to identify patterns")
+            
+        elif any(word in question_lower for word in ["cough", "cold", "respiratory"]):
+            response_parts.append("\n\n**Key Points about Respiratory Symptoms:**")
+            response_parts.append("• Dry vs. productive cough have different implications")
+            response_parts.append("• Most colds resolve within 7-10 days")
+            response_parts.append("• Persistent cough may indicate underlying conditions")
+            response_parts.append("• Monitor for difficulty breathing or chest pain")
+            
+        elif any(word in question_lower for word in ["hypertension", "blood pressure", "high bp"]):
+            response_parts.append("\n\n**Key Points about Hypertension:**")
+            response_parts.append("• Often called the 'silent killer' due to lack of symptoms")
+            response_parts.append("• Regular monitoring is essential")
+            response_parts.append("• Lifestyle modifications can help control blood pressure")
+            response_parts.append("• Medication may be necessary for some individuals")
+            
+        elif any(word in question_lower for word in ["diabetes", "blood sugar", "glucose"]):
+            response_parts.append("\n\n**Key Points about Diabetes:**")
+            response_parts.append("• Type 1: Autoimmune, requires insulin")
+            response_parts.append("• Type 2: Often lifestyle-related, may be managed with diet/exercise")
+            response_parts.append("• Regular blood sugar monitoring is crucial")
+            response_parts.append("• Complications can affect multiple organ systems")
+            
     else:
-        response_parts.append("Thank you for your medical question. While I can provide general information, it's important to consult with healthcare professionals for personalized medical advice.")
+        # Provide more helpful response for general questions
+        if "what is" in question_lower or "define" in question_lower:
+            response_parts.append("I understand you're asking about a medical topic. While I don't have specific information about this particular condition or symptom, I can provide some general guidance.")
+        elif "how to" in question_lower or "treatment" in question_lower:
+            response_parts.append("I understand you're asking about treatment or management of a medical condition. This is an area where professional medical advice is particularly important.")
+        elif "symptom" in question_lower or "sign" in question_lower:
+            response_parts.append("I understand you're asking about symptoms or signs of a medical condition. Remember that symptoms can vary between individuals and may indicate different conditions.")
+        else:
+            response_parts.append("Thank you for your medical question. While I can provide general information, it's important to consult with healthcare professionals for personalized medical advice.")
     
     # Add role-specific guidance
     if user_role.lower() in ["physician", "doctor", "nurse"]:
-        response_parts.append("\n\nAs a healthcare professional, you're likely familiar with these concepts. Remember to always follow your institution's protocols and guidelines.")
+        response_parts.append("\n\n**Professional Context:** As a healthcare professional, you're likely familiar with these concepts. Remember to always follow your institution's protocols and guidelines, and consider the latest clinical evidence in your practice.")
     elif user_role.lower() in ["medical student", "student"]:
-        response_parts.append("\n\nAs a medical student, this information can help with your studies. Always verify information with your professors and clinical supervisors.")
+        response_parts.append("\n\n**Educational Context:** As a medical student, this information can help with your studies. Always verify information with your professors and clinical supervisors, and use this as a starting point for further research.")
     elif user_role.lower() in ["patient"]:
-        response_parts.append("\n\nAs a patient, this information is for educational purposes only. Please discuss any concerns with your healthcare provider.")
+        response_parts.append("\n\n**Patient Context:** As a patient, this information is for educational purposes only. Please discuss any concerns with your healthcare provider, and don't make treatment decisions based solely on this information.")
+    else:
+        response_parts.append("\n\n**General Context:** This information is provided for educational purposes. Always consult with qualified healthcare professionals for medical advice.")
     
     # Add specialty-specific information if available
     if user_specialty and user_specialty.lower() in ["cardiology", "cardiac"]:
-        response_parts.append("\n\nGiven your interest in cardiology, consider how this information relates to cardiovascular health and patient care.")
+        response_parts.append("\n\n**Cardiology Perspective:** Given your interest in cardiology, consider how this information relates to cardiovascular health and patient care. Many conditions can have cardiac implications.")
     elif user_specialty and user_specialty.lower() in ["pediatrics", "pediatric"]:
-        response_parts.append("\n\nIn pediatric care, remember that children may present differently than adults and may require specialized approaches.")
+        response_parts.append("\n\n**Pediatric Perspective:** In pediatric care, remember that children may present differently than adults and may require specialized approaches. Consider age-appropriate considerations.")
+    elif user_specialty and user_specialty.lower() in ["emergency", "er"]:
+        response_parts.append("\n\n**Emergency Medicine Perspective:** In emergency settings, rapid assessment and intervention are crucial. Consider the urgency and severity of presenting symptoms.")
     
     # Add medical disclaimer
     response_parts.append("\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals.")
@@ -153,6 +224,7 @@ async def chat_endpoint(request: ChatRequest):
     
     try:
         logger.info(f"Chat request from user {request.user_id} in session {request.session_id}")
+        logger.info(f"Message: {request.message[:100]}...")  # Log first 100 chars of message
         
         # Get or create user profile
         user_profile = memory_system.get_user(request.user_id)
@@ -166,6 +238,7 @@ async def chat_endpoint(request: ChatRequest):
         if not session:
             session_id = memory_system.create_session(request.user_id, request.title or "New Chat")
             session = memory_system.get_session(session_id)
+            logger.info(f"Created new session: {session_id}")
         
         # Get medical context from memory
         medical_context = history_manager.get_conversation_context(
@@ -183,18 +256,23 @@ async def chat_endpoint(request: ChatRequest):
         )
         
         # Process and store the exchange
-        await history_manager.process_medical_exchange(
-            request.user_id,
-            request.session_id,
-            request.message,
-            response,
-            gemini_rotator
-        )
+        try:
+            await history_manager.process_medical_exchange(
+                request.user_id,
+                request.session_id,
+                request.message,
+                response,
+                gemini_rotator
+            )
+        except Exception as e:
+            logger.warning(f"Failed to process medical exchange: {e}")
+            # Continue without storing if there's an error
         
         # Calculate response time
         response_time = time.time() - start_time
         
         logger.info(f"Generated response in {response_time:.2f}s for user {request.user_id}")
+        logger.info(f"Response length: {len(response)} characters")
         
         return ChatResponse(
             response=response,
@@ -205,6 +283,7 @@ async def chat_endpoint(request: ChatRequest):
         
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
+        logger.error(f"Request data: {request.dict()}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.post("/users")

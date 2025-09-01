@@ -253,7 +253,19 @@ How can I assist you today?`;
             
         } catch (error) {
             console.error('Error sending message:', error);
-            this.addMessage('assistant', 'I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.');
+            
+            // Show more specific error messages
+            let errorMessage = 'I apologize, but I encountered an error processing your request.';
+            
+            if (error.message.includes('500')) {
+                errorMessage = 'The server encountered an internal error. Please try again in a moment.';
+            } else if (error.message.includes('404')) {
+                errorMessage = 'The requested service was not found. Please check your connection.';
+            } else if (error.message.includes('fetch')) {
+                errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+            }
+            
+            this.addMessage('assistant', errorMessage);
         } finally {
             this.showLoading(false);
         }
@@ -266,13 +278,14 @@ How can I assist you today?`;
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    user_id: this.currentUser.id,
-                    session_id: this.currentSession?.id || 'default',
-                    message: message,
-                    user_role: this.currentUser.role,
-                    user_specialty: this.currentUser.specialty
-                })
+                            body: JSON.stringify({
+                user_id: this.currentUser.id,
+                session_id: this.currentSession?.id || 'default',
+                message: message,
+                user_role: this.currentUser.role,
+                user_specialty: this.currentUser.specialty,
+                title: this.currentSession?.title || 'New Chat'
+            })
             });
             
             if (!response.ok) {
@@ -284,8 +297,20 @@ How can I assist you today?`;
             
         } catch (error) {
             console.error('API call failed:', error);
-            // Return a mock response for demo purposes
-            return this.generateMockResponse(message);
+            // Log detailed error information
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                user: this.currentUser,
+                session: this.currentSession
+            });
+            
+            // Only return mock response if it's a network error, not a server error
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                return this.generateMockResponse(message);
+            } else {
+                throw error; // Re-throw server errors to show proper error message
+            }
         }
     }
     
