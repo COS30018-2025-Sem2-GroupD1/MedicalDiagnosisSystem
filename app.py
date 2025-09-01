@@ -68,8 +68,9 @@ memory_system = MemoryLRU(capacity=50, max_sessions_per_user=20)
 embedding_client = create_embedding_client("all-MiniLM-L6-v2", dimension=384)
 history_manager = MedicalHistoryManager(memory_system, embedding_client)
 
-# Initialize API rotator for Gemini
+# Initialize API rotators for Gemini and NVIDIA
 gemini_rotator = APIKeyRotator("GEMINI_API_", max_slots=5)
+nvidia_rotator = APIKeyRotator("NVIDIA_API_", max_slots=5)
 
 # Mock medical knowledge base for demo purposes
 MEDICAL_KB = {
@@ -327,7 +328,8 @@ async def chat_endpoint(request: ChatRequest):
                 request.session_id,
                 request.message,
                 response,
-                gemini_rotator
+                gemini_rotator,
+                nvidia_rotator
             )
         except Exception as e:
             logger.warning(f"Failed to process medical exchange: {e}")
