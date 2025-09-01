@@ -1,4 +1,4 @@
-# ────────────────────────────── memo/history.py ────────────────────────────── 
+# memo/history.py
 import os
 import json
 import logging

@@ -1,4 +1,4 @@
-# ────────────────────────────── utils/embeddings.py ──────────────────────────────
+# utils/embeddings.py
 import numpy as np
 from typing import List, Union
 import logging

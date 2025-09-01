@@ -1,4 +1,4 @@
-# ────────────────────────────── utils/rotator.py ──────────────────────────────
+# utils/rotator.py
 import os
 import itertools
 import logging

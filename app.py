@@ -1,4 +1,4 @@
-# Medical AI Assistant - FastAPI Application
+# app.py
 import os
 import time
 import logging
