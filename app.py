@@ -12,6 +12,16 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import json
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✅ Environment variables loaded from .env file")
+except ImportError:
+    print("⚠️ python-dotenv not available, using system environment variables")
+except Exception as e:
+    print(f"⚠️ Error loading .env file: {e}")
+
 # Import our custom modules
 from memo.memory import MemoryLRU
 from memo.history import MedicalHistoryManager
