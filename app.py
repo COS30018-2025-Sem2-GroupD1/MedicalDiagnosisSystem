@@ -455,7 +455,8 @@ async def health_check():
             "memory_system": "operational",
             "embedding_client": "operational" if embedding_client.is_available() else "fallback_mode",
             "api_rotator": "operational",
-            "gemini_keys_available": len([k for k in gemini_rotator.keys if k]) > 0
+            "gemini_keys_available": len([k for k in gemini_rotator.keys if k]) > 0,
+            "nvidia_keys_available": len([k for k in nvidia_rotator.keys if k]) > 0
         }
     }
 
@@ -510,11 +511,17 @@ async def startup_event():
         logger.info("psutil not available, skipping system resource check")
     
     # Check API keys
-    available_keys = len([k for k in gemini_rotator.keys if k])
-    if available_keys == 0:
+    gemini_keys = len([k for k in gemini_rotator.keys if k])
+    if gemini_keys == 0:
         logger.warning("⚠️ No Gemini API keys found! Set GEMINI_API_1, GEMINI_API_2, etc. environment variables.")
     else:
-        logger.info(f"✅ {available_keys} Gemini API keys available")
+        logger.info(f"✅ {gemini_keys} Gemini API keys available")
+    
+    nvidia_keys = len([k for k in nvidia_rotator.keys if k])
+    if nvidia_keys == 0:
+        logger.warning("⚠️ No NVIDIA API keys found! Set NVIDIA_API_1, NVIDIA_API_2, etc. environment variables.")
+    else:
+        logger.info(f"✅ {nvidia_keys} NVIDIA API keys available")
     
     # Check embedding client
     if embedding_client.is_available():

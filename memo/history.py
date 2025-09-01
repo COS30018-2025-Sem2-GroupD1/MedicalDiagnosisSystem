@@ -188,24 +188,27 @@ class MedicalHistoryManager:
         self.memory = memory
         self.embedder = embedder
         
-    async def process_medical_exchange(self, user_id: str, session_id: str, question: str, answer: str, rotator) -> str:
+    async def process_medical_exchange(self, user_id: str, session_id: str, question: str, answer: str, gemini_rotator, nvidia_rotator=None) -> str:
         """
         Process a medical Q&A exchange and store it in memory
         """
         try:
             # Check if we have valid API keys
-            if not rotator or not rotator.get_key() or rotator.get_key() == "":
-                logger.info("No valid API keys available, using fallback summary")
+            if not gemini_rotator or not gemini_rotator.get_key() or gemini_rotator.get_key() == "":
+                logger.info("No valid Gemini API keys available, using fallback summary")
                 summary = f"q: {question}\na: {answer}"
             else:
                 # Try to create summary using Gemini (preferred) or NVIDIA as fallback
                 try:
                     # First try Gemini
-                    summary = await summarize_qa_with_gemini(question, answer, rotator)
+                    summary = await summarize_qa_with_gemini(question, answer, gemini_rotator)
                     if not summary or summary.strip() == "":
                         # Fallback to NVIDIA if Gemini fails
-                        summary = await summarize_qa_with_nvidia(question, answer, rotator)
-                        if not summary or summary.strip() == "":
+                        if nvidia_rotator and nvidia_rotator.get_key():
+                            summary = await summarize_qa_with_nvidia(question, answer, nvidia_rotator)
+                            if not summary or summary.strip() == "":
+                                summary = f"q: {question}\na: {answer}"
+                        else:
                             summary = f"q: {question}\na: {answer}"
                 except Exception as e:
                     logger.warning(f"Failed to create AI summary: {e}")
