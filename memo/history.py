@@ -2,6 +2,7 @@
 import os
 import json
 import logging
+from google import genai
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 
@@ -35,19 +36,58 @@ async def _nvidia_chat(system_prompt: str, user_prompt: str, nvidia_key: str, ro
         logger.warning(f"NVIDIA chat error: {e} • response: {data}")
         return ""
 
-def _safe_json(s: str) -> Any:
+async def summarize_qa_with_gemini(question: str, answer: str, rotator) -> str:
+    """
+    Returns a single line block using Gemini API:
+    q: <concise>\na: <concise>
+    No extra commentary.
+    """
     try:
-        return json.loads(s)
-    except Exception:
-        # Try to extract a JSON object from text
-        start = s.find("{")
-        end = s.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            try:
-                return json.loads(s[start:end+1])
-            except Exception:
-                return {}
-        return {}
+        # Import Gemini client
+        import google.generativeai as genai
+        
+        # Get API key from rotator
+        api_key = rotator.get_key()
+        if not api_key:
+            logger.warning("No Gemini API key available for summarization")
+            return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Create prompt for summarization
+        prompt = f"""You are a medical summarizer. Create a concise summary of this Q&A exchange.
+
+Question: {question}
+
+Answer: {answer}
+
+Please provide exactly two lines in this format:
+q: <brief question summary>
+a: <brief answer summary>
+
+Keep each summary under 160 characters for question and 220 characters for answer."""
+
+        # Generate response
+        response = model.generate_content(prompt)
+        
+        if response.text:
+            # Parse the response to extract q: and a: lines
+            lines = [ln.strip() for ln in response.text.splitlines() if ln.strip()]
+            ql = next((l for l in lines if l.lower().startswith('q:')), None)
+            al = next((l for l in lines if l.lower().startswith('a:')), None)
+            
+            if ql and al:
+                return f"{ql}\n{al}"
+        
+        # Fallback if parsing fails
+        logger.warning("Failed to parse Gemini summarization response, using fallback")
+        return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
+        
+    except Exception as e:
+        logger.warning(f"Gemini summarization failed: {e}, using fallback")
+        return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
 
 async def summarize_qa_with_nvidia(question: str, answer: str, rotator) -> str:
     """
@@ -68,6 +108,20 @@ async def summarize_qa_with_nvidia(question: str, answer: str, rotator) -> str:
         ql = "q: " + (question.strip()[:160] + ("…" if len(question.strip()) > 160 else ""))
         al = "a: " + (answer.strip()[:220] + ("…" if len(answer.strip()) > 220 else ""))
     return f"{ql}\n{al}"
+
+def _safe_json(s: str) -> Any:
+    try:
+        return json.loads(s)
+    except Exception:
+        # Try to extract a JSON object from text
+        start = s.find("{")
+        end = s.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(s[start:end+1])
+            except Exception:
+                return {}
+        return {}
 
 async def files_relevance(question: str, file_summaries: List[Dict[str, str]], rotator) -> Dict[str, bool]:
     """
@@ -144,13 +198,17 @@ class MedicalHistoryManager:
                 logger.info("No valid API keys available, using fallback summary")
                 summary = f"q: {question}\na: {answer}"
             else:
-                # Try to create summary using NVIDIA
+                # Try to create summary using Gemini (preferred) or NVIDIA as fallback
                 try:
-                    summary = await summarize_qa_with_nvidia(question, answer, rotator)
+                    # First try Gemini
+                    summary = await summarize_qa_with_gemini(question, answer, rotator)
                     if not summary or summary.strip() == "":
-                        summary = f"q: {question}\na: {answer}"
+                        # Fallback to NVIDIA if Gemini fails
+                        summary = await summarize_qa_with_nvidia(question, answer, rotator)
+                        if not summary or summary.strip() == "":
+                            summary = f"q: {question}\na: {answer}"
                 except Exception as e:
-                    logger.warning(f"Failed to create NVIDIA summary: {e}")
+                    logger.warning(f"Failed to create AI summary: {e}")
                     summary = f"q: {question}\na: {answer}"
             
             # Store in memory

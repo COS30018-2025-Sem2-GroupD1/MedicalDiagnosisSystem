@@ -3,6 +3,7 @@ import os
 import time
 import logging
 import uvicorn
+from google import genai
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -122,8 +123,65 @@ def search_medical_kb(query: str) -> str:
         return "\n\n".join(relevant_info[:3])  # Limit to 3 most relevant
     return ""
 
-def generate_medical_response(user_message: str, user_role: str, user_specialty: str, medical_context: str = "") -> str:
-    """Generate a medical response using available context and knowledge"""
+async def generate_medical_response_with_gemini(user_message: str, user_role: str, user_specialty: str, medical_context: str = "", rotator=None) -> str:
+    """Generate a medical response using Gemini AI for intelligent, contextual responses"""
+    try:        
+        # Get API key from rotator
+        api_key = rotator.get_key() if rotator else None
+        if not api_key:
+            logger.warning("No Gemini API key available, using fallback response")
+            return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Build context-aware prompt
+        prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
+
+**User Role:** {user_role}
+**User Specialty:** {user_specialty if user_specialty else 'General'}
+**Medical Context:** {medical_context if medical_context else 'No previous context'}
+
+**Question:** {user_message}
+
+**Instructions:**
+1. Provide a detailed, medically accurate response
+2. Consider the user's role and specialty
+3. Include relevant medical information and guidance
+4. Mention when professional medical consultation is needed
+5. Use clear, professional language
+6. Include appropriate medical disclaimers
+
+**Response Format:**
+- Start with a direct answer to the question
+- Provide relevant medical information
+- Include role-specific guidance
+- Add appropriate warnings and disclaimers
+- Keep the response comprehensive but focused
+
+Remember: This is for educational purposes only. Always emphasize consulting healthcare professionals for medical advice."""
+
+        # Generate response
+        response = model.generate_content(prompt)
+        
+        if response.text:
+            # Add medical disclaimer if not already present
+            if "disclaimer" not in response.text.lower() and "consult" not in response.text.lower():
+                response.text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
+            
+            return response.text
+        
+        # Fallback if Gemini fails
+        logger.warning("Gemini response generation failed, using fallback")
+        return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
+        
+    except Exception as e:
+        logger.warning(f"Gemini medical response generation failed: {e}, using fallback")
+        return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
+
+def generate_medical_response_fallback(user_message: str, user_role: str, user_specialty: str, medical_context: str = "") -> str:
+    """Fallback medical response generator using local knowledge base"""
     
     # Search medical knowledge base
     kb_info = search_medical_kb(user_message)
@@ -207,6 +265,10 @@ def generate_medical_response(user_message: str, user_role: str, user_specialty:
     
     return "\n".join(response_parts)
 
+def generate_medical_response(user_message: str, user_role: str, user_specialty: str, medical_context: str = "") -> str:
+    """Legacy function - now calls the fallback generator"""
+    return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
+
 @app.get("/", response_class=HTMLResponse)
 async def get_medical_chatbot():
     """Serve the medical chatbot UI"""
@@ -247,13 +309,16 @@ async def chat_endpoint(request: ChatRequest):
             request.message
         )
         
-        # Generate response
-        response = generate_medical_response(
+        # Generate response using Gemini AI
+        logger.info(f"Generating medical response using Gemini AI for user {request.user_id}")
+        response = await generate_medical_response_with_gemini(
             request.message,
             request.user_role or "Medical Professional",
             request.user_specialty or "",
-            medical_context
+            medical_context,
+            gemini_rotator
         )
+        logger.info(f"Gemini response generated successfully, length: {len(response)} characters")
         
         # Process and store the exchange
         try:
