@@ -67,7 +67,7 @@ class SummarizeRequest(BaseModel):
 app = FastAPI(
     title="Medical AI Assistant",
     description="AI-powered medical chatbot with memory and context awareness",
-    version="1.0.0"
+    version="1.1.0"
 )
 
 # Add CORS middleware
