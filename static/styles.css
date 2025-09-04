@@ -244,6 +244,61 @@ body {
     background-color: var(--bg-tertiary);
 }
 
+.chat-session-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.chat-session-menu {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: var(--spacing-xs);
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.chat-session:hover .chat-session-menu {
+    opacity: 1;
+}
+
+.chat-session-menu:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.chat-session-menu-popover {
+    position: absolute;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-xs);
+    display: none;
+    z-index: 4000;
+}
+
+.chat-session-menu-popover.show {
+    display: block;
+}
+
+.chat-session-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--text-secondary);
+}
+
+.chat-session-menu-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
 .sidebar-footer {
     padding: var(--spacing-lg);
     border-top: 1px solid var(--border-color);

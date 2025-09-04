@@ -14,6 +14,8 @@ class MedicalChatbotApp {
         this.setupEventListeners();
         this.loadUserPreferences();
         this.initializeUser();
+        // Ensure a session exists and is displayed immediately
+        this.ensureStartupSession();
         this.loadChatSessions();
         this.setupTheme();
     }
@@ -109,6 +111,24 @@ class MedicalChatbotApp {
                 }
             });
         });
+
+        // Edit title modal wiring
+        const closeEdit = () => this.hideModal('editTitleModal');
+        const editTitleModal = document.getElementById('editTitleModal');
+        if (editTitleModal) {
+            document.getElementById('editTitleModalClose').addEventListener('click', closeEdit);
+            document.getElementById('editTitleModalCancel').addEventListener('click', closeEdit);
+            document.getElementById('editTitleModalSave').addEventListener('click', () => {
+                const input = document.getElementById('editSessionTitleInput');
+                const newTitle = input.value.trim();
+                if (!newTitle) return;
+                if (!this._pendingEditSessionId) return;
+                this.renameChatSession(this._pendingEditSessionId, newTitle);
+                this._pendingEditSessionId = null;
+                input.value = '';
+                this.hideModal('editTitleModal');
+            });
+        }
     }
 
     initializeUser() {
@@ -209,6 +229,28 @@ class MedicalChatbotApp {
         document.getElementById('chatInput').focus();
     }
 
+    ensureStartupSession() {
+        const sessions = this.getChatSessions();
+        if (sessions.length === 0) {
+            // Create a new session immediately so it shows in sidebar
+            this.currentSession = {
+                id: this.generateId(),
+                title: 'New Chat',
+                messages: [],
+                createdAt: new Date().toISOString(),
+                lastActivity: new Date().toISOString()
+            };
+            this.saveCurrentSession();
+            this.updateChatTitle();
+        } else {
+            // Load the most recent session into view
+            this.currentSession = sessions[0];
+            this.clearChatMessages();
+            this.currentSession.messages.forEach(m => this.displayMessage(m));
+            this.updateChatTitle();
+        }
+    }
+
     getWelcomeMessage() {
         return `👋 Welcome to Medical AI Assistant
 
@@ -278,7 +320,7 @@ How can I assist you today?`;
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                            body: JSON.stringify({
+                body: JSON.stringify({
                 user_id: this.currentUser.id,
                 session_id: this.currentSession?.id || 'default',
                 message: message,
@@ -343,11 +385,40 @@ How can I assist you today?`;
         // Update UI
         this.displayMessage(message);
 
-        // Update session title if it's the first user message
+        // Update session title if it's the first user message -> call summarizer
         if (role === 'user' && this.currentSession.messages.length === 2) {
-            const title = content.length > 50 ? content.substring(0, 50) + '...' : content;
-            this.currentSession.title = title;
+            this.summarizeAndSetTitle(content);
+        }
+    }
+
+    async summarizeAndSetTitle(text) {
+        try {
+            const resp = await fetch('/summarize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, max_words: 5 })
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                const title = (data.title || 'New Chat').trim();
+                this.currentSession.title = title;
+                this.updateCurrentSession();
+                this.updateChatTitle();
+                this.loadChatSessions();
+            } else {
+                // Fallback: simple truncation
+                const fallback = text.length > 50 ? text.substring(0, 50) + '...' : text;
+                this.currentSession.title = fallback;
+                this.updateCurrentSession();
+                this.updateChatTitle();
+                this.loadChatSessions();
+            }
+        } catch (e) {
+            const fallback = text.length > 50 ? text.substring(0, 50) + '...' : text;
+            this.currentSession.title = fallback;
+            this.updateCurrentSession();
             this.updateChatTitle();
+            this.loadChatSessions();
         }
     }
 
@@ -484,20 +555,63 @@ How can I assist you today?`;
                         <div class="chat-session-title">${session.title}</div>
                         <div class="chat-session-time">${time}</div>
                     </div>
-                    <button class="chat-session-delete" title="Delete chat" aria-label="Delete chat" data-session-id="${session.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div class="chat-session-actions">
+                        <button class="chat-session-menu" title="Options" aria-label="Options" data-session-id="${session.id}">
+                            <i class="fas fa-ellipsis-vertical"></i>
+                        </button>
+                    </div>
                 </div>
             `;
 
             sessionsContainer.appendChild(sessionElement);
 
-            // Wire delete button
-            const deleteBtn = sessionElement.querySelector('.chat-session-delete');
-            deleteBtn.addEventListener('click', (e) => {
+            // Wire 3-dot menu
+            const menuBtn = sessionElement.querySelector('.chat-session-menu');
+            menuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const id = deleteBtn.getAttribute('data-session-id');
-                this.deleteChatSession(id);
+                this.showSessionMenu(e.currentTarget, session.id);
+            });
+        });
+    }
+
+    showSessionMenu(anchorEl, sessionId) {
+        // Remove existing popover
+        document.querySelectorAll('.chat-session-menu-popover').forEach(p => p.remove());
+        const rect = anchorEl.getBoundingClientRect();
+        const pop = document.createElement('div');
+        pop.className = 'chat-session-menu-popover show';
+        pop.innerHTML = `
+            <div class="chat-session-menu-item" data-action="edit" data-session-id="${sessionId}"><i class="fas fa-pen"></i> Edit Name</div>
+            <div class="chat-session-menu-item" data-action="delete" data-session-id="${sessionId}"><i class="fas fa-trash"></i> Delete</div>
+        `;
+        document.body.appendChild(pop);
+        // Position near button
+        pop.style.top = `${rect.bottom + window.scrollY + 6}px`;
+        pop.style.left = `${rect.right + window.scrollX - pop.offsetWidth}px`;
+
+        const onDocClick = (ev) => {
+            if (!pop.contains(ev.target) && ev.target !== anchorEl) {
+                pop.remove();
+                document.removeEventListener('click', onDocClick);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', onDocClick), 0);
+
+        pop.querySelectorAll('.chat-session-menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const action = item.getAttribute('data-action');
+                const id = item.getAttribute('data-session-id');
+                if (action === 'delete') {
+                    this.deleteChatSession(id);
+                } else if (action === 'edit') {
+                    this._pendingEditSessionId = id;
+                    const sessions = this.getChatSessions();
+                    const s = sessions.find(x => x.id === id);
+                    const input = document.getElementById('editSessionTitleInput');
+                    input.value = s ? s.title : '';
+                    this.showModal('editTitleModal');
+                }
+                pop.remove();
             });
         });
     }
@@ -582,6 +696,19 @@ How can I assist you today?`;
             }
         }
 
+        this.loadChatSessions();
+    }
+
+    renameChatSession(sessionId, newTitle) {
+        const sessions = this.getChatSessions();
+        const idx = sessions.findIndex(s => s.id === sessionId);
+        if (idx === -1) return;
+        sessions[idx] = { ...sessions[idx], title: newTitle };
+        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
+        if (this.currentSession && this.currentSession.id === sessionId) {
+            this.currentSession.title = newTitle;
+            this.updateChatTitle();
+        }
         this.loadChatSessions();
     }
 

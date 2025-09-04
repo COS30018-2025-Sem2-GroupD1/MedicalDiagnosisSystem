@@ -23,11 +23,12 @@ except Exception as e:
 	print(f"⚠️ Error loading .env file: {e}")
 
 from memo.history import MedicalHistoryManager
-from utils.medical_kb import search_medical_kb
 # Import our custom modules
 from memo.memory import MemoryLRU
 from utils.embeddings import create_embedding_client
 from utils.logger import get_logger
+from utils.medical_kb import search_medical_kb
+from utils.naming import summarize_title as nvidia_summarize_title
 from utils.rotator import APIKeyRotator
 
 # Configure logging
@@ -110,6 +111,10 @@ async def lifespan(app: FastAPI):
 	yield
 	# Shutdown code here
 	shutdown_event()
+
+class SummarizeRequest(BaseModel):
+	text: str
+	max_words: int | None = 5
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -275,6 +280,10 @@ def generate_medical_response_fallback(user_message: str, user_role: str, user_s
 def generate_medical_response(user_message: str, user_role: str, user_specialty: str, medical_context: str = "") -> str:
 	"""Legacy function - now calls the fallback generator"""
 	return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
+
+async def summarize_title_with_nvidia(text: str, nvidia_rotator: APIKeyRotator, max_words: int = 5) -> str:
+	"""Use NVIDIA API via utils.naming with rotator. Includes internal fallback."""
+	return await nvidia_summarize_title(text, nvidia_rotator, max_words)
 
 @app.get("/", response_class=HTMLResponse)
 async def get_medical_chatbot():
@@ -492,6 +501,16 @@ async def get_api_info():
 			"GET /api/info - API information"
 		]
 	}
+
+@app.post("/summarize")
+async def summarize_endpoint(req: SummarizeRequest):
+	"""Summarize a text into a short 3-5 word title using NVIDIA if available."""
+	try:
+		title = await summarize_title_with_nvidia(req.text, nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
+		return {"title": title}
+	except Exception as e:
+		logger.error(f"Error summarizing title: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
