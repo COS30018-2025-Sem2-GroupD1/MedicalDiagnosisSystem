@@ -1,4 +1,5 @@
 # app.py
+# Access via: https://medai-cos30018-medicaldiagnosissystem.hf.space/
 import os
 import time
 import logging
@@ -148,13 +149,10 @@ async def generate_medical_response_with_gemini(user_message: str, user_role: st
         
         # Build context-aware prompt
         prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
-
 **User Role:** {user_role}
 **User Specialty:** {user_specialty if user_specialty else 'General'}
 **Medical Context:** {medical_context if medical_context else 'No previous context'}
-
 **Question:** {user_message}
-
 **Instructions:**
 1. Provide a detailed, medically accurate response
 2. Consider the user's role and specialty
@@ -162,14 +160,12 @@ async def generate_medical_response_with_gemini(user_message: str, user_role: st
 4. Mention when professional medical consultation is needed
 5. Use clear, professional language
 6. Include appropriate medical disclaimers
-
 **Response Format:**
 - Start with a direct answer to the question
 - Provide relevant medical information
 - Include role-specific guidance
 - Add appropriate warnings and disclaimers
 - Keep the response comprehensive but focused
-
 Remember: This is for educational purposes only. Always emphasize consulting healthcare professionals for medical advice."""
 
         # Generate response
