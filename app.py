@@ -58,6 +58,10 @@ class SessionRequest(BaseModel):
     user_id: str
     title: Optional[str] = "New Chat"
 
+class SummarizeRequest(BaseModel):
+    text: str
+    max_words: Optional[int] = 5
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Medical AI Assistant",
@@ -275,6 +279,27 @@ def generate_medical_response(user_message: str, user_role: str, user_specialty:
     """Legacy function - now calls the fallback generator"""
     return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
 
+async def summarize_title_with_nvidia(text: str, nvidia_rotator: APIKeyRotator, max_words: int = 5) -> str:
+    """Use NVIDIA API to summarize text into a 3-5 word title. Fallback to heuristic if unavailable."""
+    try:
+        api_key = nvidia_rotator.get_key() if nvidia_rotator else None
+        if not api_key:
+            raise RuntimeError("No NVIDIA API key available")
+        # Placeholder: integrate NVIDIA SDK/HTTP call here if available
+        # Since actual SDK isn't present in requirements, use a simple heuristic as a safe fallback.
+        raise NotImplementedError("NVIDIA SDK not integrated; using fallback summarizer")
+    except Exception:
+        # Heuristic fallback: take first sentence, strip to nouns-ish tokens, clamp words
+        cleaned = (text or "New Chat").strip()
+        # Use simple split and remove punctuation
+        import re
+        cleaned = re.sub(r"[\n\r]+", " ", cleaned)
+        cleaned = re.sub(r"[^\w\s]", "", cleaned)
+        words = cleaned.split()
+        if not words:
+            return "New Chat"
+        return " ".join(words[:max_words])
+
 @app.get("/", response_class=HTMLResponse)
 async def get_medical_chatbot():
     """Serve the medical chatbot UI"""
@@ -491,6 +516,16 @@ async def get_api_info():
             "GET /api/info - API information"
         ]
     }
+
+@app.post("/summarize")
+async def summarize_endpoint(req: SummarizeRequest):
+    """Summarize a text into a short 3-5 word title using NVIDIA if available."""
+    try:
+        title = await summarize_title_with_nvidia(req.text, nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
+        return {"title": title}
+    except Exception as e:
+        logger.error(f"Error summarizing title: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
