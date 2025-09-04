@@ -44,7 +44,7 @@ async def summarize_qa_with_gemini(question: str, answer: str, rotator) -> str:
     """
     try:
         # Import Gemini client
-        import google.generativeai as genai
+        from google import genai
         
         # Get API key from rotator
         api_key = rotator.get_key()
@@ -53,8 +53,7 @@ async def summarize_qa_with_gemini(question: str, answer: str, rotator) -> str:
             return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
         
         # Configure Gemini
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        client = genai.Client(api_key=api_key)
         
         # Create prompt for summarization
         prompt = f"""You are a medical summarizer. Create a concise summary of this Q&A exchange.
@@ -70,7 +69,7 @@ a: <brief answer summary>
 Keep each summary under 160 characters for question and 220 characters for answer."""
 
         # Generate response
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
         
         if response.text:
             # Parse the response to extract q: and a: lines
