@@ -479,11 +479,26 @@ How can I assist you today?`;
             const time = this.formatTime(session.lastActivity);
             
             sessionElement.innerHTML = `
-                <div class="chat-session-title">${session.title}</div>
-                <div class="chat-session-time">${time}</div>
+                <div class="chat-session-row">
+                    <div class="chat-session-meta">
+                        <div class="chat-session-title">${session.title}</div>
+                        <div class="chat-session-time">${time}</div>
+                    </div>
+                    <button class="chat-session-delete" title="Delete chat" aria-label="Delete chat" data-session-id="${session.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             `;
             
             sessionsContainer.appendChild(sessionElement);
+            
+            // Wire delete button
+            const deleteBtn = sessionElement.querySelector('.chat-session-delete');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = deleteBtn.getAttribute('data-session-id');
+                this.deleteChatSession(id);
+            });
         });
     }
     
@@ -540,6 +555,34 @@ How can I assist you today?`;
         } else {
             titleElement.textContent = 'Medical AI Assistant';
         }
+    }
+
+    deleteChatSession(sessionId) {
+        const sessions = this.getChatSessions();
+        const index = sessions.findIndex(s => s.id === sessionId);
+        if (index === -1) return;
+        
+        const confirmDelete = confirm('Delete this chat session? This cannot be undone.');
+        if (!confirmDelete) return;
+        
+        sessions.splice(index, 1);
+        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
+        
+        // If deleting the current session, switch to another or clear view
+        if (this.currentSession && this.currentSession.id === sessionId) {
+            if (sessions.length > 0) {
+                this.currentSession = sessions[0];
+                this.clearChatMessages();
+                this.currentSession.messages.forEach(m => this.displayMessage(m));
+                this.updateChatTitle();
+            } else {
+                this.currentSession = null;
+                this.clearChatMessages();
+                this.updateChatTitle();
+            }
+        }
+        
+        this.loadChatSessions();
     }
     
     showUserModal() {
