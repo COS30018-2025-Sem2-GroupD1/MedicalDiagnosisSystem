@@ -29,6 +29,7 @@ from memo.history import MedicalHistoryManager
 from utils.rotator import APIKeyRotator
 from utils.embeddings import create_embedding_client
 from utils.logger import get_logger
+from utils.naming import summarize_title as nvidia_summarize_title
 
 # Configure logging
 logger = get_logger("MEDICAL_APP", __name__)
@@ -280,25 +281,8 @@ def generate_medical_response(user_message: str, user_role: str, user_specialty:
     return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
 
 async def summarize_title_with_nvidia(text: str, nvidia_rotator: APIKeyRotator, max_words: int = 5) -> str:
-    """Use NVIDIA API to summarize text into a 3-5 word title. Fallback to heuristic if unavailable."""
-    try:
-        api_key = nvidia_rotator.get_key() if nvidia_rotator else None
-        if not api_key:
-            raise RuntimeError("No NVIDIA API key available")
-        # Placeholder: integrate NVIDIA SDK/HTTP call here if available
-        # Since actual SDK isn't present in requirements, use a simple heuristic as a safe fallback.
-        raise NotImplementedError("NVIDIA SDK not integrated; using fallback summarizer")
-    except Exception:
-        # Heuristic fallback: take first sentence, strip to nouns-ish tokens, clamp words
-        cleaned = (text or "New Chat").strip()
-        # Use simple split and remove punctuation
-        import re
-        cleaned = re.sub(r"[\n\r]+", " ", cleaned)
-        cleaned = re.sub(r"[^\w\s]", "", cleaned)
-        words = cleaned.split()
-        if not words:
-            return "New Chat"
-        return " ".join(words[:max_words])
+    """Use NVIDIA API via utils.naming with rotator. Includes internal fallback."""
+    return await nvidia_summarize_title(text, nvidia_rotator, max_words)
 
 @app.get("/", response_class=HTMLResponse)
 async def get_medical_chatbot():
