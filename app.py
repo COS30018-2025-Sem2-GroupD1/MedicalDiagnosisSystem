@@ -189,19 +189,19 @@ def search_medical_kb(query: str) -> str:
 	return ""
 
 async def generate_medical_response_with_gemini(user_message: str, user_role: str, user_specialty: str, medical_context: str = "", rotator=None) -> str:
-    """Generate a medical response using Gemini AI for intelligent, contextual responses"""
-    try:
-        # Get API key from rotator
-        api_key = rotator.get_key() if rotator else None
-        if not api_key:
-            logger.warning("No Gemini API key available, using fallback response")
-            return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
+	"""Generate a medical response using Gemini AI for intelligent, contextual responses"""
+	try:
+		# Get API key from rotator
+		api_key = rotator.get_key() if rotator else None
+		if not api_key:
+			logger.warning("No Gemini API key available, using fallback response")
+			return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
 
-        # Configure Gemini
-        client = genai.Client(api_key=api_key)
+		# Configure Gemini
+		client = genai.Client(api_key=api_key)
 
-        # Build context-aware prompt
-        prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
+		# Build context-aware prompt
+		prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
 **User Role:** {user_role}
 **User Specialty:** {user_specialty if user_specialty else 'General'}
 **Medical Context:** {medical_context if medical_context else 'No previous context'}
@@ -549,15 +549,15 @@ async def get_api_info():
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
-    logger.info("Starting Medical AI Assistant server...")
-    try:
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=8000,
-            log_level="info",
-            reload=True
-        )
-    except Exception as e:
-        logger.error(f"❌ Server startup failed: {e}")
-        exit(1)
+	logger.info("Starting Medical AI Assistant server...")
+	try:
+		uvicorn.run(
+			app,
+			host="0.0.0.0",
+			port=8000,
+			log_level="info",
+			reload=True
+		)
+	except Exception as e:
+		logger.error(f"❌ Server startup failed: {e}")
+		exit(1)
