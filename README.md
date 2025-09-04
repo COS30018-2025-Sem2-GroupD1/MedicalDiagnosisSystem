@@ -7,7 +7,7 @@ sdk: docker
 pinned: false
 license: mit
 short_description: Group project for uni work
-python_version: 3.10
+python_version: 3.11
 app_port: 7860
 ---
 
