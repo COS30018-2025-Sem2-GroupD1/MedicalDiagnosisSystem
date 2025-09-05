@@ -15,7 +15,7 @@ pandas==2.0.3
 sentence-transformers==2.2.2
 torch==2.1.1
 transformers==4.35.2
-accelerate==0.26.0  
+accelerate==0.26.0
 
 # Vector similarity search
 faiss-cpu==1.7.4
@@ -23,7 +23,7 @@ faiss-cpu==1.7.4
 # LLMs
 google-genai
 huggingface_hub
-# MongoDB 
+# MongoDB
 pymongo==4.6.0
 
 # System monitoring

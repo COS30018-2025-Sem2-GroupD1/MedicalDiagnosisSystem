@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+httpx
+numpy
+google-genai
+huggingface_hub
+psutil
+python-dotenv
+#pymongo
