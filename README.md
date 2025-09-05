@@ -178,22 +178,58 @@ flake8
 
 ### Project Structure
 ```
-├── app.py              # Main FastAPI application
-├── requirements.txt    # Python dependencies
-├── README.md          # This file
-├── memo/              # Memory and history management
-│   ├── __init__.py
-│   ├── memory.py      # Enhanced LRU memory system
-│   └── history.py     # Medical history manager
-├── utils/             # Utility modules
-│   ├── __init__.py
-│   ├── rotator.py     # API key rotation
-│   ├── embeddings.py  # Embedding client
-│   └── logger.py      # Logging utilities
-└── static/            # Frontend assets
-    ├── index.html     # Main HTML
-    ├── styles.css     # CSS styling
-    └── app.js        # JavaScript logic
+medical_diagnosis_system/
+├── scripts/
+│   └── download_model.py        # Model downloading script
+├── src/
+│   ├── api/
+│   │   └── routes/              # API endpoint handlers
+│   │       ├── chat.py
+│   │       ├── session.py
+│   │       ├── static.py
+│   │       ├── system.py
+│   │       └── user.py
+│   ├── core/
+│   │   ├── memory/              # Memory management
+│   │   │   ├── memory.py
+│   │   │   └── history.py
+│   │   └── state.py             # Application state management
+│   ├── domain/
+│   │   └── knowledge/           # Domain-specific knowledge
+│   │       └── medical_kb.py
+│   ├── models/                  # Data models
+│   │   ├── chat.py
+│   │   └── user.py
+│   ├── services/                # Business logic services
+│   │   ├── medical_response.py
+│   │   └── summariser.py
+│   ├── utils/                   # Utility functions
+│   │   ├── __init__.py
+│   │   ├── embeddings.py
+│   │   ├── logger.py
+│   │   ├── naming.py
+│   │   └── rotator.py
+│   └ main.py                    # Application entry point
+├── static/                      # Frontend assets
+│   ├── js/
+│   │   ├── app.js
+│   │   └── health.js
+│   ├── css/
+│   │   └── styles.css
+│   ├── health.html
+│   ├── icon.svg
+│   └── index.html
+├── .dockerignore
+├── .gitattributes
+├── .gitignore
+├── docker-compose.yml
+├── Dockerfile
+├── LICENSE                     # Project license
+├── README.md                   # Project documentation
+├── requirements.txt            # Production dependencies
+├── requirements-dev.txt        # Development dependencies
+├── SETUP_GUIDE.md              # Detailed setup instructions
+└── start.py                    # Application launcher
 ```
 
 ### Adding New Features

@@ -1,6 +1,6 @@
-from utils.logger import get_logger
-from utils.naming import summarize_title as nvidia_summarize_title
-from utils.rotator import APIKeyRotator
+from src.utils.logger import get_logger
+from src.utils.naming import summarize_title as nvidia_summarize_title
+from src.utils.rotator import APIKeyRotator
 
 logger = get_logger("SUMMARIZER", __name__)
 

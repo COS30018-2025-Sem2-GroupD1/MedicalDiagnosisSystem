@@ -2,7 +2,7 @@ import time
 
 from fastapi import APIRouter, Depends
 
-from core.state import MedicalState, get_state
+from src.core.state import MedicalState, get_state
 
 router = APIRouter()
 

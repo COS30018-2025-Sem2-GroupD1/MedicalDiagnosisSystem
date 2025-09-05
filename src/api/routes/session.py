@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from core.state import MedicalState, get_state
-from models.chat import SessionRequest
-from utils.logger import get_logger
+from src.core.state import MedicalState, get_state
+from src.models.chat import SessionRequest
+from src.utils.logger import get_logger
 
 logger = get_logger("SESSION_ROUTES", __name__)
 router = APIRouter()

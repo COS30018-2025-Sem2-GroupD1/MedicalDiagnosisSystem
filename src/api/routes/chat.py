@@ -2,11 +2,11 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from core.state import MedicalState, get_state
-from models.chat import ChatRequest, ChatResponse, SummarizeRequest
-from services.medical_response import generate_medical_response_with_gemini
-from services.summariser import summarize_title_with_nvidia
-from utils.logger import get_logger
+from src.core.state import MedicalState, get_state
+from src.models.chat import ChatRequest, ChatResponse, SummarizeRequest
+from src.services.medical_response import generate_medical_response_with_gemini
+from src.services.summariser import summarize_title_with_nvidia
+from src.utils.logger import get_logger
 
 logger = get_logger("CHAT_ROUTES", __name__)
 router = APIRouter()
@@ -28,7 +28,11 @@ async def chat_endpoint(
 		if not user_profile:
 			state.memory_system.create_user(request.user_id, request.user_role or "Anonymous")
 			if request.user_specialty:
-					state.memory_system.get_user(request.user_id).set_preference("specialty", request.user_specialty)
+				user = state.memory_system.get_user(request.user_id)
+				if user:
+					user.set_preference("specialty", request.user_specialty)
+				else:
+					logger.warning("Failued to retrieve user")
 
 		# Get or create session
 		session = state.memory_system.get_session(request.session_id)
@@ -53,7 +57,6 @@ async def chat_endpoint(
 			medical_context,
 			state.gemini_rotator
 		)
-		logger.info(f"Gemini response generated successfully, length: {len(response)} characters")
 
 		# Process and store the exchange
 		try:

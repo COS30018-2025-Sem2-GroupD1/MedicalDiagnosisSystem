@@ -1,7 +1,7 @@
-from memo.history import MedicalHistoryManager
-from memo.memory import MemoryLRU
-from utils.embeddings import EmbeddingClient, create_embedding_client
-from utils.rotator import APIKeyRotator
+from src.core.memory.history import MedicalHistoryManager
+from src.core.memory.memory import MemoryLRU
+from src.utils.embeddings import EmbeddingClient, create_embedding_client
+from src.utils.rotator import APIKeyRotator
 
 
 class MedicalState:

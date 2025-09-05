@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medical AI Assistant</title>
     <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
@@ -18,7 +18,7 @@
                     New Chat
                 </button>
             </div>
-            
+
             <div class="user-section">
                 <div class="user-profile" id="userProfile">
                     <div class="user-avatar">
@@ -33,11 +33,11 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="chat-sessions" id="chatSessions">
                 <!-- Chat sessions will be populated here -->
             </div>
-            
+
             <div class="sidebar-footer">
                 <button class="settings-btn" id="settingsBtn">
                     <i class="fas fa-cog"></i>
@@ -45,7 +45,7 @@
                 </button>
             </div>
         </div>
-        
+
         <!-- Main Chat Area -->
         <div class="main-content">
             <div class="chat-header">
@@ -62,7 +62,7 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="chat-messages" id="chatMessages">
                 <!-- Welcome message -->
                 <div class="message assistant-message">
@@ -87,12 +87,12 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="chat-input-container">
                 <div class="input-wrapper">
-                    <textarea 
-                        class="chat-input" 
-                        id="chatInput" 
+                    <textarea
+                        class="chat-input"
+                        id="chatInput"
                         placeholder="Ask me about any medical topic..."
                         rows="1"
                     ></textarea>
@@ -117,7 +117,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modals -->
     <div class="modal" id="userModal">
         <div class="modal-content">
@@ -152,7 +152,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="modal" id="settingsModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -193,7 +193,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Edit Session Title Modal -->
     <div class="modal" id="editTitleModal">
         <div class="modal-content">
@@ -221,7 +221,7 @@
             <div class="loading-text">Processing your medical query...</div>
         </div>
     </div>
-    
-    <script src="/static/app.js"></script>
+
+    <script src="/static/js/app.js"></script>
 </body>
 </html>

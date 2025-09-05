@@ -1,7 +1,7 @@
 from google import genai
 
-from utils.logger import get_logger
-from utils.medical_kb import search_medical_kb
+from src.utils.logger import get_logger
+from src.domain.knowledge.medical_kb import search_medical_kb
 
 logger = get_logger("MEDICAL_RESPONSE", __name__)
 
@@ -18,7 +18,12 @@ async def generate_medical_response_with_gemini(
 		api_key = rotator.get_key() if rotator else None
 		if not api_key:
 			logger.warning("No Gemini API key available, using fallback response")
-			return generate_medical_response_fallback(user_message, user_role, user_specialty, medical_context)
+			return generate_medical_response_fallback(
+				user_message,
+				user_role,
+				user_specialty,
+				medical_context
+			)
 
 		# Configure Gemini
 		client = genai.Client(api_key=api_key)
@@ -48,11 +53,13 @@ Remember: This is for educational purposes only. Always emphasize consulting hea
 		response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
 
 		if response.text:
+			response_text = response.text
 			# Add medical disclaimer if not already present
-			if "disclaimer" not in response.text.lower() and "consult" not in response.text.lower():
-				response.text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
+			if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
+				response_text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
 
-			return response.text
+			logger.info(f"Gemini response generated successfully, length: {len(response_text)} characters")
+			return response_text
 
 		# Fallback if Gemini fails
 		logger.warning("Gemini response generation failed, using fallback")
@@ -81,6 +88,8 @@ def generate_medical_response_fallback(
 	"""Fallback medical response generator using local knowledge base"""
 	# Search medical knowledge base
 	kb_info = search_medical_kb(user_message)
+
+	logger.info("Generating backup response")
 
 	# Build response based on available information
 	response_parts = []

@@ -6,9 +6,9 @@ from typing import Any
 
 import numpy as np
 
-from utils.embeddings import EmbeddingClient
-from utils.logger import get_logger
-from utils.rotator import robust_post_json
+from src.utils.embeddings import EmbeddingClient
+from src.utils.logger import get_logger
+from src.utils.rotator import robust_post_json
 
 logger = get_logger("RAG", __name__)
 
