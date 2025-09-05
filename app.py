@@ -119,10 +119,10 @@ app.include_router(system.router)
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-if __name__ == "__main__":
-	logger.info("Starting Medical AI Assistant server...")
-	try:
-		uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", reload=True)
-	except Exception as e:
-		logger.error(f"❌ Server startup failed: {e}")
-		exit(1)
+#if __name__ == "__main__":
+#	logger.info("Starting Medical AI Assistant server...")
+#	try:
+#		uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", reload=True)
+#	except Exception as e:
+#		logger.error(f"❌ Server startup failed: {e}")
+#		exit(1)
