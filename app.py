@@ -5,12 +5,13 @@ import time
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
 
+from core.state import MedicalState, get_state
 from models.chat import (ChatRequest, ChatResponse, SessionRequest,
                          SummarizeRequest)
 from models.user import UserProfileRequest
@@ -25,10 +26,6 @@ except ImportError:
 except Exception as e:
 	print(f"⚠️ Error loading .env file: {e}")
 
-from memo.history import MedicalHistoryManager
-# Import our custom modules
-from memo.memory import MemoryLRU
-from utils.embeddings import create_embedding_client
 from utils.logger import get_logger
 from utils.medical_kb import search_medical_kb
 from utils.naming import summarize_title as nvidia_summarize_title
@@ -38,7 +35,7 @@ from utils.rotator import APIKeyRotator
 logger = get_logger("MEDICAL_APP", __name__)
 
 # Startup event
-def startup_event():
+def startup_event(state: MedicalState):
 	"""Initialize application on startup"""
 	logger.info("🚀 Starting Medical AI Assistant...")
 
@@ -57,20 +54,20 @@ def startup_event():
 		logger.info("psutil not available, skipping system resource check")
 
 	# Check API keys
-	gemini_keys = len([k for k in gemini_rotator.keys if k])
+	gemini_keys = len([k for k in state.gemini_rotator.keys if k])
 	if gemini_keys == 0:
 		logger.warning("⚠️ No Gemini API keys found! Set GEMINI_API_1, GEMINI_API_2, etc. environment variables.")
 	else:
 		logger.info(f"✅ {gemini_keys} Gemini API keys available")
 
-	nvidia_keys = len([k for k in nvidia_rotator.keys if k])
+	nvidia_keys = len([k for k in state.nvidia_rotator.keys if k])
 	if nvidia_keys == 0:
 		logger.warning("⚠️ No NVIDIA API keys found! Set NVIDIA_API_1, NVIDIA_API_2, etc. environment variables.")
 	else:
 		logger.info(f"✅ {nvidia_keys} NVIDIA API keys available")
 
 	# Check embedding client
-	if embedding_client.is_available():
+	if state.embedding_client.is_available():
 		logger.info("✅ Embedding model loaded successfully")
 	else:
 		logger.info("⚠️ Using fallback embedding mode")
@@ -84,8 +81,12 @@ def shutdown_event():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+	# Initialize state
+	state = MedicalState.get_instance()
+	state.initialize()
+
 	# Startup code here
-	startup_event()
+	startup_event(state)
 	yield
 	# Shutdown code here
 	shutdown_event()
@@ -106,15 +107,6 @@ app.add_middleware(
 	allow_methods=["*"],
 	allow_headers=["*"],
 )
-
-# Initialize core components
-memory_system = MemoryLRU(capacity=50, max_sessions_per_user=20)
-embedding_client = create_embedding_client("all-MiniLM-L6-v2", dimension=384)
-history_manager = MedicalHistoryManager(memory_system, embedding_client)
-
-# Initialize API rotators for Gemini and NVIDIA
-gemini_rotator = APIKeyRotator("GEMINI_API_", max_slots=5)
-nvidia_rotator = APIKeyRotator("NVIDIA_API_", max_slots=5)
 
 async def generate_medical_response_with_gemini(user_message: str, user_role: str, user_specialty: str, medical_context: str = "", rotator=None) -> str:
 	"""Generate a medical response using Gemini AI for intelligent, contextual responses"""
@@ -270,7 +262,10 @@ async def get_medical_chatbot():
 		raise HTTPException(status_code=404, detail="Medical chatbot UI not found")
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(
+	request: ChatRequest,
+	state: MedicalState = Depends(get_state)
+):
 	"""Handle chat messages and generate medical responses"""
 	start_time = time.time()
 
@@ -279,21 +274,21 @@ async def chat_endpoint(request: ChatRequest):
 		logger.info(f"Message: {request.message[:100]}...")  # Log first 100 chars of message
 
 		# Get or create user profile
-		user_profile = memory_system.get_user(request.user_id)
+		user_profile = state.memory_system.get_user(request.user_id)
 		if not user_profile:
-			memory_system.create_user(request.user_id, request.user_role or "Anonymous")
+			state.memory_system.create_user(request.user_id, request.user_role or "Anonymous")
 			if request.user_specialty:
-				memory_system.get_user(request.user_id).set_preference("specialty", request.user_specialty)
+					state.memory_system.get_user(request.user_id).set_preference("specialty", request.user_specialty)
 
 		# Get or create session
-		session = memory_system.get_session(request.session_id)
+		session = state.memory_system.get_session(request.session_id)
 		if not session:
-			session_id = memory_system.create_session(request.user_id, request.title or "New Chat")
-			session = memory_system.get_session(session_id)
+			session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
+			session = state.memory_system.get_session(session_id)
 			logger.info(f"Created new session: {session_id}")
 
 		# Get medical context from memory
-		medical_context = history_manager.get_conversation_context(
+		medical_context = state.history_manager.get_conversation_context(
 			request.user_id,
 			request.session_id,
 			request.message
@@ -306,19 +301,19 @@ async def chat_endpoint(request: ChatRequest):
 			request.user_role or "Medical Professional",
 			request.user_specialty or "",
 			medical_context,
-			gemini_rotator
+			state.gemini_rotator
 		)
 		logger.info(f"Gemini response generated successfully, length: {len(response)} characters")
 
 		# Process and store the exchange
 		try:
-			await history_manager.process_medical_exchange(
+			await state.history_manager.process_medical_exchange(
 				request.user_id,
 				request.session_id,
 				request.message,
 				response,
-				gemini_rotator,
-				nvidia_rotator
+				state.gemini_rotator,
+				state.nvidia_rotator
 			)
 		except Exception as e:
 			logger.warning(f"Failed to process medical exchange: {e}")
@@ -343,10 +338,13 @@ async def chat_endpoint(request: ChatRequest):
 		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.post("/users")
-async def create_user_profile(request: UserProfileRequest):
+async def create_user_profile(
+	request: UserProfileRequest,
+	state: MedicalState = Depends(get_state)
+):
 	"""Create or update user profile"""
 	try:
-		user = memory_system.create_user(request.user_id, request.name)
+		user = state.memory_system.create_user(request.user_id, request.name)
 		user.set_preference("role", request.role)
 		if request.specialty:
 			user.set_preference("specialty", request.specialty)
@@ -357,14 +355,17 @@ async def create_user_profile(request: UserProfileRequest):
 		raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/users/{user_id}")
-async def get_user_profile(user_id: str):
+async def get_user_profile(
+	user_id: str,
+	state: MedicalState = Depends(get_state)
+):
 	"""Get user profile and sessions"""
 	try:
-		user = memory_system.get_user(user_id)
+		user = state.memory_system.get_user(user_id)
 		if not user:
 			raise HTTPException(status_code=404, detail="User not found")
 
-		sessions = memory_system.get_user_sessions(user_id)
+		sessions = state.memory_system.get_user_sessions(user_id)
 
 		return {
 			"user": {
@@ -393,20 +394,26 @@ async def get_user_profile(user_id: str):
 		raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/sessions")
-async def create_chat_session(request: SessionRequest):
+async def create_chat_session(
+	request: SessionRequest,
+	state: MedicalState = Depends(get_state)
+):
 	"""Create a new chat session"""
 	try:
-		session_id = memory_system.create_session(request.user_id, request.title or "New Chat")
+		session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
 		return {"session_id": session_id, "message": "Session created successfully"}
 	except Exception as e:
 		logger.error(f"Error creating session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sessions/{session_id}")
-async def get_chat_session(session_id: str):
+async def get_chat_session(
+	session_id: str,
+	state: MedicalState = Depends(get_state)
+):
 	"""Get chat session details and messages"""
 	try:
-		session = memory_system.get_session(session_id)
+		session = state.memory_system.get_session(session_id)
 		if not session:
 			raise HTTPException(status_code=404, detail="Session not found")
 
@@ -425,27 +432,30 @@ async def get_chat_session(session_id: str):
 		raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/sessions/{session_id}")
-async def delete_chat_session(session_id: str):
+async def delete_chat_session(
+	session_id: str,
+	state: MedicalState = Depends(get_state)
+):
 	"""Delete a chat session"""
 	try:
-		memory_system.delete_session(session_id)
+		state.memory_system.delete_session(session_id)
 		return {"message": "Session deleted successfully"}
 	except Exception as e:
 		logger.error(f"Error deleting session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
-async def health_check():
+async def health_check(state: MedicalState = Depends(get_state)):
 	"""Health check endpoint"""
 	return {
 		"status": "healthy",
 		"timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
 		"components": {
 			"memory_system": "operational",
-			"embedding_client": "operational" if embedding_client.is_available() else "fallback_mode",
+			"embedding_client": "operational" if state.embedding_client.is_available() else "fallback_mode",
 			"api_rotator": "operational",
-			"gemini_keys_available": len([k for k in gemini_rotator.keys if k]) > 0,
-			"nvidia_keys_available": len([k for k in nvidia_rotator.keys if k]) > 0
+			"gemini_keys_available": len([k for k in state.gemini_rotator.keys if k]) > 0,
+			"nvidia_keys_available": len([k for k in state.nvidia_rotator.keys if k]) > 0
 		}
 	}
 
@@ -477,10 +487,13 @@ async def get_api_info():
 	}
 
 @app.post("/summarize")
-async def summarize_endpoint(req: SummarizeRequest):
+async def summarize_endpoint(
+	req: SummarizeRequest,
+	state: MedicalState = Depends(get_state)
+):
 	"""Summarize a text into a short 3-5 word title using NVIDIA if available."""
 	try:
-		title = await summarize_title_with_nvidia(req.text, nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
+		title = await summarize_title_with_nvidia(req.text, state.nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
 		return {"title": title}
 	except Exception as e:
 		logger.error(f"Error summarizing title: {e}")
