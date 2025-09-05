@@ -2,6 +2,7 @@
 """
 Medical AI Assistant - Startup Script
 Simple script to start the medical chatbot system
+Not needed for huggingface deployment
 """
 
 import os
@@ -52,5 +53,4 @@ def main():
 	)
 
 if __name__ == "__main__":
-	#main()
-	print("Starts here")
+	main()

@@ -3,7 +3,6 @@
 
 from contextlib import asynccontextmanager
 
-import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -100,16 +99,6 @@ app.add_middleware(
 	allow_headers=["*"],
 )
 
-@app.get("/", response_class=HTMLResponse)
-async def get_medical_chatbot():
-	"""Serve the medical chatbot UI"""
-	try:
-		with open("static/index.html", "r", encoding="utf-8") as f:
-			html_content = f.read()
-		return HTMLResponse(content=html_content)
-	except FileNotFoundError:
-		raise HTTPException(status_code=404, detail="Medical chatbot UI not found")
-
 # Include routers
 app.include_router(chat.router)
 app.include_router(user.router)
@@ -119,10 +108,12 @@ app.include_router(system.router)
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-#if __name__ == "__main__":
-#	logger.info("Starting Medical AI Assistant server...")
-#	try:
-#		uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", reload=True)
-#	except Exception as e:
-#		logger.error(f"❌ Server startup failed: {e}")
-#		exit(1)
+@app.get("/", response_class=HTMLResponse)
+async def get_medical_chatbot():
+	"""Serve the medical chatbot UI"""
+	try:
+		with open("static/index.html", "r", encoding="utf-8") as f:
+			html_content = f.read()
+		return HTMLResponse(content=html_content)
+	except FileNotFoundError:
+		raise HTTPException(status_code=404, detail="Medical chatbot UI not found")
