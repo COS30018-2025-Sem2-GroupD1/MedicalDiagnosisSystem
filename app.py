@@ -3,9 +3,8 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 # Load environment variables from .env file
@@ -18,7 +17,7 @@ except ImportError:
 except Exception as e:
 	print(f"⚠️ Error loading .env file: {e}")
 
-from api.routes import chat, session, system, user
+from api.routes import chat, session, static, system, user
 from core.state import MedicalState
 from utils.logger import get_logger
 
@@ -99,21 +98,12 @@ app.add_middleware(
 	allow_headers=["*"],
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Include routers
 app.include_router(chat.router)
 app.include_router(user.router)
 app.include_router(session.router)
 app.include_router(system.router)
-
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/", response_class=HTMLResponse)
-async def get_medical_chatbot():
-	"""Serve the medical chatbot UI"""
-	try:
-		with open("static/index.html", "r", encoding="utf-8") as f:
-			html_content = f.read()
-		return HTMLResponse(content=html_content)
-	except FileNotFoundError:
-		raise HTTPException(status_code=404, detail="Medical chatbot UI not found")
+app.include_router(static.router)
