@@ -10,7 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
-from pydantic import BaseModel
+
+from models.chat import (ChatRequest, ChatResponse, SessionRequest,
+                         SummarizeRequest)
+from models.user import UserProfileRequest
 
 # Load environment variables from .env file
 try:
@@ -33,31 +36,6 @@ from utils.rotator import APIKeyRotator
 
 # Configure logging
 logger = get_logger("MEDICAL_APP", __name__)
-
-# Pydantic models for API requests/responses
-class ChatRequest(BaseModel):
-	user_id: str
-	session_id: str
-	message: str
-	user_role: str | None = "Medical Professional"
-	user_specialty: str | None = ""
-	title: str | None = "New Chat"  # Added missing title field
-
-class ChatResponse(BaseModel):
-	response: str
-	session_id: str
-	timestamp: str
-	medical_context: str | None = None
-
-class UserProfileRequest(BaseModel):
-	user_id: str
-	name: str
-	role: str
-	specialty: str | None = ""
-
-class SessionRequest(BaseModel):
-	user_id: str
-	title: str | None = "New Chat"
 
 # Startup event
 def startup_event():
@@ -111,10 +89,6 @@ async def lifespan(app: FastAPI):
 	yield
 	# Shutdown code here
 	shutdown_event()
-
-class SummarizeRequest(BaseModel):
-	text: str
-	max_words: int | None = 5
 
 # Initialize FastAPI app
 app = FastAPI(
