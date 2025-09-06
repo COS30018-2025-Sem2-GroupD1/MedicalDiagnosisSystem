@@ -1,112 +1,17 @@
 # memo/history.py
 
 import json
-import os
 from typing import Any
 
 import numpy as np
 
+from src.services.nvidia import nvidia_chat
+from src.services.summariser import (summarize_qa_with_gemini,
+                                     summarize_qa_with_nvidia)
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import get_logger
-from src.utils.rotator import robust_post_json
 
 logger = get_logger("RAG", __name__)
-
-NVIDIA_SMALL = os.getenv("NVIDIA_SMALL", "meta/llama-3.1-8b-instruct")
-
-async def _nvidia_chat(system_prompt: str, user_prompt: str, nvidia_key: str, rotator) -> str:
-	"""
-	Minimal NVIDIA Chat call that enforces no-comment concise outputs.
-	"""
-	url = "https://integrate.api.nvidia.com/v1/chat/completions"
-	payload = {
-		"model": NVIDIA_SMALL,
-		"temperature": 0.0,
-		"messages": [
-			{"role": "system", "content": system_prompt},
-			{"role": "user", "content": user_prompt},
-		]
-	}
-	headers = {"Content-Type": "application/json", "Authorization": f"Bearer {nvidia_key or ''}"}
-	data = None
-	try:
-		data = await robust_post_json(url, headers, payload, rotator)
-		return data["choices"][0]["message"]["content"]
-	except Exception as e:
-		logger.warning(f"NVIDIA chat error: {e} • response: {data}")
-		return ""
-
-async def summarize_qa_with_gemini(question: str, answer: str, rotator) -> str:
-	"""
-	Returns a single line block using Gemini API:
-	q: <concise>\na: <concise>
-	No extra commentary.
-	"""
-	try:
-		# Import Gemini client
-		from google import genai
-
-		# Get API key from rotator
-		api_key = rotator.get_key()
-		if not api_key:
-			logger.warning("No Gemini API key available for summarization")
-			return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
-
-		# Configure Gemini
-		client = genai.Client(api_key=api_key)
-
-		# Create prompt for summarization
-		prompt = f"""You are a medical summarizer. Create a concise summary of this Q&A exchange.
-
-Question: {question}
-
-Answer: {answer}
-
-Please provide exactly two lines in this format:
-q: <brief question summary>
-a: <brief answer summary>
-
-Keep each summary under 160 characters for question and 220 characters for answer."""
-
-		# Generate response
-		response = client.models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
-
-		if response.text:
-			# Parse the response to extract q: and a: lines
-			lines = [ln.strip() for ln in response.text.splitlines() if ln.strip()]
-			ql = next((l for l in lines if l.lower().startswith('q:')), None)
-			al = next((l for l in lines if l.lower().startswith('a:')), None)
-
-			if ql and al:
-					return f"{ql}\n{al}"
-
-		# Fallback if parsing fails
-		logger.warning("Failed to parse Gemini summarization response, using fallback")
-		return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
-
-	except Exception as e:
-		logger.warning(f"Gemini summarization failed: {e}, using fallback")
-		return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
-
-async def summarize_qa_with_nvidia(question: str, answer: str, rotator) -> str:
-	"""
-	Returns a single line block:
-	q: <concise>\na: <concise>
-	No extra commentary.
-	"""
-	sys = "You are a terse summarizer. Output exactly two lines:\nq: <short question summary>\na: <short answer summary>\nNo extra text."
-	user = f"Question:\n{question}\n\nAnswer:\n{answer}"
-	key = rotator.get_key()
-	out = await _nvidia_chat(sys, user, key, rotator)
-	# Basic guard if the model returns extra prose
-	lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
-	ql = next((l for l in lines if l.lower().startswith('q:')), None)
-	al = next((l for l in lines if l.lower().startswith('a:')), None)
-	if not ql or not al:
-		# Fallback truncate
-		ql = "q: " + (question.strip()[:160] + ("…" if len(question.strip()) > 160 else ""))
-		al = "a: " + (answer.strip()[:220] + ("…" if len(answer.strip()) > 220 else ""))
-	return f"{ql}\n{al}"
 
 def _safe_json(s: str) -> Any:
 	try:
@@ -130,8 +35,7 @@ async def files_relevance(question: str, file_summaries: list[dict[str, str]], r
 	sys = "You classify file relevance. Return STRICT JSON only with shape {\"relevance\":[{\"filename\":\"...\",\"relevant\":true|false}]}."
 	items = [{"filename": f["filename"], "summary": f.get("summary","")} for f in file_summaries]
 	user = f"Question: {question}\n\nFiles:\n{json.dumps(items, ensure_ascii=False)}\n\nReturn JSON only."
-	key = None  # We'll let robust_post_json handle rotation via rotator param
-	out = await _nvidia_chat(sys, user, key, rotator)
+	out = await nvidia_chat(sys, user, rotator)
 	data = _safe_json(out) or {}
 	rels = {}
 	for row in data.get("relevance", []):
