@@ -18,6 +18,6 @@ class SessionRequest(BaseModel):
 	user_id: str
 	title: str | None = "New Chat"
 
-class SummarizeRequest(BaseModel):
+class SummariseRequest(BaseModel):
 	text: str
 	max_words: int | None = 5

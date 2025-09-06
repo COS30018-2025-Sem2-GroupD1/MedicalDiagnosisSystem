@@ -385,15 +385,15 @@ How can I assist you today?`;
         // Update UI
         this.displayMessage(message);
 
-        // Update session title if it's the first user message -> call summarizer
+        // Update session title if it's the first user message -> call summariser
         if (role === 'user' && this.currentSession.messages.length === 2) {
-            this.summarizeAndSetTitle(content);
+            this.summariseAndSetTitle(content);
         }
     }
 
-    async summarizeAndSetTitle(text) {
+    async summariseAndSetTitle(text) {
         try {
-            const resp = await fetch('/summarize', {
+            const resp = await fetch('/summarise', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text, max_words: 5 })

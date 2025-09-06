@@ -3,9 +3,9 @@ import time
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.state import MedicalState, get_state
-from src.models.chat import ChatRequest, ChatResponse, SummarizeRequest
+from src.models.chat import ChatRequest, ChatResponse, SummariseRequest
 from src.services.medical_response import generate_medical_response_with_gemini
-from src.services.summariser import summarize_title_with_nvidia
+from src.services.summariser import summarise_title_with_nvidia
 from src.utils.logger import get_logger
 
 logger = get_logger("CHAT_ROUTES", __name__)
@@ -90,14 +90,14 @@ async def chat_endpoint(
 		logger.error(f"Request data: {request.dict()}")
 		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.post("/summarize")
-async def summarize_endpoint(
-	req: SummarizeRequest,
+@router.post("/summarise")
+async def summarise_endpoint(
+	req: SummariseRequest,
 	state: MedicalState = Depends(get_state)
 ):
-	"""Summarize a text into a short 3-5 word title using NVIDIA if available."""
+	"""Summarise a text into a short 3-5 word title using NVIDIA if available."""
 	try:
-		title = await summarize_title_with_nvidia(req.text, state.nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
+		title = await summarise_title_with_nvidia(req.text, state.nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
 		return {"title": title}
 	except Exception as e:
 		logger.error(f"Error summarizing title: {e}")

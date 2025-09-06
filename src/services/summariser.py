@@ -27,7 +27,7 @@ def _heuristic_title(text: str, max_words: int) -> str:
 		return "New Chat"
 	return " ".join(words[:max_words])
 
-async def summarize_title_with_nvidia(
+async def summarise_title_with_nvidia(
 	text: str,
 	rotator: APIKeyRotator | None,
 	max_words: int = 5
@@ -38,7 +38,7 @@ async def summarize_title_with_nvidia(
 	"""
 	max_words = max(3, min(max_words or 5, 7))
 	prompt = (
-		"Summarize the user's first chat message into a very short title of 3-5 words. "
+		"Summarise the user's first chat message into a very short title of 3-5 words. "
 		"Only return the title text without quotes or punctuation. Message: " + (text or "New Chat")
 	)
 
@@ -49,18 +49,18 @@ async def summarize_title_with_nvidia(
 			if title:
 				return title
 		except Exception as e:
-			logger.warning(f"NVIDIA summarize failed, using fallback: {e}")
+			logger.warning(f"NVIDIA summarise failed, using fallback: {e}")
 
 	# Fallback heuristic
 	return _heuristic_title(text, max_words)
 
-async def summarize_qa_with_gemini(question: str, answer: str, rotator) -> str:
+async def summarise_qa_with_gemini(question: str, answer: str, rotator) -> str:
 	"""
 	Returns a single line block using Gemini API:
 	q: <concise>\na: <concise>
 	No extra commentary.
 	"""
-	prompt = f"""You are a medical summarizer. Create a concise summary of this Q&A exchange.
+	prompt = f"""You are a medical summariser. Create a concise summary of this Q&A exchange.
 
 Question: {question}
 
@@ -87,13 +87,13 @@ Keep each summary under 160 characters for question and 220 characters for answe
 	logger.warning("Failed to get valid Gemini summarization, using fallback")
 	return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
 
-async def summarize_qa_with_nvidia(question: str, answer: str, rotator) -> str:
+async def summarise_qa_with_nvidia(question: str, answer: str, rotator) -> str:
 	"""
 	Returns a single line block:
 	q: <concise>\na: <concise>
 	No extra commentary.
 	"""
-	sys = "You are a terse summarizer. Output exactly two lines:\nq: <short question summary>\na: <short answer summary>\nNo extra text."
+	sys = "You are a terse summariser. Output exactly two lines:\nq: <short question summary>\na: <short answer summary>\nNo extra text."
 	user = f"Question:\n{question}\n\nAnswer:\n{answer}"
 	out = await nvidia_chat(sys, user, rotator)
 	# Basic guard if the model returns extra prose

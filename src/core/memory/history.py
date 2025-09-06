@@ -6,8 +6,8 @@ from typing import Any
 import numpy as np
 
 from src.services.nvidia import nvidia_chat
-from src.services.summariser import (summarize_qa_with_gemini,
-                                     summarize_qa_with_nvidia)
+from src.services.summariser import (summarise_qa_with_gemini,
+                                     summarise_qa_with_nvidia)
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import get_logger
 
@@ -104,11 +104,11 @@ class MedicalHistoryManager:
 				# Try to create summary using Gemini (preferred) or NVIDIA as fallback
 				try:
 					# First try Gemini
-					summary = await summarize_qa_with_gemini(question, answer, gemini_rotator)
+					summary = await summarise_qa_with_gemini(question, answer, gemini_rotator)
 					if not summary or summary.strip() == "":
 						# Fallback to NVIDIA if Gemini fails
 						if nvidia_rotator and nvidia_rotator.get_key():
-							summary = await summarize_qa_with_nvidia(question, answer, nvidia_rotator)
+							summary = await summarise_qa_with_nvidia(question, answer, nvidia_rotator)
 							if not summary or summary.strip() == "":
 								summary = f"q: {question}\na: {answer}"
 						else:
