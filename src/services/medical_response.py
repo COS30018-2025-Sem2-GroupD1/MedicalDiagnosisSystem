@@ -5,7 +5,7 @@ from src.utils.rotator import APIKeyRotator
 
 logger = get_logger("MEDICAL_RESPONSE", __name__)
 
-async def generate_medical_response_with_gemini(
+async def generate_medical_response(
 	user_message: str,
 	user_role: str,
 	user_specialty: str,
@@ -144,17 +144,3 @@ def generate_medical_response_fallback(
 	response_parts.append("\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals.")
 
 	return "\n".join(response_parts)
-
-def generate_medical_response(
-	user_message: str,
-	user_role: str,
-	user_specialty: str,
-	medical_context: str = ""
-) -> str:
-	"""Legacy function - now calls the fallback generator"""
-	return generate_medical_response_fallback(
-		user_message,
-		user_role,
-		user_specialty,
-		medical_context
-	)

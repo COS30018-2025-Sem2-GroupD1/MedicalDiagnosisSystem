@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.state import MedicalState, get_state
 from src.models.chat import ChatRequest, ChatResponse, SummariseRequest
-from src.services.medical_response import generate_medical_response_with_gemini
+from src.services.medical_response import generate_medical_response
 from src.services.summariser import summarise_title_with_nvidia
 from src.utils.logger import get_logger
 
@@ -50,7 +50,7 @@ async def chat_endpoint(
 
 		# Generate response using Gemini AI
 		logger.info(f"Generating medical response using Gemini AI for user {request.user_id}")
-		response = await generate_medical_response_with_gemini(
+		response = await generate_medical_response(
 			request.message,
 			request.user_role or "Medical Professional",
 			request.user_specialty or "",
