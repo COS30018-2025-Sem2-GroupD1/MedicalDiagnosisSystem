@@ -1,3 +1,6 @@
-- [ ] MongoDB integration
-  - [ ] Accounts
-    - [ ] Saving chats
+- [ ] Untangle memory
+- [ ] Untangle history
+- [ ] Untangle all components that rely on state
+- [ ] Accounts
+- [ ] Saving chats
+- [ ] MongoDB hosting
