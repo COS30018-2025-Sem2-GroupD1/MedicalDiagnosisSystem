@@ -3,7 +3,11 @@ from src.utils.rotator import APIKeyRotator
 
 logger = get_logger("GEMINI", __name__)
 
-async def gemini_chat(prompt: str, rotator: APIKeyRotator, model: str = "gemini-2.5-flash-lite") -> str:
+async def gemini_chat(
+	prompt: str,
+	rotator: APIKeyRotator,
+	model: str = "gemini-2.5-flash-lite"
+) -> str:
 	"""
 	Generate a response using Gemini API with key rotation.
 	Falls back to empty string on failure.

@@ -54,8 +54,8 @@ async def chat_endpoint(
 			request.message,
 			request.user_role or "Medical Professional",
 			request.user_specialty or "",
-			medical_context,
-			state.gemini_rotator
+			state.gemini_rotator,
+			medical_context
 		)
 
 		# Process and store the exchange

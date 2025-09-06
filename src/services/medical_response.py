@@ -1,7 +1,7 @@
-from google import genai
-
-from src.utils.logger import get_logger
 from src.domain.knowledge.medical_kb import search_medical_kb
+from src.services.gemini import gemini_chat
+from src.utils.logger import get_logger
+from src.utils.rotator import APIKeyRotator
 
 logger = get_logger("MEDICAL_RESPONSE", __name__)
 
@@ -9,27 +9,12 @@ async def generate_medical_response_with_gemini(
 	user_message: str,
 	user_role: str,
 	user_specialty: str,
-	medical_context: str = "",
-	rotator=None
+	rotator: APIKeyRotator,
+	medical_context: str = ""
 ) -> str:
 	"""Generate a medical response using Gemini AI for intelligent, contextual responses"""
-	try:
-		# Get API key from rotator
-		api_key = rotator.get_key() if rotator else None
-		if not api_key:
-			logger.warning("No Gemini API key available, using fallback response")
-			return generate_medical_response_fallback(
-				user_message,
-				user_role,
-				user_specialty,
-				medical_context
-			)
-
-		# Configure Gemini
-		client = genai.Client(api_key=api_key)
-
-		# Build context-aware prompt
-		prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
+	# Build context-aware prompt
+	prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
 **User Role:** {user_role}
 **User Specialty:** {user_specialty if user_specialty else 'General'}
 **Medical Context:** {medical_context if medical_context else 'No previous context'}
@@ -49,35 +34,25 @@ async def generate_medical_response_with_gemini(
 - Keep the response comprehensive but focused
 Remember: This is for educational purposes only. Always emphasize consulting healthcare professionals for medical advice."""
 
-		# Generate response
-		response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+	# Generate response using Gemini
+	response_text = await gemini_chat(prompt, rotator)
 
-		if response.text:
-			response_text = response.text
-			# Add medical disclaimer if not already present
-			if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
-				response_text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
+	if response_text:
+		# Add medical disclaimer if not already present
+		if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
+			response_text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
 
-			logger.info(f"Gemini response generated successfully, length: {len(response_text)} characters")
-			return response_text
+		logger.info(f"Gemini response generated successfully, length: {len(response_text)} characters")
+		return response_text
 
-		# Fallback if Gemini fails
-		logger.warning("Gemini response generation failed, using fallback")
-		return generate_medical_response_fallback(
-			user_message,
-			user_role,
-			user_specialty,
-			medical_context
-		)
-
-	except Exception as e:
-		logger.warning(f"Gemini medical response generation failed: {e}, using fallback")
-		return generate_medical_response_fallback(
-			user_message,
-			user_role,
-			user_specialty,
-			medical_context
-		)
+	# Fallback if Gemini fails
+	logger.warning("Gemini response generation failed, using fallback")
+	return generate_medical_response_fallback(
+		user_message,
+		user_role,
+		user_specialty,
+		medical_context
+	)
 
 def generate_medical_response_fallback(
 	user_message: str,
