@@ -1,10 +1,13 @@
 # core/memory/memory.py
 
-import time
 import uuid
 from collections import defaultdict, deque
+from datetime import datetime, timezone
 from typing import Any
 
+from src.utils.logger import get_logger
+
+logger = get_logger("MEMORY")
 
 class ChatSession:
 	"""Represents a chat session with a user"""
@@ -12,8 +15,8 @@ class ChatSession:
 		self.session_id = session_id
 		self.user_id = user_id
 		self.title = title
-		self.created_at = time.time()
-		self.last_activity = time.time()
+		self.created_at = datetime.now(timezone.utc)
+		self.last_activity = datetime.now(timezone.utc)
 		self.messages: list[dict[str, Any]] = []
 
 	def add_message(self, role: str, content: str, metadata: dict | None = None):
@@ -22,11 +25,11 @@ class ChatSession:
 			"id": str(uuid.uuid4()),
 			"role": role,  # "user" or "assistant"
 			"content": content,
-			"timestamp": time.time(),
+			"timestamp": datetime.now(timezone.utc),
 			"metadata": metadata or {}
 		}
 		self.messages.append(message)
-		self.last_activity = time.time()
+		self.last_activity = datetime.now(timezone.utc)
 
 	def get_messages(self, limit: int | None = None) -> list[dict[str, Any]]:
 		"""Get messages from the session, optionally limited"""
@@ -37,20 +40,20 @@ class ChatSession:
 	def update_title(self, title: str):
 		"""Update the session title"""
 		self.title = title
-		self.last_activity = time.time()
+		self.last_activity = datetime.now(timezone.utc)
 
 class UserProfile:
 	"""Represents a user profile with multiple chat sessions"""
 	def __init__(self, user_id: str, name: str = "Anonymous"):
 		self.user_id = user_id
 		self.name = name
-		self.created_at = time.time()
-		self.last_seen = time.time()
+		self.created_at = datetime.now(timezone.utc)
+		self.last_seen = datetime.now(timezone.utc)
 		self.preferences: dict[str, Any] = {}
 
 	def update_activity(self):
 		"""Update last seen timestamp"""
-		self.last_seen = time.time()
+		self.last_seen = datetime.now(timezone.utc)
 
 	def set_preference(self, key: str, value: Any):
 		"""Set a user preference"""
@@ -158,51 +161,50 @@ class MemoryLRU:
 			# Delete session
 			del self._sessions[session_id]
 
-	# Legacy methods for backward compatibility
-	#def add(self, user_id: str, qa_summary: str):
-	#	"""Add a QA summary to the medical context store"""
-	#	self._qa_store[user_id].append(qa_summary)
+	def add(self, user_id: str, qa_summary: str):
+		"""Add a QA summary to the medical context store"""
+		self._qa_store[user_id].append(qa_summary)
 
-	#def recent(self, user_id: str, n: int = 3) -> list[str]:
-	#	"""Get recent QA summaries for medical context"""
-	#	d = self._qa_store[user_id]
-	#	if not d:
-	#		return []
-	#	return list(d)[-n:][::-1]
+	def recent(self, user_id: str, n: int = 3) -> list[str]:
+		"""Get recent QA summaries for medical context"""
+		d = self._qa_store[user_id]
+		if not d:
+			return []
+		return list(d)[-n:][::-1]
 
-	#def rest(self, user_id: str, skip_n: int = 3) -> list[str]:
-	#	"""Get older QA summaries for medical context"""
-	#	d = self._qa_store[user_id]
-	#	if not d:
-	#		return []
-	#	return list(d)[:-skip_n] if len(d) > skip_n else []
+	def rest(self, user_id: str, skip_n: int = 3) -> list[str]:
+		"""Get older QA summaries for medical context"""
+		d = self._qa_store[user_id]
+		if not d:
+			return []
+		return list(d)[:-skip_n] if len(d) > skip_n else []
 
-	#def all(self, user_id: str) -> list[str]:
-	#	"""Get all QA summaries for medical context"""
-	#	return list(self._qa_store[user_id])
+	def all(self, user_id: str) -> list[str]:
+		"""Get all QA summaries for medical context"""
+		return list(self._qa_store[user_id])
 
-	#def clear(self, user_id: str) -> None:
-	#	"""Clear all cached summaries for the given user"""
-	#	if user_id in self._qa_store:
-	#		self._qa_store[user_id].clear()
+	def clear(self, user_id: str) -> None:
+		"""Clear all cached summaries for the given user"""
+		if user_id in self._qa_store:
+			self._qa_store[user_id].clear()
 
-	#def get_medical_context(self, user_id: str, session_id: str, question: str) -> str:
-	#	"""Get relevant medical context for a question"""
-	#	# Get recent QA summaries
-	#	recent_qa = self.recent(user_id, 5)
+	def get_medical_context(self, user_id: str, session_id: str, question: str) -> str:
+		"""Get relevant medical context for a question"""
+		# Get recent QA summaries
+		recent_qa = self.recent(user_id, 5)
 
-	#	# Get current session messages for context
-	#	session = self.get_session(session_id)
-	#	session_context = ""
-	#	if session:
-	#		recent_messages = session.get_messages(10)
-	#		session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
+		# Get current session messages for context
+		session = self.get_session(session_id)
+		session_context = ""
+		if session:
+			recent_messages = session.get_messages(10)
+			session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
 
-	#	# Combine context
-	#	context_parts = []
-	#	if recent_qa:
-	#		context_parts.append("Recent medical context:\n" + "\n".join(recent_qa))
-	#	if session_context:
-	#		context_parts.append("Current conversation:\n" + session_context)
+		# Combine context
+		context_parts = []
+		if recent_qa:
+			context_parts.append("Recent medical context:\n" + "\n".join(recent_qa))
+		if session_context:
+			context_parts.append("Current conversation:\n" + session_context)
 
-	#	return "\n\n".join(context_parts) if context_parts else ""
+		return "\n\n".join(context_parts) if context_parts else ""
