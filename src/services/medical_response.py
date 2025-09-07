@@ -1,6 +1,6 @@
 # services/medical_response.py
 
-from data.medical_kb import search_medical_kb
+from src.data.medical_kb import search_medical_kb
 from src.services.gemini import gemini_chat
 from src.utils.logger import get_logger
 from src.utils.rotator import APIKeyRotator
