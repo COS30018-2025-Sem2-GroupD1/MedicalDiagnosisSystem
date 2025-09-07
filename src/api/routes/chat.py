@@ -1,6 +1,7 @@
 # api/routes/chat.py
 
 import time
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -40,6 +41,7 @@ async def chat_endpoint(
 		session = state.memory_system.get_session(request.session_id)
 		if not session:
 			session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
+			request.session_id = session_id  # Update session ID if new session created
 			session = state.memory_system.get_session(session_id)
 			logger.info(f"Created new session: {session_id}")
 
@@ -83,13 +85,13 @@ async def chat_endpoint(
 		return ChatResponse(
 			response=response,
 			session_id=request.session_id,
-			timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+			timestamp=datetime.now(timezone.utc).isoformat(),
 			medical_context=medical_context if medical_context else None
 		)
 
 	except Exception as e:
 		logger.error(f"Error in chat endpoint: {e}")
-		logger.error(f"Request data: {request.dict()}")
+		logger.error(f"Request data: {request.model_dump()}")
 		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/summarise")
@@ -102,5 +104,5 @@ async def summarise_endpoint(
 		title = await summarise_title_with_nvidia(req.text, state.nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
 		return {"title": title}
 	except Exception as e:
-		logger.error(f"Error summarizing title: {e}")
+		logger.error(f"Error summarising title: {e}")
 		raise HTTPException(status_code=500, detail=str(e))

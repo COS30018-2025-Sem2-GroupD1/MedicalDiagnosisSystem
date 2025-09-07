@@ -56,7 +56,7 @@ async def get_user_profile(
 					"last_activity": session.last_activity,
 					"message_count": len(session.messages)
 				}
-				for session in sessions
+				for session in sessions if session is not None
 			]
 		}
 	except HTTPException:
