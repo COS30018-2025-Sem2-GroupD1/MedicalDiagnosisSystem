@@ -216,13 +216,13 @@ class MemoryLRU:
 		contexts = mongodb.get_medical_context(user_id)
 		return [ctx["summary"] for ctx in contexts[skip:]]
 
-	def get_medical_context(self, user_id: str, session_id: str, question: str) -> str | None:
+	def get_medical_context(self, user_id: str, session_id: str, question: str) -> str:
 		"""Get relevant medical context for a question"""
 		try:
 			# Get recent contexts
 			contexts = mongodb.get_medical_context(user_id, limit=5)
 			if not contexts:
-				return None
+				return ""
 
 			# Format contexts into a string
 			context_texts = []
@@ -232,10 +232,10 @@ class MemoryLRU:
 					context_texts.append(summary)
 
 			if not context_texts:
-				return None
+				return ""
 
 			return "\n\n".join(context_texts)
 		except Exception as e:
 			logger.error(f"Error getting medical context: {e}")
 			logger.error("Stack trace:", exc_info=True)
-			return None
+			return ""
