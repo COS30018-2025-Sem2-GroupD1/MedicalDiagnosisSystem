@@ -1,3 +1,5 @@
+# api/routes/session.py
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.state import MedicalState, get_state

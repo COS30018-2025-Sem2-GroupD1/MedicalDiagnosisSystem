@@ -1,3 +1,5 @@
+# model/user.py
+
 from pydantic import BaseModel
 
 class UserProfileRequest(BaseModel):

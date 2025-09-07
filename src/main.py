@@ -1,4 +1,4 @@
-# app.py
+# main.py
 # Access via: https://medai-cos30018-medicaldiagnosissystem.hf.space/
 
 from contextlib import asynccontextmanager

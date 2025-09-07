@@ -5,7 +5,6 @@ import sys
 
 _DEFAULT_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 
-
 def _ensure_root_handler() -> None:
 	root_logger = logging.getLogger()
 	if root_logger.handlers:
@@ -16,14 +15,12 @@ def _ensure_root_handler() -> None:
 	root_logger.addHandler(handler)
 	root_logger.setLevel(logging.INFO)
 
-
 class _TaggedAdapter(logging.LoggerAdapter):
 	def process(self, msg, kwargs):
 		tag = self.extra.get("tag", "")
 		if tag and not str(msg).startswith(tag):
 			msg = f"{tag} {msg}"
 		return msg, kwargs
-
 
 def get_logger(tag: str, name: str | None = None) -> logging.Logger:
 	"""

@@ -1,3 +1,5 @@
+# services/summariser.py
+
 import re
 
 from src.services.gemini import gemini_chat
@@ -5,7 +7,7 @@ from src.services.nvidia import nvidia_chat
 from src.utils.logger import get_logger
 from src.utils.rotator import APIKeyRotator
 
-logger = get_logger("SUMMARIZER", __name__)
+logger = get_logger("SUMMARISER", __name__)
 
 def _sanitize_title(title: str, max_words: int) -> str:
 	title = title.strip()

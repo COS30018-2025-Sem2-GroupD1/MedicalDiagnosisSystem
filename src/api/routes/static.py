@@ -1,3 +1,5 @@
+# api/routes/static.py
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 

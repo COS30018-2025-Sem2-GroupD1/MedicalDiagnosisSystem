@@ -1,4 +1,4 @@
-# memo/memory.py
+# core/memory/memory.py
 
 import time
 import uuid
@@ -159,50 +159,50 @@ class MemoryLRU:
 			del self._sessions[session_id]
 
 	# Legacy methods for backward compatibility
-	def add(self, user_id: str, qa_summary: str):
-		"""Add a QA summary to the medical context store"""
-		self._qa_store[user_id].append(qa_summary)
+	#def add(self, user_id: str, qa_summary: str):
+	#	"""Add a QA summary to the medical context store"""
+	#	self._qa_store[user_id].append(qa_summary)
 
-	def recent(self, user_id: str, n: int = 3) -> list[str]:
-		"""Get recent QA summaries for medical context"""
-		d = self._qa_store[user_id]
-		if not d:
-			return []
-		return list(d)[-n:][::-1]
+	#def recent(self, user_id: str, n: int = 3) -> list[str]:
+	#	"""Get recent QA summaries for medical context"""
+	#	d = self._qa_store[user_id]
+	#	if not d:
+	#		return []
+	#	return list(d)[-n:][::-1]
 
-	def rest(self, user_id: str, skip_n: int = 3) -> list[str]:
-		"""Get older QA summaries for medical context"""
-		d = self._qa_store[user_id]
-		if not d:
-			return []
-		return list(d)[:-skip_n] if len(d) > skip_n else []
+	#def rest(self, user_id: str, skip_n: int = 3) -> list[str]:
+	#	"""Get older QA summaries for medical context"""
+	#	d = self._qa_store[user_id]
+	#	if not d:
+	#		return []
+	#	return list(d)[:-skip_n] if len(d) > skip_n else []
 
-	def all(self, user_id: str) -> list[str]:
-		"""Get all QA summaries for medical context"""
-		return list(self._qa_store[user_id])
+	#def all(self, user_id: str) -> list[str]:
+	#	"""Get all QA summaries for medical context"""
+	#	return list(self._qa_store[user_id])
 
-	def clear(self, user_id: str) -> None:
-		"""Clear all cached summaries for the given user"""
-		if user_id in self._qa_store:
-			self._qa_store[user_id].clear()
+	#def clear(self, user_id: str) -> None:
+	#	"""Clear all cached summaries for the given user"""
+	#	if user_id in self._qa_store:
+	#		self._qa_store[user_id].clear()
 
-	def get_medical_context(self, user_id: str, session_id: str, question: str) -> str:
-		"""Get relevant medical context for a question"""
-		# Get recent QA summaries
-		recent_qa = self.recent(user_id, 5)
+	#def get_medical_context(self, user_id: str, session_id: str, question: str) -> str:
+	#	"""Get relevant medical context for a question"""
+	#	# Get recent QA summaries
+	#	recent_qa = self.recent(user_id, 5)
 
-		# Get current session messages for context
-		session = self.get_session(session_id)
-		session_context = ""
-		if session:
-			recent_messages = session.get_messages(10)
-			session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
+	#	# Get current session messages for context
+	#	session = self.get_session(session_id)
+	#	session_context = ""
+	#	if session:
+	#		recent_messages = session.get_messages(10)
+	#		session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
 
-		# Combine context
-		context_parts = []
-		if recent_qa:
-			context_parts.append("Recent medical context:\n" + "\n".join(recent_qa))
-		if session_context:
-			context_parts.append("Current conversation:\n" + session_context)
+	#	# Combine context
+	#	context_parts = []
+	#	if recent_qa:
+	#		context_parts.append("Recent medical context:\n" + "\n".join(recent_qa))
+	#	if session_context:
+	#		context_parts.append("Current conversation:\n" + session_context)
 
-		return "\n\n".join(context_parts) if context_parts else ""
+	#	return "\n\n".join(context_parts) if context_parts else ""

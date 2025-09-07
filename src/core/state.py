@@ -1,3 +1,5 @@
+# core/state.py
+
 from src.core.memory.history import MedicalHistoryManager
 from src.core.memory.memory import MemoryLRU
 from src.utils.embeddings import EmbeddingClient, create_embedding_client

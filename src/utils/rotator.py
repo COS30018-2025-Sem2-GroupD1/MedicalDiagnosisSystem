@@ -9,7 +9,6 @@ from .logger import get_logger
 
 logger = get_logger("ROTATOR", __name__)
 
-
 class APIKeyRotator:
 	"""
 	Round-robin API key rotator.
@@ -38,7 +37,6 @@ class APIKeyRotator:
 		self.current = next(self._cycle)
 		logger.info("Rotated API key.")
 		return self.current
-
 
 async def robust_post_json(url: str, headers: dict, payload: dict, rotator: APIKeyRotator, max_retries: int = 5):
 	"""

@@ -1,3 +1,4 @@
+# data/medical_kb.py
 # Medical Knowledge Base for the Medical AI Assistant
 
 MEDICAL_KB = {

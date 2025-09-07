@@ -1,4 +1,6 @@
-from src.domain.knowledge.medical_kb import search_medical_kb
+# services/medical_response.py
+
+from data.medical_kb import search_medical_kb
 from src.services.gemini import gemini_chat
 from src.utils.logger import get_logger
 from src.utils.rotator import APIKeyRotator
@@ -14,6 +16,7 @@ async def generate_medical_response(
 ) -> str:
 	"""Generate a medical response using Gemini AI for intelligent, contextual responses"""
 	# Build context-aware prompt
+	# In future this should be moved to a prompt builder function that adds more information and direction based on the user's role and specialty.
 	prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
 **User Role:** {user_role}
 **User Specialty:** {user_specialty if user_specialty else 'General'}
