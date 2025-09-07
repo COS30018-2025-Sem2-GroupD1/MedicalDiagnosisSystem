@@ -26,6 +26,7 @@ _mongo_client: MongoClient | None = None
 ACCOUNTS_COLLECTION = "accounts"
 CHAT_SESSIONS_COLLECTION = "chat_sessions"
 MEDICAL_RECORDS_COLLECTION = "medical_records"
+MEDICAL_CONTEXT_COLLECTION = "medical_context"
 
 # Base Database Operations
 def get_database() -> Database:
@@ -108,12 +109,38 @@ def create_chat_session(
 	"""Create a new chat session"""
 	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
-	session_data["created_at"] = now
-	session_data["updated_at"] = now
-	if "_id" not in session_data:
-		session_data["_id"] = str(ObjectId())
-	result = collection.insert_one(session_data)
-	return str(result.inserted_id)
+
+	try:
+		# Log incoming data for debugging
+		logger.debug(f"Creating session with data: {session_data}")
+
+		# Ensure all required fields are present with proper types
+		session_data.update({
+			"created_at": now,
+			"updated_at": now,
+			"messages": session_data.get("messages", []),
+			"title": str(session_data.get("title", "New Chat")),
+			"user_id": str(session_data["user_id"])  # Will raise KeyError if missing
+		})
+
+		if "_id" not in session_data:
+			session_data["_id"] = str(ObjectId())
+
+		result = collection.insert_one(session_data)
+		session_id = str(result.inserted_id)
+		logger.info(f"Created new session: {session_id}")
+
+		# Verify the session was created
+		created_session = collection.find_one({"_id": session_data["_id"]})
+		if not created_session:
+			raise ValueError("Session was not created successfully")
+
+		return session_id
+	except Exception as e:
+		logger.error(f"Failed to create chat session: {e}")
+		logger.error(f"Session data: {session_data}")
+		logger.error("Stack trace:", exc_info=True)
+		raise
 
 def get_user_sessions(
 	user_id: str,
@@ -203,6 +230,147 @@ def get_user_medical_records(
 	collection = get_collection(collection_name)
 	return list(collection.find({"user_id": user_id}).sort("created_at", ASCENDING))
 
+
+# User Preferences
+def get_user_profile(
+	user_id: str,
+	/, *,
+	collection_name: str = ACCOUNTS_COLLECTION
+) -> dict[str, Any] | None:
+	"""Get a user profile by ID and update last seen"""
+	collection = get_collection(collection_name)
+	now = datetime.now(timezone.utc)
+	result = collection.find_one_and_update(
+		{"_id": user_id},
+		{"$set": {"last_seen": now}},
+		return_document=True
+	)
+	return result
+
+def set_user_preference(
+	user_id: str,
+	key: str,
+	value: Any,
+	/, *,
+	collection_name: str = ACCOUNTS_COLLECTION
+) -> bool:
+	"""Set a user preference"""
+	collection = get_collection(collection_name)
+	result = collection.update_one(
+		{"_id": user_id},
+		{
+			"$set": {
+				f"preferences.{key}": value,
+				"updated_at": datetime.now(timezone.utc)
+			}
+		}
+	)
+	return result.modified_count > 0
+
+def delete_chat_session(
+	session_id: str,
+	/, *,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> bool:
+	"""Delete a chat session"""
+	collection = get_collection(collection_name)
+	result = collection.delete_one({"_id": session_id})
+	return result.deleted_count > 0
+
+def update_session_title(
+	session_id: str,
+	title: str,
+	/, *,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> bool:
+	"""Update chat session title"""
+	collection = get_collection(collection_name)
+	result = collection.update_one(
+		{"_id": session_id},
+		{
+			"$set": {
+				"title": title,
+				"updated_at": datetime.now(timezone.utc)
+			}
+		}
+	)
+	return result.modified_count > 0
+
+def get_session(
+	session_id: str,
+	/, *,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> dict[str, Any] | None:
+	"""Get a chat session by ID"""
+	collection = get_collection(collection_name)
+	try:
+		# Try direct ID match first
+		result = collection.find_one({"_id": session_id})
+		if result:
+			logger.debug(f"Found session with direct ID match: {session_id}")
+			return result
+
+		# Try ObjectId if direct match failed
+		if ObjectId.is_valid(session_id):
+			result = collection.find_one({"_id": ObjectId(session_id)})
+			if result:
+				logger.debug(f"Found session with ObjectId: {session_id}")
+				return result
+
+		logger.info(f"Session not found: {session_id}")
+		return None
+	except Exception as e:
+		logger.error(f"Error retrieving session {session_id}: {e}")
+		logger.error("Stack trace:", exc_info=True)
+		raise
+
+
+# Medical Context Management
+def add_medical_context(
+	user_id: str,
+	summary: str,
+	/, *,
+	collection_name: str = MEDICAL_CONTEXT_COLLECTION
+) -> str:
+	"""Add a medical context summary"""
+	collection = get_collection(collection_name)
+	now = datetime.now(timezone.utc)
+	doc = {
+		"_id": str(ObjectId()),
+		"user_id": user_id,
+		"summary": summary,
+		"timestamp": now
+	}
+	result = collection.insert_one(doc)
+	return str(result.inserted_id)
+
+def get_medical_context(
+	user_id: str,
+	/,
+	limit: int | None = None,
+	*,
+	collection_name: str = MEDICAL_CONTEXT_COLLECTION
+) -> list[dict[str, Any]]:
+	"""Get medical context summaries for a user"""
+	collection = get_collection(collection_name)
+	query = {"user_id": user_id}
+	cursor = collection.find(query).sort("timestamp", DESCENDING)
+	if limit:
+		cursor = cursor.limit(limit)
+	return list(cursor)
+
+def delete_old_medical_context(
+	days: int = 30,
+	*,
+	collection_name: str = MEDICAL_CONTEXT_COLLECTION
+) -> int:
+	"""Delete medical context older than specified days"""
+	collection = get_collection(collection_name)
+	cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+	result = collection.delete_many({
+		"timestamp": {"$lt": cutoff}
+	})
+	return result.deleted_count
 
 # Utility Functions
 def create_index(

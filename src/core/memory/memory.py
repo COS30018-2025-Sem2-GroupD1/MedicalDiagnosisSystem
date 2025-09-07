@@ -1,10 +1,13 @@
 # core/memory/memory.py
 
-import time
 import uuid
-from collections import defaultdict, deque
+from datetime import datetime, timezone
 from typing import Any
 
+from src.data import mongodb
+from src.utils.logger import get_logger
+
+logger = get_logger("MEMORY")
 
 class ChatSession:
 	"""Represents a chat session with a user"""
@@ -12,8 +15,8 @@ class ChatSession:
 		self.session_id = session_id
 		self.user_id = user_id
 		self.title = title
-		self.created_at = time.time()
-		self.last_activity = time.time()
+		self.created_at = datetime.now(timezone.utc)
+		self.last_activity = datetime.now(timezone.utc)
 		self.messages: list[dict[str, Any]] = []
 
 	def add_message(self, role: str, content: str, metadata: dict | None = None):
@@ -22,11 +25,11 @@ class ChatSession:
 			"id": str(uuid.uuid4()),
 			"role": role,  # "user" or "assistant"
 			"content": content,
-			"timestamp": time.time(),
+			"timestamp": datetime.now(timezone.utc),
 			"metadata": metadata or {}
 		}
 		self.messages.append(message)
-		self.last_activity = time.time()
+		self.last_activity = datetime.now(timezone.utc)
 
 	def get_messages(self, limit: int | None = None) -> list[dict[str, Any]]:
 		"""Get messages from the session, optionally limited"""
@@ -37,20 +40,61 @@ class ChatSession:
 	def update_title(self, title: str):
 		"""Update the session title"""
 		self.title = title
-		self.last_activity = time.time()
+		self.last_activity = datetime.now(timezone.utc)
+
+	@classmethod
+	def from_dict(cls, data: dict) -> "ChatSession":
+		"""Create a ChatSession from a dictionary"""
+		if not isinstance(data, dict):
+			logger.error(f"Invalid data type for ChatSession.from_dict: {type(data)}")
+			raise ValueError(f"Expected dict, got {type(data)}")
+
+		required_fields = ["_id", "user_id"]
+		missing_fields = [f for f in required_fields if f not in data]
+		if missing_fields:
+			logger.error(f"Missing required fields in ChatSession data: {missing_fields}")
+			logger.error(f"Available fields: {list(data.keys())}")
+			raise ValueError(f"Missing required fields: {missing_fields}")
+
+		try:
+			instance = cls(
+				session_id=str(data["_id"]),
+				user_id=str(data["user_id"]),
+				title=str(data.get("title", "New Chat"))
+			)
+
+			# Handle timestamps with detailed error checking
+			try:
+				instance.created_at = data.get("created_at", datetime.now(timezone.utc))
+				instance.last_activity = data.get("updated_at", instance.created_at)
+			except Exception as e:
+				logger.error(f"Error processing timestamps: {e}")
+				logger.error(f"created_at: {data.get('created_at')}")
+				logger.error(f"updated_at: {data.get('updated_at')}")
+				# Use current time as fallback
+				now = datetime.now(timezone.utc)
+				instance.created_at = now
+				instance.last_activity = now
+
+			instance.messages = data.get("messages", [])
+			return instance
+		except Exception as e:
+			logger.error(f"Error creating ChatSession from data: {e}")
+			logger.error(f"Data: {data}")
+			raise ValueError(f"Failed to create ChatSession: {e}") from e
 
 class UserProfile:
 	"""Represents a user profile with multiple chat sessions"""
 	def __init__(self, user_id: str, name: str = "Anonymous"):
 		self.user_id = user_id
 		self.name = name
-		self.created_at = time.time()
-		self.last_seen = time.time()
+		self.created_at = datetime.now(timezone.utc)
+		self.last_seen = datetime.now(timezone.utc)
 		self.preferences: dict[str, Any] = {}
 
 	def update_activity(self):
 		"""Update last seen timestamp"""
-		self.last_seen = time.time()
+		self.last_seen = datetime.now(timezone.utc)
 
 	def set_preference(self, key: str, value: Any):
 		"""Set a user preference"""
@@ -61,148 +105,137 @@ class UserProfile:
 		"""Get user role from preferences"""
 		return self.preferences.get("role", "Unknown")
 
+	@classmethod
+	def from_dict(cls, data: dict) -> "UserProfile":
+		"""Create a UserProfile from a dictionary"""
+		instance = cls(data["_id"], data["name"])
+		instance.created_at = data["created_at"]
+		instance.last_seen = data["last_seen"]
+		instance.preferences = data["preferences"]
+		return instance
+
 class MemoryLRU:
 	"""
-	Enhanced LRU-like memory system supporting:
+	Memory system using MongoDB for persistence, supporting:
 	- Multiple users with profiles
 	- Multiple chat sessions per user
 	- Chat history and continuity
 	- Medical context summaries
 	"""
-	def __init__(self, capacity: int = 20, max_sessions_per_user: int = 10):
-		self.capacity = capacity
+	def __init__(self, max_sessions_per_user: int = 10):
 		self.max_sessions_per_user = max_sessions_per_user
-
-		# User profiles and sessions
-		self._users: dict[str, UserProfile] = {}
-		self._sessions: dict[str, ChatSession] = {}
-		self._user_sessions: dict[str, list[str]] = defaultdict(list)
-
-		# Medical context summaries (QA pairs)
-		self._qa_store: dict[str, deque] = defaultdict(lambda: deque(maxlen=self.capacity))
 
 	def create_user(self, user_id: str, name: str = "Anonymous") -> UserProfile:
 		"""Create a new user profile"""
-		if user_id not in self._users:
-			user = UserProfile(user_id, name)
-			self._users[user_id] = user
-		return self._users[user_id]
+		user = UserProfile(user_id, name)
+		mongodb.create_account({
+			"_id": user_id,
+			"name": name,
+			"created_at": datetime.now(timezone.utc),
+			"last_seen": datetime.now(timezone.utc),
+			"preferences": {}
+		})
+		return user
 
 	def get_user(self, user_id: str) -> UserProfile | None:
 		"""Get user profile by ID"""
-		user = self._users.get(user_id)
-		if user:
-			user.update_activity()
-		return user
+		data = mongodb.get_user_profile(user_id)
+		return UserProfile.from_dict(data) if data else None
 
 	def create_session(self, user_id: str, title: str = "New Chat") -> str:
-		"""Create a new chat session for a user"""
-		# Ensure user exists
-		if user_id not in self._users:
-			self.create_user(user_id)
-
-		# Create session
+		"""Create a new chat session"""
 		session_id = str(uuid.uuid4())
-		session = ChatSession(session_id, user_id, title)
-		self._sessions[session_id] = session
-
-		# Add to user's session list
-		user_sessions = self._user_sessions[user_id]
-		user_sessions.append(session_id)
-
-		# Enforce max sessions per user
-		if len(user_sessions) > self.max_sessions_per_user:
-			oldest_session = user_sessions.pop(0)
-			if oldest_session in self._sessions:
-				del self._sessions[oldest_session]
-
+		mongodb.create_chat_session({
+			"_id": session_id,
+			"user_id": user_id,
+			"title": title,
+			"messages": []
+		})
 		return session_id
 
 	def get_session(self, session_id: str) -> ChatSession | None:
-		"""Get a chat session by ID"""
-		return self._sessions.get(session_id)
+		"""Get chat session by ID"""
+		try:
+			data = mongodb.get_session(session_id)
+			if not data:
+				logger.info(f"Session not found: {session_id}")
+				return None
+
+			logger.debug(f"Retrieved session data: {data}")
+			return ChatSession.from_dict(data)
+		except Exception as e:
+			logger.error(f"Error retrieving session {session_id}: {e}")
+			logger.error(f"Stack trace:", exc_info=True)
+			raise
 
 	def get_user_sessions(self, user_id: str) -> list[ChatSession]:
 		"""Get all sessions for a user"""
-		session_ids = self._user_sessions.get(user_id, [])
-		sessions = []
-		for sid in session_ids:
-			if sid in self._sessions:
-				sessions.append(self._sessions[sid])
-		# Sort by last activity (most recent first)
-		sessions.sort(key=lambda x: x.last_activity, reverse=True)
-		return sessions
+		sessions_data = mongodb.get_user_sessions(user_id, limit=self.max_sessions_per_user)
+		return [ChatSession.from_dict(data) for data in sessions_data]
 
 	def add_message_to_session(self, session_id: str, role: str, content: str, metadata: dict | None = None):
-		"""Add a message to a specific session"""
-		session = self._sessions.get(session_id)
-		if session:
-			session.add_message(role, content, metadata)
+		"""Add a message to a session"""
+		message = {
+			"id": str(uuid.uuid4()),
+			"role": role,
+			"content": content,
+			"timestamp": datetime.now(timezone.utc),
+			"metadata": metadata or {}
+		}
+		mongodb.add_message(session_id, message)
 
 	def update_session_title(self, session_id: str, title: str):
-		"""Update the title of a session"""
-		session = self._sessions.get(session_id)
-		if session:
-			session.update_title(title)
+		"""Update session title"""
+		mongodb.update_session_title(session_id, title)
 
 	def delete_session(self, session_id: str):
 		"""Delete a chat session"""
-		if session_id in self._sessions:
-			session = self._sessions[session_id]
-			user_id = session.user_id
+		mongodb.delete_chat_session(session_id)
 
-			# Remove from user's session list
-			if user_id in self._user_sessions:
-				self._user_sessions[user_id] = [s for s in self._user_sessions[user_id] if s != session_id]
+	def set_user_preference(self, user_id: str, key: str, value: Any):
+		"""Set user preference"""
+		mongodb.set_user_preference(user_id, key, value)
 
-			# Delete session
-			del self._sessions[session_id]
+	# Medical context methods
+	def add(self, user_id: str, summary: str):
+		"""Add a medical context summary"""
+		mongodb.add_medical_context(user_id, summary)
 
-	# Legacy methods for backward compatibility
-	#def add(self, user_id: str, qa_summary: str):
-	#	"""Add a QA summary to the medical context store"""
-	#	self._qa_store[user_id].append(qa_summary)
+	def all(self, user_id: str) -> list[str]:
+		"""Get all medical context summaries for a user"""
+		contexts = mongodb.get_medical_context(user_id)
+		return [ctx["summary"] for ctx in contexts]
 
-	#def recent(self, user_id: str, n: int = 3) -> list[str]:
-	#	"""Get recent QA summaries for medical context"""
-	#	d = self._qa_store[user_id]
-	#	if not d:
-	#		return []
-	#	return list(d)[-n:][::-1]
+	def recent(self, user_id: str, n: int) -> list[str]:
+		"""Get n most recent medical context summaries"""
+		contexts = mongodb.get_medical_context(user_id, limit=n)
+		return [ctx["summary"] for ctx in contexts]
 
-	#def rest(self, user_id: str, skip_n: int = 3) -> list[str]:
-	#	"""Get older QA summaries for medical context"""
-	#	d = self._qa_store[user_id]
-	#	if not d:
-	#		return []
-	#	return list(d)[:-skip_n] if len(d) > skip_n else []
+	def rest(self, user_id: str, skip: int) -> list[str]:
+		"""Get all summaries except the most recent n"""
+		contexts = mongodb.get_medical_context(user_id)
+		return [ctx["summary"] for ctx in contexts[skip:]]
 
-	#def all(self, user_id: str) -> list[str]:
-	#	"""Get all QA summaries for medical context"""
-	#	return list(self._qa_store[user_id])
+	def get_medical_context(self, user_id: str, session_id: str, question: str) -> str | None:
+		"""Get relevant medical context for a question"""
+		try:
+			# Get recent contexts
+			contexts = mongodb.get_medical_context(user_id, limit=5)
+			if not contexts:
+				return None
 
-	#def clear(self, user_id: str) -> None:
-	#	"""Clear all cached summaries for the given user"""
-	#	if user_id in self._qa_store:
-	#		self._qa_store[user_id].clear()
+			# Format contexts into a string
+			context_texts = []
+			for ctx in contexts:
+				summary = ctx.get("summary")
+				if summary:
+					context_texts.append(summary)
 
-	#def get_medical_context(self, user_id: str, session_id: str, question: str) -> str:
-	#	"""Get relevant medical context for a question"""
-	#	# Get recent QA summaries
-	#	recent_qa = self.recent(user_id, 5)
+			if not context_texts:
+				return None
 
-	#	# Get current session messages for context
-	#	session = self.get_session(session_id)
-	#	session_context = ""
-	#	if session:
-	#		recent_messages = session.get_messages(10)
-	#		session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
-
-	#	# Combine context
-	#	context_parts = []
-	#	if recent_qa:
-	#		context_parts.append("Recent medical context:\n" + "\n".join(recent_qa))
-	#	if session_context:
-	#		context_parts.append("Current conversation:\n" + session_context)
-
-	#	return "\n\n".join(context_parts) if context_parts else ""
+			return "\n\n".join(context_texts)
+		except Exception as e:
+			logger.error(f"Error getting medical context: {e}")
+			logger.error("Stack trace:", exc_info=True)
+			return None

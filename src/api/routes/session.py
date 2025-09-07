@@ -1,6 +1,7 @@
 # api/routes/session.py
 
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 
 from src.core.state import MedicalState, get_state
 from src.models.chat import SessionRequest
@@ -33,13 +34,17 @@ async def get_chat_session(
 		if not session:
 			raise HTTPException(status_code=404, detail="Session not found")
 
+		# Convert datetime objects to ISO format strings for JSON serialization
 		return {
 			"session_id": session.session_id,
 			"user_id": session.user_id,
 			"title": session.title,
-			"created_at": session.created_at,
-			"last_activity": session.last_activity,
-			"messages": session.messages
+			"created_at": session.created_at.isoformat(),
+			"last_activity": session.last_activity.isoformat(),
+			"messages": [{
+				**msg,
+				"timestamp": msg["timestamp"].isoformat() if isinstance(msg["timestamp"], datetime) else msg["timestamp"]
+			} for msg in session.messages]
 		}
 	except HTTPException:
 		raise
