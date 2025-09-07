@@ -1,5 +1,10 @@
 # data/mongodb.py
 
+"""
+	Interface for mongodb using pymongo.
+	Current code is simply a proof of concept and is not ready for implementation.
+"""
+
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -10,8 +15,12 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
+from src.utils.logger import get_logger
+
+logger = get_logger("MONGO")
+
 # Global client instance
-_mongo_client = None
+_mongo_client: MongoClient | None = None
 
 # Collection Names
 ACCOUNTS_COLLECTION = "accounts"
@@ -25,13 +34,20 @@ def get_database() -> Database:
 	if _mongo_client is None:
 		# TODO This needs to use an environment variable when deployed
 		CONNECTION_STRING = "mongodb://127.0.0.1:27017/"
-		_mongo_client = MongoClient(CONNECTION_STRING)
+		try:
+			logger.info("Initializing MongoDB connection")
+			_mongo_client = MongoClient(CONNECTION_STRING)
+		except Exception as e:
+			logger.error(f"Failed to connect to MongoDB: {str(e)}")
+			# Pass the error down, code that calls this function should handle it
+			raise e
 	return _mongo_client['medicaldiagnosissystem']
 
 def close_connection():
 	"""Close MongoDB connection"""
 	global _mongo_client
 	if _mongo_client is not None:
+		logger.info("Closing MongoDB connection")
 		_mongo_client.close()
 		_mongo_client = None
 
@@ -42,7 +58,10 @@ def get_collection(name: str, /) -> Collection:
 
 
 # Account Management
-def get_account_frame(*, collection_name: str = ACCOUNTS_COLLECTION) -> DataFrame:
+def get_account_frame(
+	*,
+	collection_name: str = ACCOUNTS_COLLECTION
+) -> DataFrame:
 	"""Get accounts as a pandas DataFrame"""
 	return DataFrame(get_collection(collection_name).find())
 
@@ -58,8 +77,10 @@ def create_account(
 	user_data["updated_at"] = now
 	try:
 		result = collection.insert_one(user_data)
+		logger.info(f"Created new account: {result.inserted_id}")
 		return str(result.inserted_id)
 	except DuplicateKeyError as e:
+		logger.error(f"Failed to create account - duplicate key: {str(e)}")
 		raise DuplicateKeyError(f"Account already exists: {e}") from e
 
 def update_account(
@@ -126,6 +147,7 @@ def add_message(
 		]
 	})
 	if not session:
+		logger.error(f"Failed to add message - session not found: {session_id}")
 		raise ValueError(f"Chat session not found: {session_id}")
 
 	now = datetime.now(timezone.utc)
@@ -204,6 +226,8 @@ def delete_old_sessions(
 	result = collection.delete_many({
 		"updated_at": {"$lt": cutoff}
 	})
+	if result.deleted_count > 0:
+		logger.info(f"Deleted {result.deleted_count} old sessions (>{days} days)")
 	return result.deleted_count
 
 def backup_collection(collection_name: str) -> str:
@@ -214,12 +238,16 @@ def backup_collection(collection_name: str) -> str:
 
 	# Drop existing backup if it exists
 	if backup_name in db.list_collection_names():
+		logger.info(f"Removing existing backup: {backup_name}")
 		db.drop_collection(backup_name)
 
 	db.create_collection(backup_name)
 	backup = db[backup_name]
 
+	doc_count = 0
 	for doc in collection.find():
 		backup.insert_one(doc)
+		doc_count += 1
 
+	logger.info(f"Created backup {backup_name} with {doc_count} documents")
 	return backup_name

@@ -19,7 +19,7 @@ from src.data.mongodb import (ACCOUNTS_COLLECTION, CHAT_SESSIONS_COLLECTION,
                               update_account)
 from src.utils.logger import get_logger
 
-logger = get_logger('MONGO_TESTS', __name__)
+logger = get_logger("MONGO_TESTS", __name__)
 
 class TestMongoDB(unittest.TestCase):
 	@classmethod
@@ -27,6 +27,7 @@ class TestMongoDB(unittest.TestCase):
 		"""Initialize test database"""
 		cls.db = get_database()
 		# Map production collections to test collections
+		# Doing it this make makes sure that if any collection is ever removed, the tests cannot be run
 		cls.test_collections = {
 			ACCOUNTS_COLLECTION: "test_accounts",
 			CHAT_SESSIONS_COLLECTION: "test_chat_sessions",
@@ -151,6 +152,7 @@ class TestMongoDB(unittest.TestCase):
 		}
 		create_account(user1, collection_name=test_accounts)
 
+		# Has the same email
 		user2 = {
 			"_id": "user2",
 			"email": "same@email.com",
@@ -161,9 +163,13 @@ class TestMongoDB(unittest.TestCase):
 
 		# Test invalid session ID
 		with self.assertRaises(ValueError):
-			add_message("invalid_id", {"content": "test"}, collection_name=test_sessions)
+			add_message(
+				"invalid_id",
+				{"content": "test"},
+				collection_name=test_sessions
+			)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 	try:
 		logger.info("Starting MongoDB integration tests...")
 		unittest.main(verbosity=2)
