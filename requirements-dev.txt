@@ -7,4 +7,5 @@ google-genai
 huggingface_hub
 psutil
 python-dotenv
-#pymongo
+pymongo
+pandas
