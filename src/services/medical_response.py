@@ -2,10 +2,9 @@
 
 from src.data.medical_kb import search_medical_kb
 from src.services.gemini import gemini_chat
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
-logger = get_logger("MEDICAL_RESPONSE", __name__)
 
 async def generate_medical_response(
 	user_message: str,
@@ -45,11 +44,11 @@ Remember: This is for educational purposes only. Always emphasize consulting hea
 		if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
 			response_text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
 
-		logger.info(f"Gemini response generated successfully, length: {len(response_text)} characters")
+		logger().info(f"Gemini response generated successfully, length: {len(response_text)} characters")
 		return response_text
 
 	# Fallback if Gemini fails
-	logger.warning("Gemini response generation failed, using fallback")
+	logger().warning("Gemini response generation failed, using fallback")
 	return generate_medical_response_fallback(
 		user_message,
 		user_role,
@@ -67,7 +66,7 @@ def generate_medical_response_fallback(
 	# Search medical knowledge base
 	kb_info = search_medical_kb(user_message)
 
-	logger.info("Generating backup response")
+	logger().info("Generating backup response")
 
 	# Build response based on available information
 	response_parts = []

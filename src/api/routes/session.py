@@ -1,13 +1,13 @@
 # api/routes/session.py
 
-from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.state import MedicalState, get_state
 from src.models.chat import SessionRequest
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 
-logger = get_logger("SESSION_ROUTES", __name__)
 router = APIRouter()
 
 @router.post("/sessions")
@@ -20,7 +20,7 @@ async def create_chat_session(
 		session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
 		return {"session_id": session_id, "message": "Session created successfully"}
 	except Exception as e:
-		logger.error(f"Error creating session: {e}")
+		logger().error(f"Error creating session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/sessions/{session_id}")
@@ -49,7 +49,7 @@ async def get_chat_session(
 	except HTTPException:
 		raise
 	except Exception as e:
-		logger.error(f"Error getting session: {e}")
+		logger().error(f"Error getting session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/sessions/{session_id}")
@@ -62,5 +62,5 @@ async def delete_chat_session(
 		state.memory_system.delete_session(session_id)
 		return {"message": "Session deleted successfully"}
 	except Exception as e:
-		logger.error(f"Error deleting session: {e}")
+		logger().error(f"Error deleting session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))

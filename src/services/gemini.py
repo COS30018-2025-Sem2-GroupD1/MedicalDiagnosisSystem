@@ -1,9 +1,8 @@
 # services/gemini.py
 
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
-logger = get_logger("GEMINI", __name__)
 
 async def gemini_chat(
 	prompt: str,
@@ -19,7 +18,7 @@ async def gemini_chat(
 
 		api_key = rotator.get_key()
 		if not api_key:
-			logger.warning("No Gemini API key available")
+			logger().warning("No Gemini API key available")
 			return ""
 
 		client = genai.Client(api_key=api_key)
@@ -27,5 +26,5 @@ async def gemini_chat(
 		return response.text or ""
 
 	except Exception as e:
-		logger.warning(f"Gemini chat failed: {e}")
+		logger().warning(f"Gemini chat failed: {e}")
 		return ""

@@ -15,9 +15,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
-from src.utils.logger import get_logger
-
-logger = get_logger("MONGO")
+from src.utils.logger import logger
 
 # Global client instance
 _mongo_client: MongoClient | None = None
@@ -36,10 +34,10 @@ def get_database() -> Database:
 		# TODO This needs to use an environment variable when deployed
 		CONNECTION_STRING = "mongodb://127.0.0.1:27017/"
 		try:
-			logger.info("Initializing MongoDB connection")
+			logger().info("Initializing MongoDB connection")
 			_mongo_client = MongoClient(CONNECTION_STRING)
 		except Exception as e:
-			logger.error(f"Failed to connect to MongoDB: {str(e)}")
+			logger().error(f"Failed to connect to MongoDB: {str(e)}")
 			# Pass the error down, code that calls this function should handle it
 			raise e
 	return _mongo_client['medicaldiagnosissystem']
@@ -48,7 +46,7 @@ def close_connection():
 	"""Close MongoDB connection"""
 	global _mongo_client
 	if _mongo_client is not None:
-		logger.info("Closing MongoDB connection")
+		logger().info("Closing MongoDB connection")
 		_mongo_client.close()
 		_mongo_client = None
 
@@ -78,10 +76,10 @@ def create_account(
 	user_data["updated_at"] = now
 	try:
 		result = collection.insert_one(user_data)
-		logger.info(f"Created new account: {result.inserted_id}")
+		logger().info(f"Created new account: {result.inserted_id}")
 		return str(result.inserted_id)
 	except DuplicateKeyError as e:
-		logger.error(f"Failed to create account - duplicate key: {str(e)}")
+		logger().error(f"Failed to create account - duplicate key: {str(e)}")
 		raise DuplicateKeyError(f"Account already exists: {e}") from e
 
 def update_account(
@@ -112,7 +110,7 @@ def create_chat_session(
 
 	try:
 		# Log incoming data for debugging
-		logger.debug(f"Creating session with data: {session_data}")
+		logger().debug(f"Creating session with data: {session_data}")
 
 		# Ensure all required fields are present with proper types
 		session_data.update({
@@ -128,7 +126,7 @@ def create_chat_session(
 
 		result = collection.insert_one(session_data)
 		session_id = str(result.inserted_id)
-		logger.info(f"Created new session: {session_id}")
+		logger().info(f"Created new session: {session_id}")
 
 		# Verify the session was created
 		created_session = collection.find_one({"_id": session_data["_id"]})
@@ -137,9 +135,9 @@ def create_chat_session(
 
 		return session_id
 	except Exception as e:
-		logger.error(f"Failed to create chat session: {e}")
-		logger.error(f"Session data: {session_data}")
-		logger.error("Stack trace:", exc_info=True)
+		logger().error(f"Failed to create chat session: {e}")
+		logger().error(f"Session data: {session_data}")
+		logger().error("Stack trace:", exc_info=True)
 		raise
 
 def get_user_sessions(
@@ -174,7 +172,7 @@ def add_message(
 		]
 	})
 	if not session:
-		logger.error(f"Failed to add message - session not found: {session_id}")
+		logger().error(f"Failed to add message - session not found: {session_id}")
 		raise ValueError(f"Chat session not found: {session_id}")
 
 	now = datetime.now(timezone.utc)
@@ -307,21 +305,21 @@ def get_session(
 		# Try direct ID match first
 		result = collection.find_one({"_id": session_id})
 		if result:
-			logger.debug(f"Found session with direct ID match: {session_id}")
+			logger().debug(f"Found session with direct ID match: {session_id}")
 			return result
 
 		# Try ObjectId if direct match failed
 		if ObjectId.is_valid(session_id):
 			result = collection.find_one({"_id": ObjectId(session_id)})
 			if result:
-				logger.debug(f"Found session with ObjectId: {session_id}")
+				logger().debug(f"Found session with ObjectId: {session_id}")
 				return result
 
-		logger.info(f"Session not found: {session_id}")
+		logger().info(f"Session not found: {session_id}")
 		return None
 	except Exception as e:
-		logger.error(f"Error retrieving session {session_id}: {e}")
-		logger.error("Stack trace:", exc_info=True)
+		logger().error(f"Error retrieving session {session_id}: {e}")
+		logger().error("Stack trace:", exc_info=True)
 		raise
 
 
@@ -395,7 +393,7 @@ def delete_old_sessions(
 		"updated_at": {"$lt": cutoff}
 	})
 	if result.deleted_count > 0:
-		logger.info(f"Deleted {result.deleted_count} old sessions (>{days} days)")
+		logger().info(f"Deleted {result.deleted_count} old sessions (>{days} days)")
 	return result.deleted_count
 
 def backup_collection(collection_name: str) -> str:
@@ -406,7 +404,7 @@ def backup_collection(collection_name: str) -> str:
 
 	# Drop existing backup if it exists
 	if backup_name in db.list_collection_names():
-		logger.info(f"Removing existing backup: {backup_name}")
+		logger().info(f"Removing existing backup: {backup_name}")
 		db.drop_collection(backup_name)
 
 	db.create_collection(backup_name)
@@ -417,5 +415,5 @@ def backup_collection(collection_name: str) -> str:
 		backup.insert_one(doc)
 		doc_count += 1
 
-	logger.info(f"Created backup {backup_name} with {doc_count} documents")
+	logger().info(f"Created backup {backup_name} with {doc_count} documents")
 	return backup_name

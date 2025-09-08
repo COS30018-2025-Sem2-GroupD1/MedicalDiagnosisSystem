@@ -2,10 +2,8 @@
 
 import os
 
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator, robust_post_json
-
-logger = get_logger("NVIDIA", __name__)
 
 NVIDIA_SMALL = os.getenv("NVIDIA_SMALL", "meta/llama-3.1-8b-instruct")
 
@@ -31,5 +29,5 @@ async def nvidia_chat(system_prompt: str, user_prompt: str, rotator: APIKeyRotat
 		data = await robust_post_json(url, headers, payload, rotator)
 		return data["choices"][0]["message"]["content"]
 	except Exception as e:
-		logger.warning(f"NVIDIA chat error: {e} • response: {data}")
+		logger().warning(f"NVIDIA chat error: {e} • response: {data}")
 		return ""

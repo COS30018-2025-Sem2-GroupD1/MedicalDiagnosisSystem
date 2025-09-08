@@ -5,9 +5,8 @@ import os
 
 import httpx
 
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 
-logger = get_logger("ROTATOR", __name__)
 
 class APIKeyRotator:
 	"""
@@ -24,10 +23,10 @@ class APIKeyRotator:
 			if v:
 				self.keys.append(v.strip())
 		if not self.keys:
-			logger.warning(f"No API keys found for {prefix}. Operating in fallback mode.")
+			logger().warning(f"No API keys found for {prefix}. Operating in fallback mode.")
 			self._cycle = itertools.cycle([None])
 		else:
-			logger.info(f"Loaded {len(self.keys)} API keys for {prefix}")
+			logger().info(f"Loaded {len(self.keys)} API keys for {prefix}")
 			self._cycle = itertools.cycle(self.keys)
 		self.current = next(self._cycle)
 
@@ -39,7 +38,7 @@ class APIKeyRotator:
 		"""Rotate to next API key, return None if no keys available."""
 		self.current = next(self._cycle)
 		if self.current:  # Only log rotation if we actually have keys
-			logger.info("Rotated API key")
+			logger().info("Rotated API key")
 		return self.current
 
 async def robust_post_json(url: str, headers: dict, payload: dict, rotator: APIKeyRotator, max_retries: int = 5):
@@ -52,12 +51,12 @@ async def robust_post_json(url: str, headers: dict, payload: dict, rotator: APIK
 			async with httpx.AsyncClient(timeout=60) as client:
 				r = await client.post(url, headers=headers, json=payload)
 				if r.status_code in (401, 403, 429) or (500 <= r.status_code < 600):
-					logger.warning(f"HTTP {r.status_code} from provider. Rotating key and retrying ({attempt+1}/{max_retries})")
+					logger().warning(f"HTTP {r.status_code} from provider. Rotating key and retrying ({attempt+1}/{max_retries})")
 					rotator.rotate()
 					continue
 				r.raise_for_status()
 				return r.json()
 		except Exception as e:
-			logger.warning(f"Request error: {e}. Rotating and retrying ({attempt+1}/{max_retries})")
+			logger().warning(f"Request error: {e}. Rotating and retrying ({attempt+1}/{max_retries})")
 			rotator.rotate()
 	raise RuntimeError("Provider request failed after retries.")

@@ -7,67 +7,68 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from src.utils.logger import logger, setup_logging
+
+# Needs to be called before any logs are sent
+setup_logging()
+
 # Load environment variables from .env file
 try:
 	from dotenv import load_dotenv
 	load_dotenv()
-	print("✅ Environment variables loaded from .env file")
+	logger().info("Environment variables loaded from .env file")
 except ImportError:
-	print("⚠️ python-dotenv not available, using system environment variables")
+	logger().warning("python-dotenv not available, using system environment variables")
 except Exception as e:
-	print(f"⚠️ Error loading .env file: {e}")
+	logger().warning(f"Error loading .env file: {e}")
 
+# Import project modules after trying to load environment variables
 from src.api.routes import chat, session, static, system, user
 from src.core.state import MedicalState
-from src.utils.logger import get_logger
 
-# Configure logging
-logger = get_logger("MEDICAL_APP", __name__)
 
-# Startup event
 def startup_event(state: MedicalState):
 	"""Initialize application on startup"""
-	logger.info("🚀 Starting Medical AI Assistant...")
+	logger().info("Starting Medical AI Assistant...")
 
 	# Check system resources
 	try:
 		import psutil
-		memory = psutil.virtual_memory()
+		ram = psutil.virtual_memory()
 		cpu = psutil.cpu_percent(interval=1)
-		logger.info(f"System Resources - RAM: {memory.percent}%, CPU: {cpu}%")
+		logger().info(f"System Resources – RAM: {ram.percent}%, CPU: {cpu}%")
 
-		if memory.percent > 85:
-			logger.warning("⚠️ High RAM usage detected!")
+		if ram.percent > 85:
+			logger().warning("High RAM usage detected!")
 		if cpu > 90:
-			logger.warning("⚠️ High CPU usage detected!")
+			logger().warning("High CPU usage detected!")
 	except ImportError:
-		logger.info("psutil not available, skipping system resource check")
+		logger().info("psutil not available, skipping system resource check")
 
 	# Check API keys
 	gemini_keys = len([k for k in state.gemini_rotator.keys if k])
 	if gemini_keys == 0:
-		logger.warning("⚠️ No Gemini API keys found! Set GEMINI_API_1, GEMINI_API_2, etc. environment variables.")
+		logger().warning("No Gemini API keys found! Set GEMINI_API_1, GEMINI_API_2, etc. environment variables.")
 	else:
-		logger.info(f"✅ {gemini_keys} Gemini API keys available")
+		logger().info(f"{gemini_keys} Gemini API keys available")
 
 	nvidia_keys = len([k for k in state.nvidia_rotator.keys if k])
 	if nvidia_keys == 0:
-		logger.warning("⚠️ No NVIDIA API keys found! Set NVIDIA_API_1, NVIDIA_API_2, etc. environment variables.")
+		logger().warning("No NVIDIA API keys found! Set NVIDIA_API_1, NVIDIA_API_2, etc. environment variables.")
 	else:
-		logger.info(f"✅ {nvidia_keys} NVIDIA API keys available")
+		logger().info(f"{nvidia_keys} NVIDIA API keys available")
 
 	# Check embedding client
 	if state.embedding_client.is_available():
-		logger.info("✅ Embedding model loaded successfully")
+		logger().info("Embedding model loaded successfully")
 	else:
-		logger.info("⚠️ Using fallback embedding mode")
+		logger().info("Using fallback embedding mode")
 
-	logger.info("✅ Medical AI Assistant startup complete")
+	logger().info("Medical AI Assistant startup complete")
 
-# Shutdown event
 def shutdown_event():
 	"""Cleanup on shutdown"""
-	logger.info("🛑 Shutting down Medical AI Assistant...")
+	logger().info("Shutting down Medical AI Assistant...")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

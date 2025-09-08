@@ -10,14 +10,14 @@ This package provides:
 """
 
 from .embeddings import EmbeddingClient
-from .logger import get_logger
+from .logger import logger
 from .rotator import APIKeyRotator, robust_post_json
 
 __all__ = [
 	'APIKeyRotator',
 	'robust_post_json',
 	'EmbeddingClient',
-	'get_logger'
+	'logger'
 ]
 
 __version__ = "1.0.0"

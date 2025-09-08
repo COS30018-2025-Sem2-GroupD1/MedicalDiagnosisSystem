@@ -3,9 +3,6 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from src.utils.logger import get_logger
-
-logger = get_logger("PROFILE")
 
 class UserProfile:
 	"""Represents a user profile with multiple chat sessions"""

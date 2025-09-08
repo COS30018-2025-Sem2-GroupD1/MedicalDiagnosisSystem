@@ -7,9 +7,8 @@ from typing import Any
 from src.core.profile import UserProfile
 from src.core.session import ChatSession
 from src.data import mongodb
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 
-logger = get_logger("MEMORY")
 
 class MemoryLRU:
 	"""
@@ -55,14 +54,14 @@ class MemoryLRU:
 		try:
 			data = mongodb.get_session(session_id)
 			if not data:
-				logger.info(f"Session not found: {session_id}")
+				logger().info(f"Session not found: {session_id}")
 				return None
 
-			logger.debug(f"Retrieved session data: {data}")
+			logger().debug(f"Retrieved session data: {data}")
 			return ChatSession.from_dict(data)
 		except Exception as e:
-			logger.error(f"Error retrieving session {session_id}: {e}")
-			logger.error(f"Stack trace:", exc_info=True)
+			logger().error(f"Error retrieving session {session_id}: {e}")
+			logger().error(f"Stack trace:", exc_info=True)
 			raise
 
 	def get_user_sessions(self, user_id: str) -> list[ChatSession]:
@@ -133,6 +132,6 @@ class MemoryLRU:
 
 			return "\n\n".join(context_texts)
 		except Exception as e:
-			logger.error(f"Error getting medical context: {e}")
-			logger.error("Stack trace:", exc_info=True)
+			logger().error(f"Error getting medical context: {e}")
+			logger().error("Stack trace:", exc_info=True)
 			return ""

@@ -5,10 +5,9 @@ from dataclasses import dataclass
 from typing import Any, Sequence
 
 from src.services.nvidia import nvidia_chat
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
-logger = get_logger("FILE_RELEVANCE", __name__)
 
 @dataclass
 class FileSummary:
@@ -58,5 +57,5 @@ async def files_relevance(
 		return relevance
 
 	except Exception as e:
-		logger.warning(f"Error determining file relevance: {e}")
+		logger().warning(f"Error determining file relevance: {e}")
 		return {f.filename: True for f in file_summaries}

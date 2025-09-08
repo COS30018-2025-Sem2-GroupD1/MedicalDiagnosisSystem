@@ -2,9 +2,8 @@
 
 import numpy as np
 
-from .logger import get_logger
+from src.utils.logger import logger
 
-logger = get_logger("EMBEDDINGS", __name__)
 
 class EmbeddingClient:
 	"""
@@ -21,23 +20,23 @@ class EmbeddingClient:
 		try:
 			self._init_embedding_model()
 		except Exception as e:
-			logger.warning(f"Could not initialize embedding model {model_name}: {e}")
-			logger.info("Using fallback embedding mode")
+			logger().warning(f"Could not initialize embedding model {model_name}: {e}")
+			logger().info("Using fallback embedding mode")
 			self._fallback_mode = True
 
 	def _init_embedding_model(self):
 		"""Initialize the actual embedding model"""
 		try:
 			# Try to import sentence transformers
-			from sentence_transformers import SentenceTransformer # type: ignore
+			from sentence_transformers import SentenceTransformer  # type: ignore
 			self.model = SentenceTransformer(self.model_name)
 			self._fallback_mode = False
-			logger.info(f"Successfully loaded embedding model: {self.model_name}")
+			logger().info(f"Successfully loaded embedding model: {self.model_name}")
 		except ImportError:
-			logger.warning("sentence-transformers not available, using fallback mode")
+			logger().warning("sentence-transformers not available, using fallback mode")
 			self._fallback_mode = True
 		except Exception as e:
-			logger.error(f"Error loading embedding model: {e}")
+			logger().error(f"Error loading embedding model: {e}")
 			self._fallback_mode = True
 
 	def embed(self, texts: str | list[str]) -> list[list[float]]:
@@ -68,7 +67,7 @@ class EmbeddingClient:
 			else:
 				return embeddings.tolist()
 		except Exception as e:
-			logger.error(f"Error in proper embedding: {e}")
+			logger().error(f"Error in proper embedding: {e}")
 			return self._fallback_embed(texts)
 
 	def _fallback_embed(self, texts: list[str]) -> list[list[float]]:

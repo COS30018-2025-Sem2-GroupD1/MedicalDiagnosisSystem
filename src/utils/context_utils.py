@@ -5,9 +5,7 @@ import json
 from src.core.memory import MemoryLRU
 from src.utils.embedding_operations import semantic_search
 from src.utils.embeddings import EmbeddingClient
-from src.utils.logger import get_logger
-
-logger = get_logger("CONTEXT_UTILS", __name__)
+from src.utils.logger import logger
 
 RECENT_CONTEXT_SIZE = 3
 

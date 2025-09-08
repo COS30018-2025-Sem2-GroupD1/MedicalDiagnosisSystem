@@ -4,10 +4,9 @@ import re
 
 from src.services.gemini import gemini_chat
 from src.services.nvidia import nvidia_chat
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
-logger = get_logger("SUMMARISER", __name__)
 
 def _sanitize_title(title: str, max_words: int) -> str:
 	title = title.strip()
@@ -51,7 +50,7 @@ async def summarise_title_with_nvidia(
 			if title:
 				return title
 		except Exception as e:
-			logger.warning(f"NVIDIA summarise failed, using fallback: {e}")
+			logger().warning(f"NVIDIA summarise failed, using fallback: {e}")
 
 	# Fallback heuristic
 	return _heuristic_title(text, max_words)
@@ -86,7 +85,7 @@ Keep each summary under 160 characters for question and 220 characters for answe
 			return f"{ql}\n{al}"
 
 	# Fallback if parsing fails
-	logger.warning("Failed to get valid Gemini summarization, using fallback")
+	logger().warning("Failed to get valid Gemini summarization, using fallback")
 	return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
 
 async def summarise_qa_with_nvidia(question: str, answer: str, rotator) -> str:

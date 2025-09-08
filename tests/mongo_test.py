@@ -9,9 +9,8 @@ from datetime import datetime, timezone
 from pymongo.errors import DuplicateKeyError
 
 from src.data import mongodb
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 
-logger = get_logger("MONGO_TESTS", __name__)
 
 class TestMongoDB(unittest.TestCase):
 	@classmethod
@@ -25,7 +24,7 @@ class TestMongoDB(unittest.TestCase):
 			mongodb.CHAT_SESSIONS_COLLECTION: "test_chat_sessions",
 			mongodb.MEDICAL_RECORDS_COLLECTION: "test_medical_records"
 		}
-		logger.info("Test database initialized")
+		logger().info("Test database initialized")
 
 	def setUp(self):
 		"""Reset collections before each test"""
@@ -163,8 +162,8 @@ class TestMongoDB(unittest.TestCase):
 
 if __name__ == "__main__":
 	try:
-		logger.info("Starting MongoDB integration tests...")
+		logger().info("Starting MongoDB integration tests...")
 		unittest.main(verbosity=2)
 	finally:
 		mongodb.close_connection()
-		logger.info("Tests completed, connection closed")
+		logger().info("Tests completed, connection closed")

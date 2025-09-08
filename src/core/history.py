@@ -5,10 +5,9 @@ from src.core.memory import MemoryLRU
 from src.services import summariser
 from src.utils.embedding_operations import semantic_search
 from src.utils.embeddings import EmbeddingClient
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
-logger = get_logger("RAG", __name__)
 
 class MedicalHistoryManager:
 	"""Manages medical conversation history with enhanced context awareness."""
@@ -45,7 +44,7 @@ class MedicalHistoryManager:
 			return summary
 
 		except Exception as e:
-			logger.error(f"Error processing medical exchange: {e}")
+			logger().error(f"Error processing medical exchange: {e}")
 			# Fallback: store without summary
 			summary = f"q: {question}\na: {answer}"
 			self.memory.add(user_id, summary)
@@ -88,7 +87,7 @@ class MedicalHistoryManager:
 				return []
 			return semantic_search(query, all_context, self.embedder, top_k)
 		except Exception as e:
-			logger.error(f"Semantic search failed: {e}")
+			logger().error(f"Semantic search failed: {e}")
 			return self._fallback_text_search(user_id, query, top_k)
 
 	def _fallback_text_search(
@@ -126,5 +125,5 @@ class MedicalHistoryManager:
 			return summary if summary and summary.strip() else f"q: {question}\na: {answer}"
 
 		except Exception as e:
-			logger.warning(f"Failed to generate AI summary: {e}")
+			logger().warning(f"Failed to generate AI summary: {e}")
 			return f"q: {question}\na: {answer}"

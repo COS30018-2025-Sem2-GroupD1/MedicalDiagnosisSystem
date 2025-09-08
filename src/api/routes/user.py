@@ -4,9 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.state import MedicalState, get_state
 from src.models.user import UserProfileRequest
-from src.utils.logger import get_logger
+from src.utils.logger import logger
 
-logger = get_logger("USER_ROUTES", __name__)
 router = APIRouter()
 
 @router.post("/users")
@@ -23,7 +22,7 @@ async def create_user_profile(
 
 		return {"message": "User profile created successfully", "user_id": request.user_id}
 	except Exception as e:
-		logger.error(f"Error creating user profile: {e}")
+		logger().error(f"Error creating user profile: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/users/{user_id}")
@@ -62,5 +61,5 @@ async def get_user_profile(
 	except HTTPException:
 		raise
 	except Exception as e:
-		logger.error(f"Error getting user profile: {e}")
+		logger().error(f"Error getting user profile: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
