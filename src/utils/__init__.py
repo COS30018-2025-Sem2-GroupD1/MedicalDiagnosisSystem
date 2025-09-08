@@ -9,7 +9,7 @@ This package provides:
 - Helper functions and utilities
 """
 
-from .embeddings import EmbeddingClient, create_embedding_client
+from .embeddings import EmbeddingClient
 from .logger import get_logger
 from .rotator import APIKeyRotator, robust_post_json
 
@@ -17,7 +17,6 @@ __all__ = [
 	'APIKeyRotator',
 	'robust_post_json',
 	'EmbeddingClient',
-	'create_embedding_client',
 	'get_logger'
 ]
 

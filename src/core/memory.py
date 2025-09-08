@@ -1,4 +1,4 @@
-# core/memory/memory.py
+# core/memory.py
 
 import uuid
 from datetime import datetime, timezone

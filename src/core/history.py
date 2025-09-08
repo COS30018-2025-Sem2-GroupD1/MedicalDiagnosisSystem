@@ -1,7 +1,7 @@
-# core/memory/history.py
+# core/history.py
 
 from src.config.settings import settings
-from src.core.memory.memory import MemoryLRU
+from src.core.memory import MemoryLRU
 from src.services import summariser
 from src.utils.embedding_operations import semantic_search
 from src.utils.embeddings import EmbeddingClient

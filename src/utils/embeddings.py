@@ -29,7 +29,7 @@ class EmbeddingClient:
 		"""Initialize the actual embedding model"""
 		try:
 			# Try to import sentence transformers
-			from sentence_transformers import SentenceTransformer
+			from sentence_transformers import SentenceTransformer # type: ignore
 			self.model = SentenceTransformer(self.model_name)
 			self._fallback_mode = False
 			logger.info(f"Successfully loaded embedding model: {self.model_name}")
@@ -163,17 +163,3 @@ class EmbeddingClient:
 			"fallback_mode": self._fallback_mode,
 			"available": self.is_available()
 		}
-
-# Convenience function for creating embedding client
-def create_embedding_client(model_name: str = "default", dimension: int = 384) -> EmbeddingClient:
-	"""
-	Create an embedding client with the specified parameters
-
-	Args:
-		model_name: Name of the embedding model
-		dimension: Dimension of the embedding vectors
-
-	Returns:
-		EmbeddingClient instance
-	"""
-	return EmbeddingClient(model_name, dimension)

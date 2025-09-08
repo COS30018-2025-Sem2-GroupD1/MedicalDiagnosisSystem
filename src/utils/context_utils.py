@@ -2,7 +2,7 @@
 
 import json
 
-from src.core.memory.memory import MemoryLRU
+from src.core.memory import MemoryLRU
 from src.utils.embedding_operations import semantic_search
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import get_logger

@@ -1,8 +1,8 @@
 # core/state.py
 
-from src.core.memory.history import MedicalHistoryManager
-from src.core.memory.memory import MemoryLRU
-from src.utils.embeddings import EmbeddingClient, create_embedding_client
+from src.core.history import MedicalHistoryManager
+from src.core.memory import MemoryLRU
+from src.utils.embeddings import EmbeddingClient
 from src.utils.rotator import APIKeyRotator
 
 
@@ -20,7 +20,7 @@ class MedicalState:
 	def initialize(self):
 		"""Initialize all core components"""
 		self.memory_system = MemoryLRU(max_sessions_per_user=20)
-		self.embedding_client = create_embedding_client("all-MiniLM-L6-v2", dimension=384)
+		self.embedding_client = EmbeddingClient("all-MiniLM-L6-v2", 384)
 		self.history_manager = MedicalHistoryManager(self.memory_system, self.embedding_client)
 		self.gemini_rotator = APIKeyRotator("GEMINI_API_", max_slots=5)
 		self.nvidia_rotator = APIKeyRotator("NVIDIA_API_", max_slots=5)
