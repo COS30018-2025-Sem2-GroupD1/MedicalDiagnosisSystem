@@ -1,5 +1,6 @@
 # core/memory/history.py
 
+from src.config.settings import settings
 from src.core.memory.memory import MemoryLRU
 from src.services import summariser
 from src.utils.embedding_operations import semantic_search
@@ -9,10 +10,6 @@ from src.utils.rotator import APIKeyRotator
 
 logger = get_logger("RAG", __name__)
 
-# Constants
-MAX_TITLE_LENGTH = 50
-DEFAULT_TOP_K = 5
-
 class MedicalHistoryManager:
 	"""Manages medical conversation history with enhanced context awareness."""
 
@@ -20,7 +17,15 @@ class MedicalHistoryManager:
 		self.memory = memory
 		self.embedder = embedder
 
-	async def process_medical_exchange(self, user_id: str, session_id: str, question: str, answer: str, gemini_rotator, nvidia_rotator=None) -> str:
+	async def process_medical_exchange(
+		self,
+		user_id: str,
+		session_id: str,
+		question: str,
+		answer: str,
+		gemini_rotator,
+		nvidia_rotator
+	) -> str:
 		"""
 		Process a medical Q&A exchange and store it in memory
 		"""
@@ -52,7 +57,7 @@ class MedicalHistoryManager:
 		"""Update session title if this is the first message."""
 		session = self.memory.get_session(session_id)
 		if session and len(session.messages) == 2:  # Just user + assistant
-			title = question[:MAX_TITLE_LENGTH] + ("..." if len(question) > MAX_TITLE_LENGTH else "")
+			title = question[:settings.MAX_TITLE_LENGTH] + ("..." if len(question) > settings.MAX_TITLE_LENGTH else "")
 			self.memory.update_session_title(session_id, title)
 
 	def get_conversation_context(self, user_id: str, session_id: str, question: str) -> str:
@@ -71,7 +76,7 @@ class MedicalHistoryManager:
 		self,
 		user_id: str,
 		query: str,
-		top_k: int = DEFAULT_TOP_K
+		top_k: int = settings.DEFAULT_TOP_K
 	) -> list[str]:
 		"""Search through user's medical context for relevant information using embeddings."""
 		if not self.embedder:
@@ -103,7 +108,7 @@ class MedicalHistoryManager:
 		question: str,
 		answer: str,
 		gemini_rotator: APIKeyRotator,
-		nvidia_rotator: APIKeyRotator | None = None
+		nvidia_rotator: APIKeyRotator
 	) -> str:
 		"""Generate a summary of the Q&A exchange using available AI models."""
 		if not gemini_rotator or not gemini_rotator.get_key():
@@ -114,7 +119,7 @@ class MedicalHistoryManager:
 				question, answer, gemini_rotator
 			)
 			if not summary or not summary.strip():
-				if nvidia_rotator and nvidia_rotator.get_key():
+				if nvidia_rotator.get_key():
 					summary = await summariser.summarise_qa_with_nvidia(
 						question, answer, nvidia_rotator
 					)

@@ -5,7 +5,7 @@ import os
 
 import httpx
 
-from .logger import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger("ROTATOR", __name__)
 
@@ -24,18 +24,22 @@ class APIKeyRotator:
 			if v:
 				self.keys.append(v.strip())
 		if not self.keys:
-			logger.warning(f"No API keys found for prefix {prefix}. Calls will likely fail.")
-			self._cycle = itertools.cycle([""])
+			logger.warning(f"No API keys found for {prefix}. Operating in fallback mode.")
+			self._cycle = itertools.cycle([None])
 		else:
+			logger.info(f"Loaded {len(self.keys)} API keys for {prefix}")
 			self._cycle = itertools.cycle(self.keys)
 		self.current = next(self._cycle)
 
 	def get_key(self) -> str | None:
+		"""Return current API key or None if no keys available."""
 		return self.current
 
 	def rotate(self) -> str | None:
+		"""Rotate to next API key, return None if no keys available."""
 		self.current = next(self._cycle)
-		logger.info("Rotated API key.")
+		if self.current:  # Only log rotation if we actually have keys
+			logger.info("Rotated API key")
 		return self.current
 
 async def robust_post_json(url: str, headers: dict, payload: dict, rotator: APIKeyRotator, max_retries: int = 5):

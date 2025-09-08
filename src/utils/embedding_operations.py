@@ -3,14 +3,11 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from src.config.settings import settings
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import get_logger
 
 logger = get_logger("EMBEDDING_OPERATIONS", __name__)
-
-# Constants
-SEMANTIC_CONTEXT_SIZE = 17
-SIMILARITY_THRESHOLD = 0.15
 
 def cosine_similarity(vec_a: NDArray[np.float32], vec_b: NDArray[np.float32]) -> float:
 	"""Calculate cosine similarity between two vectors."""
@@ -21,8 +18,8 @@ def semantic_search(
 	query: str,
 	candidates: list[str],
 	embedder: EmbeddingClient,
-	top_k: int = SEMANTIC_CONTEXT_SIZE,
-	threshold: float = SIMILARITY_THRESHOLD
+	top_k: int = settings.SEMANTIC_CONTEXT_SIZE,
+	threshold: float = settings.SIMILARITY_THRESHOLD
 ) -> list[str]:
 	"""
 	Find semantically similar texts using embedding-based search.
