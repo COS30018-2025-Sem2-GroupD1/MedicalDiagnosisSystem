@@ -16,11 +16,11 @@ setup_logging()
 try:
 	from dotenv import load_dotenv
 	load_dotenv()
-	logger().info("Environment variables loaded from .env file")
+	logger(tag="env").info("Environment variables loaded from .env file")
 except ImportError:
-	logger().warning("python-dotenv not available, using system environment variables")
+	logger(tag="env").warning("python-dotenv not available, using system environment variables")
 except Exception as e:
-	logger().warning(f"Error loading .env file: {e}")
+	logger(tag="env").warning(f"Error loading .env file: {e}")
 
 # Import project modules after trying to load environment variables
 from src.api.routes import chat, session, static, system, user
@@ -29,46 +29,46 @@ from src.core.state import MedicalState
 
 def startup_event(state: MedicalState):
 	"""Initialize application on startup"""
-	logger().info("Starting Medical AI Assistant...")
+	logger(tag="startup").info("Starting Medical AI Assistant...")
 
 	# Check system resources
 	try:
 		import psutil
 		ram = psutil.virtual_memory()
 		cpu = psutil.cpu_percent(interval=1)
-		logger().info(f"System Resources – RAM: {ram.percent}%, CPU: {cpu}%")
+		logger(tag="startup").info(f"System Resources – RAM: {ram.percent}%, CPU: {cpu}%")
 
 		if ram.percent > 85:
-			logger().warning("High RAM usage detected!")
+			logger(tag="startup").warning("High RAM usage detected!")
 		if cpu > 90:
-			logger().warning("High CPU usage detected!")
+			logger(tag="startup").warning("High CPU usage detected!")
 	except ImportError:
-		logger().info("psutil not available, skipping system resource check")
+		logger(tag="startup").info("psutil not available, skipping system resource check")
 
 	# Check API keys
 	gemini_keys = len([k for k in state.gemini_rotator.keys if k])
 	if gemini_keys == 0:
-		logger().warning("No Gemini API keys found! Set GEMINI_API_1, GEMINI_API_2, etc. environment variables.")
+		logger(tag="startup").warning("No Gemini API keys found! Set GEMINI_API_1, GEMINI_API_2, etc. environment variables.")
 	else:
-		logger().info(f"{gemini_keys} Gemini API keys available")
+		logger(tag="startup").info(f"{gemini_keys} Gemini API keys available")
 
 	nvidia_keys = len([k for k in state.nvidia_rotator.keys if k])
 	if nvidia_keys == 0:
-		logger().warning("No NVIDIA API keys found! Set NVIDIA_API_1, NVIDIA_API_2, etc. environment variables.")
+		logger(tag="startup").warning("No NVIDIA API keys found! Set NVIDIA_API_1, NVIDIA_API_2, etc. environment variables.")
 	else:
-		logger().info(f"{nvidia_keys} NVIDIA API keys available")
+		logger(tag="startup").info(f"{nvidia_keys} NVIDIA API keys available")
 
 	# Check embedding client
 	if state.embedding_client.is_available():
-		logger().info("Embedding model loaded successfully")
+		logger(tag="startup").info("Embedding model loaded successfully")
 	else:
-		logger().info("Using fallback embedding mode")
+		logger(tag="startup").info("Using fallback embedding mode")
 
-	logger().info("Medical AI Assistant startup complete")
+	logger(tag="startup").info("Medical AI Assistant startup complete")
 
 def shutdown_event():
 	"""Cleanup on shutdown"""
-	logger().info("Shutting down Medical AI Assistant...")
+	logger(tag="shutdown").info("Shutting down Medical AI Assistant...")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
