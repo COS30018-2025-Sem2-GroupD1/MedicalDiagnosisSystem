@@ -5,17 +5,25 @@ class MedicalChatbotApp {
         this.currentUser = null; // doctor
         this.currentPatientId = null;
         this.currentSession = null;
+        this.backendSessions = [];
         this.memory = new Map(); // In-memory storage for demo
         this.isLoading = false;
 
         this.init();
     }
 
-    init() {
+    async init() {
         this.setupEventListeners();
         this.loadUserPreferences();
         this.initializeUser();
-        // Ensure a session exists and is displayed immediately
+        this.loadSavedPatientId();
+
+        // If a patient is selected, fetch sessions from backend first
+        if (this.currentPatientId) {
+            await this.fetchAndRenderPatientSessions();
+        }
+
+        // Ensure a session exists and is displayed immediately if nothing to show
         this.ensureStartupSession();
         this.loadChatSessions();
         this.setupTheme();
@@ -89,6 +97,28 @@ class MedicalChatbotApp {
         document.getElementById('themeSelect').addEventListener('change', (e) => {
             this.setTheme(e.target.value);
         });
+    }
+
+    loadSavedPatientId() {
+        const pid = localStorage.getItem('medicalChatbotPatientId');
+        if (pid && /^\d{8}$/.test(pid)) {
+            this.currentPatientId = pid;
+            const status = document.getElementById('patientStatus');
+            if (status) {
+                status.textContent = `Patient: ${pid}`;
+                status.style.color = 'var(--text-secondary)';
+            }
+            const input = document.getElementById('patientIdInput');
+            if (input) input.value = pid;
+        }
+    }
+
+    savePatientId() {
+        if (this.currentPatientId) {
+            localStorage.setItem('medicalChatbotPatientId', this.currentPatientId);
+        } else {
+            localStorage.removeItem('medicalChatbotPatientId');
+        }
     }
 
     setupModalEvents() {
@@ -217,7 +247,7 @@ class MedicalChatbotApp {
 
     startNewChat() {
         if (this.currentSession) {
-            // Save current session
+            // Save current session (local only)
             this.saveCurrentSession();
         }
 
@@ -245,6 +275,10 @@ class MedicalChatbotApp {
     }
 
     ensureStartupSession() {
+        // If we already have backend sessions for selected patient, do not create a local one
+        if (this.backendSessions && this.backendSessions.length > 0) {
+            return;
+        }
         const sessions = this.getChatSessions();
         if (sessions.length === 0) {
             // Create a new session immediately so it shows in sidebar
@@ -291,8 +325,8 @@ How can I assist you today?`;
             status.style.color = 'var(--warning-color)';
             return;
         }
-        // For now we accept ID and load sessions from backend
         this.currentPatientId = id;
+        this.savePatientId();
         status.textContent = `Patient: ${id}`;
         status.style.color = 'var(--text-secondary)';
         await this.fetchAndRenderPatientSessions();
@@ -301,16 +335,57 @@ How can I assist you today?`;
     async fetchAndRenderPatientSessions() {
         if (!this.currentPatientId) return;
         try {
-            const resp = await fetch(`/sessions/patients/${this.currentPatientId}/sessions`.replace('/sessions/', '/sessions/'));
+            const resp = await fetch(`/patients/${this.currentPatientId}/sessions`);
             if (resp.ok) {
                 const data = await resp.json();
-                // Map to sidebar session cards if needed. For now, rely on local sessions until full backend sync is added.
-                // Future: hydrate local UI from data.sessions
+                const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+                this.backendSessions = sessions.map(s => ({
+                    id: s.session_id,
+                    title: s.title || 'New Chat',
+                    messages: [],
+                    createdAt: s.created_at || new Date().toISOString(),
+                    lastActivity: s.last_activity || new Date().toISOString(),
+                    source: 'backend'
+                }));
+                // Prefer backend sessions if present
+                if (this.backendSessions.length > 0) {
+                    this.currentSession = this.backendSessions[0];
+                    await this.hydrateMessagesForSession(this.currentSession.id);
+                }
+            } else {
+                console.warn('Failed to fetch patient sessions', resp.status);
+                this.backendSessions = [];
             }
         } catch (e) {
             console.error('Failed to load patient sessions', e);
+            this.backendSessions = [];
         }
         this.loadChatSessions();
+    }
+
+    async hydrateMessagesForSession(sessionId) {
+        try {
+            const resp = await fetch(`/sessions/${sessionId}/messages?limit=1000`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const msgs = Array.isArray(data.messages) ? data.messages : [];
+            const normalized = msgs.map(m => ({
+                id: m._id || this.generateId(),
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp
+            }));
+            // set into currentSession if matched
+            if (this.currentSession && this.currentSession.id === sessionId) {
+                this.currentSession.messages = normalized;
+                // Render
+                this.clearChatMessages();
+                this.currentSession.messages.forEach(m => this.displayMessage(m));
+                this.updateChatTitle();
+            }
+        } catch (e) {
+            console.error('Failed to hydrate session messages', e);
+        }
     }
 
     async sendMessage() {
@@ -587,8 +662,10 @@ How can I assist you today?`;
         const sessionsContainer = document.getElementById('chatSessions');
         sessionsContainer.innerHTML = '';
 
-        // Get sessions from localStorage
-        const sessions = this.getChatSessions();
+        // Prefer backend sessions if a patient is selected and sessions are available
+        const sessions = (this.backendSessions && this.backendSessions.length > 0)
+            ? this.backendSessions
+            : this.getChatSessions();
 
         if (sessions.length === 0) {
             sessionsContainer.innerHTML = '<div class="no-sessions">No chat sessions yet</div>';
@@ -598,8 +675,13 @@ How can I assist you today?`;
         sessions.forEach(session => {
             const sessionElement = document.createElement('div');
             sessionElement.className = `chat-session ${session.id === this.currentSession?.id ? 'active' : ''}`;
-            sessionElement.addEventListener('click', () => {
-                this.loadChatSession(session.id);
+            sessionElement.addEventListener('click', async () => {
+                if (session.source === 'backend') {
+                    this.currentSession = { ...session };
+                    await this.hydrateMessagesForSession(session.id);
+                } else {
+                    this.loadChatSession(session.id);
+                }
             });
 
             const time = this.formatTime(session.lastActivity);
@@ -620,12 +702,18 @@ How can I assist you today?`;
 
             sessionsContainer.appendChild(sessionElement);
 
-            // Wire 3-dot menu
+            // Wire 3-dot menu (local sessions only for now)
             const menuBtn = sessionElement.querySelector('.chat-session-menu');
-            menuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showSessionMenu(e.currentTarget, session.id);
-            });
+            if (session.source !== 'backend') {
+                menuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.showSessionMenu(e.currentTarget, session.id);
+                });
+            } else {
+                menuBtn.disabled = true;
+                menuBtn.style.opacity = 0.5;
+                menuBtn.title = 'Options available for local sessions only';
+            }
         });
     }
 
@@ -697,6 +785,7 @@ How can I assist you today?`;
 
     saveCurrentSession() {
         if (!this.currentSession) return;
+        if (this.currentSession.source === 'backend') return; // do not persist backend sessions locally here
 
         const sessions = this.getChatSessions();
         const existingIndex = sessions.findIndex(s => s.id === this.currentSession.id);
