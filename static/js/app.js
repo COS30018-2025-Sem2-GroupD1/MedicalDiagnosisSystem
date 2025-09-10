@@ -1020,3 +1020,68 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
         window.medicalChatbot.setTheme('auto');
     }
 });
+
+// Ensure sidebar toggle works in mobile
+(function ensureSidebarToggle() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.getElementById('sidebarToggle');
+        if (toggle && sidebar) {
+            toggle.addEventListener('click', () => {
+                sidebar.classList.toggle('show');
+            });
+        }
+    });
+})();
+
+// Restore doctor profile modal opening
+(function wireDoctorModalOpen() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const doctorCard = document.getElementById('userProfile');
+        const userModal = document.getElementById('userModal');
+        const closeBtn = document.getElementById('userModalClose');
+        const cancelBtn = document.getElementById('userModalCancel');
+        if (doctorCard && userModal) {
+            doctorCard.addEventListener('click', () => userModal.classList.add('show'));
+        }
+        if (closeBtn) closeBtn.addEventListener('click', () => userModal.classList.remove('show'));
+        if (cancelBtn) cancelBtn.addEventListener('click', () => userModal.classList.remove('show'));
+        if (userModal) {
+            userModal.addEventListener('click', (e) => { if (e.target === userModal) userModal.classList.remove('show'); });
+        }
+    });
+})();
+
+// Ensure settings modal opens
+(function wireSettingsModal() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const settingsBtn = document.getElementById('settingsBtn');
+        const modal = document.getElementById('settingsModal');
+        const closeBtn = document.getElementById('settingsModalClose');
+        const cancelBtn = document.getElementById('settingsModalCancel');
+        if (settingsBtn && modal) settingsBtn.addEventListener('click', () => modal.classList.add('show'));
+        if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('show'));
+        if (cancelBtn) cancelBtn.addEventListener('click', () => modal.classList.remove('show'));
+        if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('show'); });
+    });
+})();
+
+// Add patient registration link under patient ID form if not present
+(function ensurePatientCreateLink() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const patientSection = document.querySelector('.patient-section');
+        const inputGroup = document.querySelector('.patient-input-group');
+        if (patientSection && inputGroup) {
+            let link = document.getElementById('createPatientLink');
+            if (!link) {
+                link = document.createElement('a');
+                link.id = 'createPatientLink';
+                link.href = '/static/patient.html';
+                link.className = 'patient-create-link';
+                link.title = 'Create new patient';
+                link.innerHTML = '<i class="fas fa-user-plus"></i>';
+                inputGroup.appendChild(link);
+            }
+        }
+    });
+})();

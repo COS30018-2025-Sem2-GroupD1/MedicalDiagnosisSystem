@@ -903,3 +903,30 @@ body {
     font-size: 0.8rem;
     color: var(--text-secondary);
 }
+
+/* Sidebar mobile behavior */
+@media (max-width: 1024px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        transform: translateX(-100%);
+        width: 85vw;
+    }
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    .main-content {
+        position: relative;
+        z-index: 1;
+    }
+    .sidebar-toggle {
+        display: inline-flex;
+    }
+}
+
+/* Loading overlay default hidden */
+.loading-overlay { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 3000; pointer-events: none; }
+.loading-overlay.show { display: flex; pointer-events: all; }
+.loading-spinner { display: grid; gap: 8px; color: #fff; text-align: center; }
