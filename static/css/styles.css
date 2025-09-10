@@ -912,10 +912,17 @@ body {
     border-radius: 6px;
     cursor: pointer;
 }
-
 .patient-load-btn:hover {
     background: var(--primary-hover);
 }
+.patient-create-link { 
+    display:inline-flex; align-items:center; 
+    justify-content:center; padding:8px 10px; 
+    border: 1px solid var(--border-color); 
+    border-radius:6px; color: var(--text-secondary); 
+    text-decoration:none; 
+}
+.patient-create-link:hover { background: var(--bg-tertiary); }
 
 .patient-status {
     margin-top: var(--spacing-sm);
