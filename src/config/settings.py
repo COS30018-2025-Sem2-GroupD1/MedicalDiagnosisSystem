@@ -1,6 +1,7 @@
 # config/settings.py
 
 class Settings:
+	"""Application-wide settings."""
 	# Memory settings
 	MAX_TITLE_LENGTH: int = 50
 	DEFAULT_TOP_K: int = 5
