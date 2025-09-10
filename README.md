@@ -38,6 +38,15 @@ A sophisticated AI-powered medical chatbot system with ChatGPT-like UI, multi-us
 - **Medical Disclaimers**: Appropriate warnings and disclaimers for medical information
 - **Export Functionality**: Export chat sessions for medical records or educational purposes
 
+## ✨ Recent Updates (Mongo-backed memory & patient context)
+- **Long-term memory in MongoDB**: Up to 20 latest QA summaries per patient are persisted for RAG continuity.
+- **Short-term cache**: Last 3 summaries are kept in an in-memory LRU for immediate context.
+- **Chat history persistence**: All chat messages are stored in MongoDB per session.
+- **Patient/Doctor context**:
+  - Frontend sidebar now includes a Patient ID input (8 digits).
+  - Backend accepts `patient_id` and `doctor_id` and saves data per patient with assigned doctor.
+- **Context retrieval**: Combines short-term cache (3) with long-term Mongo (20) for robust continuity.
+
 ## 🏗️ Architecture
 
 ### Core Components
@@ -93,6 +102,10 @@ MedicalDiagnosisSystem/
    echo "GEMINI_API_1=your_gemini_api_key_1" > .env
    echo "GEMINI_API_2=your_gemini_api_key_2" >> .env
    echo "GEMINI_API_3=your_gemini_api_key_3" >> .env
+   # MongoDB (required for persistence)
+   echo "MONGO_URI=your_mongodb_connection_string" >> .env
+   # Optional: override DB name (default: medicaldiagnosissystem)
+   echo "MONGO_DB=medicaldiagnosissystem" >> .env
    ```
 
 4. **Run the application**
@@ -107,13 +120,15 @@ MedicalDiagnosisSystem/
 
 ### Environment Variables
 - `GEMINI_API_1` through `GEMINI_API_5`: Gemini API keys for rotation
+- `MONGO_URI`: MongoDB connection string (Atlas or local)
+- `MONGO_DB`: MongoDB database name (default: `medicaldiagnosissystem`)
 - `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
 - `PORT`: Server port (default: 8000)
 
 ### Memory Settings
-- **LRU Capacity**: Default 50 QA summaries per user
+- **LRU Capacity (short-term cache)**: Default 3 QA summaries per patient/user (fast context)
+- **Long-term Memory**: Up to 20 persisted summaries per patient in MongoDB
 - **Max Sessions**: Default 20 sessions per user
-- **Session Timeout**: Configurable session expiration
 
 ### Embedding Model
 - **Default Model**: `all-MiniLM-L6-v2` (384 dimensions)
@@ -125,9 +140,10 @@ MedicalDiagnosisSystem/
 ### Getting Started
 1. **Access the Application**: Navigate to the provided URL
 2. **Create User Profile**: Click on your profile to set name, role, and specialty
-3. **Start New Chat**: Click "New Chat" to begin a conversation
-4. **Ask Medical Questions**: Type your medical queries in natural language
-5. **Manage Sessions**: Use the sidebar to switch between different chat sessions
+3. **Select Patient**: Enter an 8-digit Patient ID in the sidebar and press the patient icon or Enter
+4. **Start New Chat**: Click "New Chat" to begin a conversation
+5. **Ask Medical Questions**: Type your medical queries in natural language
+6. **Manage Sessions**: Use the sidebar to switch between different chat sessions
 
 ### User Roles
 - **Physician**: Full medical context with clinical guidance
@@ -143,12 +159,22 @@ MedicalDiagnosisSystem/
 - **Medical Disclaimers**: Appropriate warnings for medical information
 - **Responsive Design**: Works on all device sizes
 
+## 🔌 API Endpoints (selected)
+- `POST /chat`
+  - Body: `{ user_id, patient_id, doctor_id, session_id, message, user_role?, user_specialty?, title? }`
+  - Returns: `{ response, session_id, timestamp, medical_context? }`
+- `POST /sessions`
+  - Body: `{ user_id, patient_id, doctor_id, title? }`
+  - Returns: `{ session_id }`
+- `GET /patients/{patient_id}/sessions`: List sessions for a patient (Mongo)
+- `GET /sessions/{session_id}/messages`: List messages in a session (Mongo)
+
 ## 🔒 Security & Privacy
 
 ### Data Protection
-- **Local Storage**: User data stored locally in browser (no server persistence)
-- **Session Isolation**: Users can only access their own data
-- **No PII Storage**: Personal information not logged or stored
+- **MongoDB Persistence**: Chat history and long-term memory are stored in MongoDB keyed by `patient_id` with `doctor_id` attribution.
+- **Local Storage (UI)**: The sidebar may cache view state locally for UX; authoritative history is in MongoDB.
+- **PII Handling**: Ensure no sensitive PHI is logged; configure Mongo access securely.
 - **Medical Disclaimers**: Clear warnings about information limitations
 
 ### API Security
@@ -233,19 +259,19 @@ medical_diagnosis_system/
 ```
 
 ### Adding New Features
-1. **Backend**: Add new endpoints in `app.py`
-2. **Memory**: Extend memory system in `memo/memory.py`
+1. **Backend**: Add/extend endpoints under `src/api/routes`
+2. **Memory**: Extend cache logic in `src/core/memory/memory.py` and persistence in `src/data/mongodb.py`
 3. **Frontend**: Update UI components in `static/` files
 4. **Testing**: Add tests for new functionality
 
 ## 🚀 Deployment
 
 ### Production Considerations
-- **Environment Variables**: Secure API key management
+- **Environment Variables**: Secure API key and database management
 - **HTTPS**: Enable SSL/TLS for production
 - **Rate Limiting**: Implement request rate limiting
 - **Monitoring**: Add health checks and logging
-- **Database**: Consider persistent storage for production
+- **Database**: Ensure MongoDB backups and appropriate indexes
 
 ### Docker Deployment
 ```dockerfile
@@ -313,6 +339,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Common Issues
 - **API Keys**: Ensure Gemini API keys are properly set
+- **Database**: Ensure `MONGO_URI` is configured and reachable
 - **Dependencies**: Verify all requirements are installed
 - **Port Conflicts**: Check if port 8000 is available
 - **Memory Issues**: Monitor system resources
