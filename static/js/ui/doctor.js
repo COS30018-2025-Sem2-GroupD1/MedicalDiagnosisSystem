@@ -103,6 +103,22 @@ export function attachDoctorUI(app) {
 		app.updateUserDisplay();
 		app.hideModal('userModal');
 	};
+
+	// Doctor modal open/close wiring
+	document.addEventListener('DOMContentLoaded', () => {
+		const doctorCard = document.getElementById('userProfile');
+		const userModal = document.getElementById('userModal');
+		const closeBtn = document.getElementById('userModalClose');
+		const cancelBtn = document.getElementById('userModalCancel');
+		if (doctorCard && userModal) {
+			doctorCard.addEventListener('click', () => userModal.classList.add('show'));
+		}
+		if (closeBtn) closeBtn.addEventListener('click', () => userModal.classList.remove('show'));
+		if (cancelBtn) cancelBtn.addEventListener('click', () => userModal.classList.remove('show'));
+		if (userModal) {
+			userModal.addEventListener('click', (e) => { if (e.target === userModal) userModal.classList.remove('show'); });
+		}
+	});
 }
 
 

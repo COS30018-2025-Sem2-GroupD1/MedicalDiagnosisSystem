@@ -334,174 +334,10 @@ I'm here to help you with medical questions, diagnosis assistance, and healthcar
 How can I assist you today?`;
     }
 
-    async loadPatient() {
-        const input = document.getElementById('patientIdInput');
-        const status = document.getElementById('patientStatus');
-        const id = (input?.value || '').trim();
-        if (!/^\d{8}$/.test(id)) {
-            status.textContent = 'Invalid patient ID. Use 8 digits.';
-            status.style.color = 'var(--warning-color)';
-            return;
-        }
-        this.currentPatientId = id;
-        this.savePatientId();
-        status.textContent = `Patient: ${id}`;
-        status.style.color = 'var(--text-secondary)';
-        await this.fetchAndRenderPatientSessions();
-    }
-
 
     clearChatMessages() {
         const chatMessages = document.getElementById('chatMessages');
         chatMessages.innerHTML = '';
-    }
-
-    loadChatSessions() {
-        const sessionsContainer = document.getElementById('chatSessions');
-        sessionsContainer.innerHTML = '';
-
-        // Prefer backend sessions if a patient is selected and sessions are available
-        const sessions = (this.backendSessions && this.backendSessions.length > 0)
-            ? this.backendSessions
-            : this.getChatSessions();
-
-        if (sessions.length === 0) {
-            sessionsContainer.innerHTML = '<div class="no-sessions">No chat sessions yet</div>';
-            return;
-        }
-
-        sessions.forEach(session => {
-            const sessionElement = document.createElement('div');
-            sessionElement.className = `chat-session ${session.id === this.currentSession?.id ? 'active' : ''}`;
-            sessionElement.addEventListener('click', async () => {
-                if (session.source === 'backend') {
-                    this.currentSession = { ...session };
-                    await this.hydrateMessagesForSession(session.id);
-                } else {
-                this.loadChatSession(session.id);
-                }
-            });
-
-            const time = this.formatTime(session.lastActivity);
-
-            sessionElement.innerHTML = `
-                <div class="chat-session-row">
-                    <div class="chat-session-meta">
-                        <div class="chat-session-title">${session.title}</div>
-                        <div class="chat-session-time">${time}</div>
-                    </div>
-                    <div class="chat-session-actions">
-                        <button class="chat-session-menu" title="Options" aria-label="Options" data-session-id="${session.id}">
-                            <i class="fas fa-ellipsis-vertical"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            sessionsContainer.appendChild(sessionElement);
-
-            // Wire 3-dot menu (local sessions only for now)
-            const menuBtn = sessionElement.querySelector('.chat-session-menu');
-            if (session.source !== 'backend') {
-            menuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showSessionMenu(e.currentTarget, session.id);
-            });
-            } else {
-                menuBtn.disabled = true;
-                menuBtn.style.opacity = 0.5;
-                menuBtn.title = 'Options available for local sessions only';
-            }
-        });
-    }
-
-    showSessionMenu(anchorEl, sessionId) {
-        // Remove existing popover
-        document.querySelectorAll('.chat-session-menu-popover').forEach(p => p.remove());
-        const rect = anchorEl.getBoundingClientRect();
-        const pop = document.createElement('div');
-        pop.className = 'chat-session-menu-popover show';
-        pop.innerHTML = `
-            <div class="chat-session-menu-item" data-action="edit" data-session-id="${sessionId}"><i class="fas fa-pen"></i> Edit Name</div>
-            <div class="chat-session-menu-item" data-action="delete" data-session-id="${sessionId}"><i class="fas fa-trash"></i> Delete</div>
-        `;
-        document.body.appendChild(pop);
-        // Position near button
-        pop.style.top = `${rect.bottom + window.scrollY + 6}px`;
-        pop.style.left = `${rect.right + window.scrollX - pop.offsetWidth}px`;
-
-        const onDocClick = (ev) => {
-            if (!pop.contains(ev.target) && ev.target !== anchorEl) {
-                pop.remove();
-                document.removeEventListener('click', onDocClick);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', onDocClick), 0);
-
-        pop.querySelectorAll('.chat-session-menu-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                const action = item.getAttribute('data-action');
-                const id = item.getAttribute('data-session-id');
-                if (action === 'delete') {
-                    this.deleteChatSession(id);
-                } else if (action === 'edit') {
-                    this._pendingEditSessionId = id;
-                    const sessions = this.getChatSessions();
-                    const s = sessions.find(x => x.id === id);
-                    const input = document.getElementById('editSessionTitleInput');
-                    input.value = s ? s.title : '';
-                    this.showModal('editTitleModal');
-                }
-                pop.remove();
-            });
-        });
-    }
-
-    loadChatSession(sessionId) {
-        const sessions = this.getChatSessions();
-        const session = sessions.find(s => s.id === sessionId);
-
-        if (!session) return;
-
-        this.currentSession = session;
-
-        // Clear and reload messages
-        this.clearChatMessages();
-        session.messages.forEach(message => {
-            this.displayMessage(message);
-        });
-
-        // Update UI
-        this.updateChatTitle();
-        this.loadChatSessions();
-    }
-
-    getChatSessions() {
-        const sessions = localStorage.getItem(`chatSessions_${this.currentUser.id}`);
-        return sessions ? JSON.parse(sessions) : [];
-    }
-
-    saveCurrentSession() {
-        if (!this.currentSession) return;
-        if (this.currentSession.source === 'backend') return; // do not persist backend sessions locally here
-
-        const sessions = this.getChatSessions();
-        const existingIndex = sessions.findIndex(s => s.id === this.currentSession.id);
-
-        if (existingIndex >= 0) {
-            sessions[existingIndex] = { ...this.currentSession };
-        } else {
-            sessions.unshift(this.currentSession);
-        }
-
-        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
-    }
-
-    updateCurrentSession() {
-        if (this.currentSession) {
-            this.currentSession.lastActivity = new Date().toISOString();
-            this.saveCurrentSession();
-        }
     }
 
     updateChatTitle() {
@@ -511,47 +347,6 @@ How can I assist you today?`;
         } else {
             titleElement.textContent = 'Medical AI Assistant';
         }
-    }
-
-    deleteChatSession(sessionId) {
-        const sessions = this.getChatSessions();
-        const index = sessions.findIndex(s => s.id === sessionId);
-        if (index === -1) return;
-
-        const confirmDelete = confirm('Delete this chat session? This cannot be undone.');
-        if (!confirmDelete) return;
-
-        sessions.splice(index, 1);
-        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
-
-        // If deleting the current session, switch to another or clear view
-        if (this.currentSession && this.currentSession.id === sessionId) {
-            if (sessions.length > 0) {
-                this.currentSession = sessions[0];
-                this.clearChatMessages();
-                this.currentSession.messages.forEach(m => this.displayMessage(m));
-                this.updateChatTitle();
-            } else {
-                this.currentSession = null;
-                this.clearChatMessages();
-                this.updateChatTitle();
-            }
-        }
-
-        this.loadChatSessions();
-    }
-
-    renameChatSession(sessionId, newTitle) {
-        const sessions = this.getChatSessions();
-        const idx = sessions.findIndex(s => s.id === sessionId);
-        if (idx === -1) return;
-        sessions[idx] = { ...sessions[idx], title: newTitle };
-        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
-        if (this.currentSession && this.currentSession.id === sessionId) {
-            this.currentSession.title = newTitle;
-            this.updateChatTitle();
-        }
-        this.loadChatSessions();
     }
 
     showSettingsModal() {
@@ -608,63 +403,6 @@ How can I assist you today?`;
     }
 }
 
-// Patient modal open
-document.addEventListener('DOMContentLoaded', () => {
-    const profileBtn = document.getElementById('patientMenuBtn');
-    const modal = document.getElementById('patientModal');
-    const closeBtn = document.getElementById('patientModalClose');
-    const logoutBtn = document.getElementById('patientLogoutBtn');
-    const createBtn = document.getElementById('patientCreateBtn');
-
-    if (profileBtn && modal) {
-        profileBtn.addEventListener('click', async () => {
-            const pid = window.medicalChatbot?.currentPatientId;
-            if (pid) {
-                try {
-                    const resp = await fetch(`/patients/${pid}`);
-                    if (resp.ok) {
-                        const p = await resp.json();
-                        const name = p.name || 'Unknown';
-                        const age = typeof p.age === 'number' ? p.age : '-';
-                        const sex = p.sex || '-';
-                        const meds = Array.isArray(p.medications) && p.medications.length > 0 ? p.medications.join(', ') : '-';
-                        document.getElementById('patientSummary').textContent = `${name} — ${sex}, ${age}`;
-                        document.getElementById('patientMedications').textContent = meds;
-                        document.getElementById('patientAssessment').textContent = p.past_assessment_summary || '-';
-                    }
-                } catch (e) {
-                    console.error('Failed to load patient profile', e);
-                }
-            }
-            modal.classList.add('show');
-        });
-    }
-    if (closeBtn && modal) {
-        closeBtn.addEventListener('click', () => modal.classList.remove('show'));
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('show'); });
-    }
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            if (confirm('Log out current patient?')) {
-                if (window.medicalChatbot) {
-                    window.medicalChatbot.currentPatientId = null;
-                    localStorage.removeItem('medicalChatbotPatientId');
-                    const status = document.getElementById('patientStatus');
-                    if (status) { status.textContent = 'No patient selected'; status.style.color = 'var(--text-secondary)'; }
-                    const input = document.getElementById('patientIdInput');
-                    if (input) input.value = '';
-                    modal.classList.remove('show');
-                }
-            }
-        });
-    }
-    if (createBtn) {
-        createBtn.addEventListener('click', () => {
-            modal.classList.remove('show');
-        });
-    }
-});
-
 // Handle system theme changes
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     const themeSelect = document.getElementById('themeSelect');
@@ -686,23 +424,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
     });
 })();
 
-// Restore doctor profile modal opening
-(function wireDoctorModalOpen() {
-    document.addEventListener('DOMContentLoaded', () => {
-        const doctorCard = document.getElementById('userProfile');
-        const userModal = document.getElementById('userModal');
-        const closeBtn = document.getElementById('userModalClose');
-        const cancelBtn = document.getElementById('userModalCancel');
-        if (doctorCard && userModal) {
-            doctorCard.addEventListener('click', () => userModal.classList.add('show'));
-        }
-        if (closeBtn) closeBtn.addEventListener('click', () => userModal.classList.remove('show'));
-        if (cancelBtn) cancelBtn.addEventListener('click', () => userModal.classList.remove('show'));
-        if (userModal) {
-            userModal.addEventListener('click', (e) => { if (e.target === userModal) userModal.classList.remove('show'); });
-        }
-    });
-})();
 
 // Ensure settings modal opens
 (function wireSettingsModal() {
