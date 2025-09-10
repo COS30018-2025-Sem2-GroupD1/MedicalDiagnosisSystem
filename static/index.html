@@ -26,12 +26,24 @@
                     </div>
                     <div class="user-info">
                         <div class="user-name" id="userName">Anonymous</div>
-                        <div class="user-status">Medical Professional</div>
+                        <div class="user-status" id="userStatus">Medical Professional</div>
                     </div>
                     <button class="user-menu-btn" id="userMenuBtn">
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
                 </div>
+            </div>
+
+            <!-- Patient Login Section -->
+            <div class="patient-section">
+                <div class="patient-header">Patient</div>
+                <div class="patient-input-group">
+                    <input type="text" id="patientIdInput" class="patient-input" placeholder="Enter 8-digit Patient ID" maxlength="8" inputmode="numeric" pattern="\\d{8}">
+                    <button class="patient-load-btn" id="loadPatientBtn" title="Load Patient">
+                        <i class="fas fa-user-injured"></i>
+                    </button>
+                </div>
+                <div class="patient-status" id="patientStatus">No patient selected</div>
             </div>
 
             <div class="chat-sessions" id="chatSessions">

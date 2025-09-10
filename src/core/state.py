@@ -19,7 +19,8 @@ class MedicalState:
 
 	def initialize(self):
 		"""Initialize all core components"""
-		self.memory_system = MemoryLRU(capacity=50, max_sessions_per_user=20)
+		# Keep only 3 short-term summaries/messages in cache
+		self.memory_system = MemoryLRU(capacity=3, max_sessions_per_user=20)
 		self.embedding_client = create_embedding_client("all-MiniLM-L6-v2", dimension=384)
 		self.history_manager = MedicalHistoryManager(self.memory_system, self.embedding_client)
 		self.gemini_rotator = APIKeyRotator("GEMINI_API_", max_slots=5)
@@ -30,6 +31,7 @@ class MedicalState:
 		if cls._instance is None:
 			cls._instance = MedicalState()
 		return cls._instance
+
 
 def get_state() -> MedicalState:
 	"""FastAPI dependency for getting application state"""

@@ -6,6 +6,7 @@ from datetime import datetime
 from src.core.state import MedicalState, get_state
 from src.models.chat import SessionRequest
 from src.utils.logger import get_logger
+from src.data.mongodb import list_patient_sessions, list_session_messages, ensure_session
 
 logger = get_logger("SESSION_ROUTES", __name__)
 router = APIRouter()
@@ -15,9 +16,11 @@ async def create_chat_session(
 	request: SessionRequest,
 	state: MedicalState = Depends(get_state)
 ):
-	"""Create a new chat session"""
+	"""Create a new chat session (cache + Mongo)"""
 	try:
 		session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
+		# Also ensure in Mongo with patient/doctor
+		ensure_session(session_id=session_id, patient_id=request.patient_id, doctor_id=request.doctor_id, title=request.title or "New Chat")
 		return {"session_id": session_id, "message": "Session created successfully"}
 	except Exception as e:
 		logger.error(f"Error creating session: {e}")
@@ -28,7 +31,7 @@ async def get_chat_session(
 	session_id: str,
 	state: MedicalState = Depends(get_state)
 ):
-	"""Get chat session details and messages"""
+	"""Get session from cache (for quick preview)"""
 	try:
 		session = state.memory_system.get_session(session_id)
 		if not session:
@@ -50,6 +53,30 @@ async def get_chat_session(
 		raise
 	except Exception as e:
 		logger.error(f"Error getting session: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/patients/{patient_id}/sessions")
+async def list_sessions_for_patient(patient_id: str):
+	"""List sessions for a patient from Mongo"""
+	try:
+		return {"sessions": list_patient_sessions(patient_id)}
+	except Exception as e:
+		logger.error(f"Error listing sessions: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/sessions/{session_id}/messages")
+async def list_messages_for_session(session_id: str, limit: int | None = None):
+	"""List messages for a session from Mongo"""
+	try:
+		msgs = list_session_messages(session_id, limit=limit)
+		# ensure JSON-friendly timestamps
+		for m in msgs:
+			if isinstance(m.get("timestamp"), datetime):
+				m["timestamp"] = m["timestamp"].isoformat()
+			m["_id"] = str(m["_id"]) if "_id" in m else None
+		return {"messages": msgs}
+	except Exception as e:
+		logger.error(f"Error listing messages: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/sessions/{session_id}")

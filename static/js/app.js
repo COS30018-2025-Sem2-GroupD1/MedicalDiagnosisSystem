@@ -2,7 +2,8 @@
 
 class MedicalChatbotApp {
     constructor() {
-        this.currentUser = null;
+        this.currentUser = null; // doctor
+        this.currentPatientId = null;
         this.currentSession = null;
         this.memory = new Map(); // In-memory storage for demo
         this.isLoading = false;
@@ -30,6 +31,20 @@ class MedicalChatbotApp {
         document.getElementById('newChatBtn').addEventListener('click', () => {
             this.startNewChat();
         });
+
+        // Patient load button
+        const loadBtn = document.getElementById('loadPatientBtn');
+        if (loadBtn) {
+            loadBtn.addEventListener('click', () => this.loadPatient());
+        }
+        const patientInput = document.getElementById('patientIdInput');
+        if (patientInput) {
+            patientInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    this.loadPatient();
+                }
+            });
+        }
 
         // Send button and input
         document.getElementById('sendBtn').addEventListener('click', () => {
@@ -267,11 +282,48 @@ I'm here to help you with medical questions, diagnosis assistance, and healthcar
 How can I assist you today?`;
     }
 
+    async loadPatient() {
+        const input = document.getElementById('patientIdInput');
+        const status = document.getElementById('patientStatus');
+        const id = (input?.value || '').trim();
+        if (!/^\d{8}$/.test(id)) {
+            status.textContent = 'Invalid patient ID. Use 8 digits.';
+            status.style.color = 'var(--warning-color)';
+            return;
+        }
+        // For now we accept ID and load sessions from backend
+        this.currentPatientId = id;
+        status.textContent = `Patient: ${id}`;
+        status.style.color = 'var(--text-secondary)';
+        await this.fetchAndRenderPatientSessions();
+    }
+
+    async fetchAndRenderPatientSessions() {
+        if (!this.currentPatientId) return;
+        try {
+            const resp = await fetch(`/sessions/patients/${this.currentPatientId}/sessions`.replace('/sessions/', '/sessions/'));
+            if (resp.ok) {
+                const data = await resp.json();
+                // Map to sidebar session cards if needed. For now, rely on local sessions until full backend sync is added.
+                // Future: hydrate local UI from data.sessions
+            }
+        } catch (e) {
+            console.error('Failed to load patient sessions', e);
+        }
+        this.loadChatSessions();
+    }
+
     async sendMessage() {
         const input = document.getElementById('chatInput');
         const message = input.value.trim();
 
         if (!message || this.isLoading) return;
+        if (!this.currentPatientId) {
+            const status = document.getElementById('patientStatus');
+            status.textContent = 'Select a patient before chatting.';
+            status.style.color = 'var(--warning-color)';
+            return;
+        }
 
         // Clear input
         input.value = '';
@@ -322,6 +374,8 @@ How can I assist you today?`;
                 },
                 body: JSON.stringify({
                 user_id: this.currentUser.id,
+                patient_id: this.currentPatientId,
+                doctor_id: this.currentUser.id,
                 session_id: this.currentSession?.id || 'default',
                 message: message,
                 user_role: this.currentUser.role,
@@ -344,7 +398,8 @@ How can I assist you today?`;
                 message: error.message,
                 stack: error.stack,
                 user: this.currentUser,
-                session: this.currentSession
+                session: this.currentSession,
+                patientId: this.currentPatientId
             });
 
             // Only return mock response if it's a network error, not a server error

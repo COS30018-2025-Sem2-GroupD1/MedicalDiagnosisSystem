@@ -16,6 +16,7 @@ from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
 from src.utils.logger import get_logger
+import os
 
 logger = get_logger("MONGO")
 
@@ -32,8 +33,7 @@ def get_database() -> Database:
 	"""Get database instance with connection management"""
 	global _mongo_client
 	if _mongo_client is None:
-		# TODO This needs to use an environment variable when deployed
-		CONNECTION_STRING = "mongodb://127.0.0.1:27017/"
+		CONNECTION_STRING = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/")
 		try:
 			logger.info("Initializing MongoDB connection")
 			_mongo_client = MongoClient(CONNECTION_STRING)
@@ -41,13 +41,14 @@ def get_database() -> Database:
 			logger.error(f"Failed to connect to MongoDB: {str(e)}")
 			# Pass the error down, code that calls this function should handle it
 			raise e
-	return _mongo_client['medicaldiagnosissystem']
+	db_name = os.getenv("MONGO_DB", "medicaldiagnosissystem")
+	return _mongo_client[db_name]
 
 def close_connection():
 	"""Close MongoDB connection"""
 	global _mongo_client
 	if _mongo_client is not None:
-		logger.info("Closing MongoDB connection")
+		# Close the connection and reset the client
 		_mongo_client.close()
 		_mongo_client = None
 
@@ -251,3 +252,114 @@ def backup_collection(collection_name: str) -> str:
 
 	logger.info(f"Created backup {backup_name} with {doc_count} documents")
 	return backup_name
+
+# New: Chat and Medical Memory Persistence Helpers
+
+CHAT_MESSAGES_COLLECTION = "chat_messages"
+MEDICAL_MEMORY_COLLECTION = "medical_memory"
+PATIENTS_COLLECTION = "patients"
+
+
+def ensure_session(
+	*,
+	session_id: str,
+	patient_id: str,
+	doctor_id: str,
+	title: str,
+	last_activity: datetime | None = None,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> None:
+	collection = get_collection(collection_name)
+	now = datetime.now(timezone.utc)
+	collection.update_one(
+		{"session_id": session_id},
+		{"$set": {
+			"session_id": session_id,
+			"patient_id": patient_id,
+			"doctor_id": doctor_id,
+			"title": title,
+			"last_activity": (last_activity or now),
+			"updated_at": now
+		}, "$setOnInsert": {"created_at": now}},
+		upsert=True
+	)
+
+
+def save_chat_message(
+	*,
+	session_id: str,
+	patient_id: str,
+	doctor_id: str,
+	role: str,
+	content: str,
+	timestamp: datetime | None = None,
+	collection_name: str = CHAT_MESSAGES_COLLECTION
+) -> ObjectId:
+	collection = get_collection(collection_name)
+	ts = timestamp or datetime.now(timezone.utc)
+	doc = {
+		"session_id": session_id,
+		"patient_id": patient_id,
+		"doctor_id": doctor_id,
+		"role": role,
+		"content": content,
+		"timestamp": ts,
+		"created_at": ts
+	}
+	result = collection.insert_one(doc)
+	return result.inserted_id
+
+
+def list_session_messages(
+	session_id: str,
+	/,
+	*,
+	limit: int | None = None,
+	collection_name: str = CHAT_MESSAGES_COLLECTION
+) -> list[dict[str, Any]]:
+	collection = get_collection(collection_name)
+	cursor = collection.find({"session_id": session_id}).sort("timestamp", ASCENDING)
+	if limit is not None:
+		cursor = cursor.limit(limit)
+	return list(cursor)
+
+
+def save_memory_summary(
+	*,
+	patient_id: str,
+	doctor_id: str,
+	summary: str,
+	created_at: datetime | None = None,
+	collection_name: str = MEDICAL_MEMORY_COLLECTION
+) -> ObjectId:
+	collection = get_collection(collection_name)
+	ts = created_at or datetime.now(timezone.utc)
+	result = collection.insert_one({
+		"patient_id": patient_id,
+		"doctor_id": doctor_id,
+		"summary": summary,
+		"created_at": ts
+	})
+	return result.inserted_id
+
+
+def get_recent_memory_summaries(
+	patient_id: str,
+	/,
+	*,
+	limit: int = 20,
+	collection_name: str = MEDICAL_MEMORY_COLLECTION
+) -> list[str]:
+	collection = get_collection(collection_name)
+	docs = list(collection.find({"patient_id": patient_id}).sort("created_at", DESCENDING).limit(limit))
+	return [d.get("summary", "") for d in docs]
+
+
+def list_patient_sessions(
+	patient_id: str,
+	/,
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> list[dict[str, Any]]:
+	collection = get_collection(collection_name)
+	return list(collection.find({"patient_id": patient_id}).sort("last_activity", DESCENDING))

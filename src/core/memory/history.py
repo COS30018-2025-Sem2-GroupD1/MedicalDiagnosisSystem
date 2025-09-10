@@ -4,14 +4,16 @@ import json
 from typing import Any
 
 import numpy as np
+from datetime import datetime, timezone
 
 from src.services.nvidia import nvidia_chat
 from src.services.summariser import (summarise_qa_with_gemini,
                                      summarise_qa_with_nvidia)
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import get_logger
+from src.data.mongodb import save_memory_summary, save_chat_message, ensure_session, get_recent_memory_summaries
 
-logger = get_logger("RAG", __name__)
+logger = get_logger("MED_HISTORY")
 
 def _safe_json(s: str) -> Any:
 	try:
@@ -91,9 +93,9 @@ class MedicalHistoryManager:
 		self.memory = memory
 		self.embedder = embedder
 
-	async def process_medical_exchange(self, user_id: str, session_id: str, question: str, answer: str, gemini_rotator, nvidia_rotator=None) -> str:
+	async def process_medical_exchange(self, user_id: str, session_id: str, question: str, answer: str, gemini_rotator, nvidia_rotator=None, *, patient_id: str | None = None, doctor_id: str | None = None, session_title: str | None = None) -> str:
 		"""
-		Process a medical Q&A exchange and store it in memory
+		Process a medical Q&A exchange and store it in memory and MongoDB
 		"""
 		try:
 			# Check if we have valid API keys
@@ -117,12 +119,20 @@ class MedicalHistoryManager:
 					logger.warning(f"Failed to create AI summary: {e}")
 					summary = f"q: {question}\na: {answer}"
 
-			# Store in memory
-			self.memory.add(user_id, summary)
+			# Short-term cache under patient_id when available
+			cache_key = patient_id or user_id
+			self.memory.add(cache_key, summary)
 
-			# Add to session history
+			# Add to session history in cache
 			self.memory.add_message_to_session(session_id, "user", question)
 			self.memory.add_message_to_session(session_id, "assistant", answer)
+
+			# Persist to MongoDB with patient/doctor context
+			if patient_id and doctor_id:
+				ensure_session(session_id=session_id, patient_id=patient_id, doctor_id=doctor_id, title=session_title or "New Chat", last_activity=datetime.now(timezone.utc))
+				save_chat_message(session_id=session_id, patient_id=patient_id, doctor_id=doctor_id, role="user", content=question)
+				save_chat_message(session_id=session_id, patient_id=patient_id, doctor_id=doctor_id, role="assistant", content=answer)
+				save_memory_summary(patient_id=patient_id, doctor_id=doctor_id, summary=summary)
 
 			# Update session title if it's the first message
 			session = self.memory.get_session(session_id)
@@ -137,18 +147,50 @@ class MedicalHistoryManager:
 			logger.error(f"Error processing medical exchange: {e}")
 			# Fallback: store without summary
 			summary = f"q: {question}\na: {answer}"
-			self.memory.add(user_id, summary)
+			cache_key = patient_id or user_id
+			self.memory.add(cache_key, summary)
 			self.memory.add_message_to_session(session_id, "user", question)
 			self.memory.add_message_to_session(session_id, "assistant", answer)
 			return summary
 
-	def get_conversation_context(self, user_id: str, session_id: str, question: str) -> str:
+	def get_conversation_context(self, user_id: str, session_id: str, question: str, *, patient_id: str | None = None) -> str:
 		"""
-		Get relevant conversation context for a new question
+		Get relevant conversation context combining short-term cache (3) and long-term Mongo (20)
 		"""
-		return self.memory.get_medical_context(user_id, session_id, question)
+		# Short-term summaries
+		cache_key = patient_id or user_id
+		recent_qa = self.memory.recent(cache_key, 3)
 
-	def get_user_medical_history(self, user_id: str, limit: int = 10) -> list[str]:
+		# Long-term summaries from Mongo (exclude ones already likely in cache by time order)
+		long_term = []
+		if patient_id:
+			try:
+				long_term = get_recent_memory_summaries(patient_id, limit=20)
+			except Exception as e:
+				logger.warning(f"Failed to fetch long-term memory: {e}")
+
+		# Get current session messages for context
+		session = self.memory.get_session(session_id)
+		session_context = ""
+		if session:
+			recent_messages = session.get_messages(10)
+			session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
+
+		# Combine context
+		context_parts = []
+		combined = []
+		if long_term:
+			combined.extend(long_term[::-1])  # oldest to newest within limit
+		if recent_qa:
+			combined.extend(recent_qa[::-1])
+		if combined:
+			context_parts.append("Recent medical context:\n" + "\n".join(combined[-20:]))
+		if session_context:
+			context_parts.append("Current conversation:\n" + session_context)
+
+		return "\n\n".join(context_parts) if context_parts else ""
+
+	def get_user_medical_history(self, user_id: str, limit: int = 20) -> list[str]:
 		"""
 		Get user's medical history (QA summaries)
 		"""
