@@ -2,6 +2,7 @@
 import { attachUIHandlers } from './ui/handlers.js';
 import { attachDoctorUI } from './ui/doctor.js';
 import { attachPatientUI } from './ui/patient.js';
+import { attachSettingsUI } from './ui/settings.js';
 import { attachSessionsUI } from './chat/sessions.js';
 import { attachMessagingUI } from './chat/messaging.js';
 
@@ -24,6 +25,7 @@ class MedicalChatbotApp {
         // Attach specialized UIs
         attachDoctorUI(this);
         attachPatientUI(this);
+        attachSettingsUI(this);
         attachSessionsUI(this);
         attachMessagingUI(this);
         this.setupEventListeners();
@@ -87,8 +89,6 @@ class MedicalChatbotApp {
         document.getElementById('newChatBtn').addEventListener('click', () => {
             this.startNewChat();
         });
-
-        // Patient handlers moved to ui/patient.js
 
         // Send button and input
         document.getElementById('sendBtn').addEventListener('click', () => {
@@ -212,56 +212,6 @@ class MedicalChatbotApp {
         this.updateUserDisplay();
     }
 
-    loadUserPreferences() {
-        const preferences = localStorage.getItem('medicalChatbotPreferences');
-        if (preferences) {
-            const prefs = JSON.parse(preferences);
-            this.setTheme(prefs.theme || 'auto');
-            this.setFontSize(prefs.fontSize || 'medium');
-        }
-    }
-
-    setupTheme() {
-        // Check system preference
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            this.setTheme('auto');
-        }
-    }
-
-    setTheme(theme) {
-        const root = document.documentElement;
-
-        if (theme === 'auto') {
-            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-        } else {
-            root.setAttribute('data-theme', theme);
-        }
-
-        // Update select element
-        document.getElementById('themeSelect').value = theme;
-
-        // Save preference
-        this.savePreferences();
-    }
-
-    setFontSize(size) {
-        const root = document.documentElement;
-        root.style.fontSize = size === 'small' ? '14px' : size === 'large' ? '18px' : '16px';
-
-        // Save preference
-        this.savePreferences();
-    }
-
-    savePreferences() {
-        const preferences = {
-            theme: document.getElementById('themeSelect').value,
-            fontSize: document.getElementById('fontSize').value,
-            autoSave: document.getElementById('autoSave').checked,
-            notifications: document.getElementById('notifications').checked
-        };
-        localStorage.setItem('medicalChatbotPreferences', JSON.stringify(preferences));
-    }
 
     startNewChat() {
         if (this.currentSession) {
@@ -374,19 +324,6 @@ How can I assist you today?`;
         this.hideModal('settingsModal');
     }
 
-    showLoading(show) {
-        this.isLoading = show;
-        const overlay = document.getElementById('loadingOverlay');
-        const sendBtn = document.getElementById('sendBtn');
-
-        if (show) {
-            overlay.classList.add('show');
-            sendBtn.disabled = true;
-        } else {
-            overlay.classList.remove('show');
-            sendBtn.disabled = false;
-        }
-    }
 
     updateUserDisplay() {
         document.getElementById('userName').textContent = this.currentUser.name;
@@ -421,21 +358,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
                 sidebar.classList.toggle('show');
             });
         }
-    });
-})();
-
-
-// Ensure settings modal opens
-(function wireSettingsModal() {
-    document.addEventListener('DOMContentLoaded', () => {
-        const settingsBtn = document.getElementById('settingsBtn');
-        const modal = document.getElementById('settingsModal');
-        const closeBtn = document.getElementById('settingsModalClose');
-        const cancelBtn = document.getElementById('settingsModalCancel');
-        if (settingsBtn && modal) settingsBtn.addEventListener('click', () => modal.classList.add('show'));
-        if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('show'));
-        if (cancelBtn) cancelBtn.addEventListener('click', () => modal.classList.remove('show'));
-        if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('show'); });
     });
 })();
 
