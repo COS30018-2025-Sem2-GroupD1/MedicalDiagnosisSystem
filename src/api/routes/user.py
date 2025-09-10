@@ -64,3 +64,74 @@ async def get_user_profile(
 	except Exception as e:
 		logger.error(f"Error getting user profile: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
+
+# -------------------- Patient APIs --------------------
+from pydantic import BaseModel
+from src.data.mongodb import get_patient_by_id, create_patient, update_patient_profile
+
+class PatientCreateRequest(BaseModel):
+	name: str
+	age: int
+	sex: str
+	address: str | None = None
+	phone: str | None = None
+	email: str | None = None
+	medications: list[str] | None = None
+	past_assessment_summary: str | None = None
+	assigned_doctor_id: str | None = None
+
+@router.get("/patients/{patient_id}")
+async def get_patient(patient_id: str):
+	try:
+		patient = get_patient_by_id(patient_id)
+		if not patient:
+			raise HTTPException(status_code=404, detail="Patient not found")
+		patient["_id"] = str(patient.get("_id")) if patient.get("_id") else None
+		return patient
+	except HTTPException:
+		raise
+	except Exception as e:
+		logger.error(f"Error getting patient: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/patients")
+async def create_patient_profile(req: PatientCreateRequest):
+	try:
+		patient = create_patient(
+			name=req.name,
+			age=req.age,
+			sex=req.sex,
+			address=req.address,
+			phone=req.phone,
+			email=req.email,
+			medications=req.medications,
+			past_assessment_summary=req.past_assessment_summary,
+			assigned_doctor_id=req.assigned_doctor_id
+		)
+		patient["_id"] = str(patient.get("_id")) if patient.get("_id") else None
+		return patient
+	except Exception as e:
+		logger.error(f"Error creating patient: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+class PatientUpdateRequest(BaseModel):
+	name: str | None = None
+	age: int | None = None
+	sex: str | None = None
+	address: str | None = None
+	phone: str | None = None
+	email: str | None = None
+	medications: list[str] | None = None
+	past_assessment_summary: str | None = None
+	assigned_doctor_id: str | None = None
+
+@router.patch("/patients/{patient_id}")
+async def update_patient(patient_id: str, req: PatientUpdateRequest):
+	try:
+		modified = update_patient_profile(patient_id, {k: v for k, v in req.model_dump().items() if v is not None})
+		if modified == 0:
+			return {"message": "No changes"}
+		return {"message": "Updated"}
+	except Exception as e:
+		logger.error(f"Error updating patient: {e}")
+		raise HTTPException(status_code=500, detail=str(e))

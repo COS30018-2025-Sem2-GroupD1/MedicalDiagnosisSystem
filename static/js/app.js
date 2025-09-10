@@ -955,9 +955,62 @@ How can I assist you today?`;
     }
 }
 
-// Initialize the app when DOM is loaded
+// Add near setupEventListeners inside the class methods where others are wired
+// Patient modal open
 document.addEventListener('DOMContentLoaded', () => {
-    window.medicalChatbot = new MedicalChatbotApp();
+    const profileBtn = document.getElementById('patientMenuBtn');
+    const modal = document.getElementById('patientModal');
+    const closeBtn = document.getElementById('patientModalClose');
+    const logoutBtn = document.getElementById('patientLogoutBtn');
+    const createBtn = document.getElementById('patientCreateBtn');
+
+    if (profileBtn && modal) {
+        profileBtn.addEventListener('click', async () => {
+            const pid = window.medicalChatbot?.currentPatientId;
+            if (pid) {
+                try {
+                    const resp = await fetch(`/patients/${pid}`);
+                    if (resp.ok) {
+                        const p = await resp.json();
+                        const name = p.name || 'Unknown';
+                        const age = typeof p.age === 'number' ? p.age : '-';
+                        const sex = p.sex || '-';
+                        const meds = Array.isArray(p.medications) && p.medications.length > 0 ? p.medications.join(', ') : '-';
+                        document.getElementById('patientSummary').textContent = `${name} — ${sex}, ${age}`;
+                        document.getElementById('patientMedications').textContent = meds;
+                        document.getElementById('patientAssessment').textContent = p.past_assessment_summary || '-';
+                    }
+                } catch (e) {
+                    console.error('Failed to load patient profile', e);
+                }
+            }
+            modal.classList.add('show');
+        });
+    }
+    if (closeBtn && modal) {
+        closeBtn.addEventListener('click', () => modal.classList.remove('show'));
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('show'); });
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (confirm('Log out current patient?')) {
+                if (window.medicalChatbot) {
+                    window.medicalChatbot.currentPatientId = null;
+                    localStorage.removeItem('medicalChatbotPatientId');
+                    const status = document.getElementById('patientStatus');
+                    if (status) { status.textContent = 'No patient selected'; status.style.color = 'var(--text-secondary)'; }
+                    const input = document.getElementById('patientIdInput');
+                    if (input) input.value = '';
+                    modal.classList.remove('show');
+                }
+            }
+        });
+    }
+    if (createBtn) {
+        createBtn.addEventListener('click', () => {
+            modal.classList.remove('show');
+        });
+    }
 });
 
 // Handle system theme changes

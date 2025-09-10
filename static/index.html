@@ -38,7 +38,7 @@
             <div class="patient-section">
                 <div class="patient-header">Patient</div>
                 <div class="patient-input-group">
-                    <input type="text" id="patientIdInput" class="patient-input" placeholder="Enter 8-digit Patient ID" maxlength="8" inputmode="numeric" pattern="\\d{8}">
+                    <input type="text" id="patientIdInput" class="patient-input" placeholder="Enter 8-digit Patient ID" maxlength="8" inputmode="numeric" pattern="\d{8}">
                     <button class="patient-load-btn" id="loadPatientBtn" title="Load Patient">
                         <i class="fas fa-user-injured"></i>
                     </button>
@@ -134,7 +134,7 @@
     <div class="modal" id="userModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>User Profile</h3>
+                <h3>Doctor Profile</h3>
                 <button class="modal-close" id="userModalClose">&times;</button>
             </div>
             <div class="modal-body">
@@ -222,6 +222,27 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="editTitleModalCancel">Cancel</button>
                 <button class="btn btn-primary" id="editTitleModalSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Modal -->
+    <div class="modal" id="patientModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Patient Profile</h3>
+                <button class="modal-close" id="patientModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="patient-summary" id="patientSummary"></div>
+                <div class="patient-details">
+                    <div><strong>Medications:</strong> <span id="patientMedications">-</span></div>
+                    <div><strong>Past Assessment:</strong> <span id="patientAssessment">-</span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="patientLogoutBtn" class="btn-danger">Log out patient</button>
+                <a id="patientCreateBtn" class="btn-primary" href="/static/patient.html">Create new patient</a>
             </div>
         </div>
     </div>

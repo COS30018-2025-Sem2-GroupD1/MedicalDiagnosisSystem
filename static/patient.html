@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Patient</title>
+    <link rel="stylesheet" href="/static/css/patient.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Create Patient</h1>
+        <form id="patientForm">
+            <div class="grid">
+                <label>Name<input type="text" id="name" required></label>
+                <label>Age<input type="number" id="age" min="0" max="130" required></label>
+                <label>Sex
+                    <select id="sex" required>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+                <label>Phone<input type="tel" id="phone"></label>
+                <label>Email<input type="email" id="email"></label>
+                <label>Address<input type="text" id="address"></label>
+                <label>Active Medications<textarea id="medications" placeholder="One per line"></textarea></label>
+                <label>Past Assessment Summary<textarea id="summary"></textarea></label>
+            </div>
+            <div class="actions">
+                <button type="button" id="cancelBtn" class="secondary">Cancel</button>
+                <button type="submit" class="primary">Create</button>
+            </div>
+        </form>
+        <div id="result" class="result"></div>
+    </div>
+    <script src="/static/js/patient.js"></script>
+</body>
+</html>

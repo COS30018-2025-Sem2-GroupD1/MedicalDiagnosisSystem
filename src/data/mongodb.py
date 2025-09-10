@@ -363,3 +363,58 @@ def list_patient_sessions(
 ) -> list[dict[str, Any]]:
 	collection = get_collection(collection_name)
 	return list(collection.find({"patient_id": patient_id}).sort("last_activity", DESCENDING))
+
+# Patients helpers
+
+def _generate_patient_id() -> str:
+	# Generate zero-padded 8-digit ID
+	import random
+	return f"{random.randint(0, 99999999):08d}"
+
+def get_patient_by_id(patient_id: str) -> dict[str, Any] | None:
+	collection = get_collection(PATIENTS_COLLECTION)
+	return collection.find_one({"patient_id": patient_id})
+
+def create_patient(
+	*,
+	name: str,
+	age: int,
+	sex: str,
+	address: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
+	medications: list[str] | None = None,
+	past_assessment_summary: str | None = None,
+	assigned_doctor_id: str | None = None
+) -> dict[str, Any]:
+	collection = get_collection(PATIENTS_COLLECTION)
+	now = datetime.now(timezone.utc)
+	# Ensure unique 8-digit id
+	for _ in range(10):
+		pid = _generate_patient_id()
+		if not collection.find_one({"patient_id": pid}):
+			break
+	else:
+		raise RuntimeError("Failed to generate unique patient ID")
+	doc = {
+		"patient_id": pid,
+		"name": name,
+		"age": age,
+		"sex": sex,
+		"address": address,
+		"phone": phone,
+		"email": email,
+		"medications": medications or [],
+		"past_assessment_summary": past_assessment_summary or "",
+		"assigned_doctor_id": assigned_doctor_id,
+		"created_at": now,
+		"updated_at": now
+	}
+	collection.insert_one(doc)
+	return doc
+
+def update_patient_profile(patient_id: str, updates: dict[str, Any]) -> int:
+	collection = get_collection(PATIENTS_COLLECTION)
+	updates["updated_at"] = datetime.now(timezone.utc)
+	result = collection.update_one({"patient_id": patient_id}, {"$set": updates})
+	return result.modified_count
