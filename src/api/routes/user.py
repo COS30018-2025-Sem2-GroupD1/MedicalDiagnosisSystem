@@ -83,6 +83,7 @@ class PatientCreateRequest(BaseModel):
 @router.get("/patients/{patient_id}")
 async def get_patient(patient_id: str):
 	try:
+		logger.info(f"GET /patients/{patient_id}")
 		patient = get_patient_by_id(patient_id)
 		if not patient:
 			raise HTTPException(status_code=404, detail="Patient not found")
@@ -97,6 +98,7 @@ async def get_patient(patient_id: str):
 @router.post("/patients")
 async def create_patient_profile(req: PatientCreateRequest):
 	try:
+		logger.info(f"POST /patients name={req.name}")
 		patient = create_patient(
 			name=req.name,
 			age=req.age,
@@ -128,6 +130,7 @@ class PatientUpdateRequest(BaseModel):
 @router.patch("/patients/{patient_id}")
 async def update_patient(patient_id: str, req: PatientUpdateRequest):
 	try:
+		logger.info(f"PATCH /patients/{patient_id}")
 		modified = update_patient_profile(patient_id, {k: v for k, v in req.model_dump().items() if v is not None})
 		if modified == 0:
 			return {"message": "No changes"}
@@ -139,6 +142,7 @@ async def update_patient(patient_id: str, req: PatientUpdateRequest):
 @router.get("/patients/search")
 async def search_patients_route(q: str, limit: int = 10):
 	try:
+		logger.info(f"GET /patients/search q='{q}' limit={limit}")
 		return {"results": search_patients(q, limit=limit)}
 	except Exception as e:
 		logger.error(f"Error searching patients: {e}")

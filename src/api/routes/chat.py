@@ -27,7 +27,7 @@ async def chat_endpoint(
 	start_time = time.time()
 
 	try:
-		logger.info(f"Chat request from user {request.user_id} in session {request.session_id}")
+		logger.info(f"POST /chat user={request.user_id} session={request.session_id} patient={request.patient_id} doctor={request.doctor_id}")
 		logger.info(f"Message: {request.message[:100]}...")  # Log first 100 chars of message
 
 		# Get or create user profile (doctor as current user profile)

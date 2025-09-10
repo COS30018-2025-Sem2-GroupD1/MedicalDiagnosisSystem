@@ -39,6 +39,11 @@ class MedicalChatbotApp {
             this.toggleSidebar();
         });
         // Click outside sidebar to close (mobile/overlay behavior)
+        const overlay = document.getElementById('appOverlay');
+        const updateOverlay = () => {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar && overlay) overlay.classList.toggle('show', sidebar.classList.contains('show'));
+        };
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('sidebarToggle');
@@ -46,7 +51,11 @@ class MedicalChatbotApp {
             const isOpen = sidebar.classList.contains('show');
             const clickInside = sidebar.contains(e.target) || (toggleBtn && toggleBtn.contains(e.target));
             if (isOpen && !clickInside) sidebar.classList.remove('show');
+            updateOverlay();
         });
+        // Keep overlay synced when toggling
+        const origToggle = this.toggleSidebar.bind(this);
+        this.toggleSidebar = () => { origToggle(); updateOverlay(); };
 
         // New chat button
         document.getElementById('newChatBtn').addEventListener('click', () => {
@@ -975,6 +984,15 @@ How can I assist you today?`;
 
     showUserModal() {
         this.populateDoctorSelect();
+        // Ensure the dropdown is visible immediately with options
+        const sel = document.getElementById('profileNameSelect');
+        if (sel && sel.options.length === 0) {
+            // Fallback in unlikely case populate didn't run
+            const createOpt = document.createElement('option');
+            createOpt.value = '__create__';
+            createOpt.textContent = 'Create doctor user...';
+            sel.appendChild(createOpt);
+        }
         document.getElementById('profileRole').value = this.currentUser.role;
         document.getElementById('profileSpecialty').value = this.currentUser.specialty || '';
 

@@ -18,6 +18,7 @@ async def create_chat_session(
 ):
 	"""Create a new chat session (cache + Mongo)"""
 	try:
+		logger.info(f"POST /sessions user_id={request.user_id} patient_id={request.patient_id} doctor_id={request.doctor_id}")
 		session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
 		# Also ensure in Mongo with patient/doctor
 		ensure_session(session_id=session_id, patient_id=request.patient_id, doctor_id=request.doctor_id, title=request.title or "New Chat")
@@ -59,6 +60,7 @@ async def get_chat_session(
 async def list_sessions_for_patient(patient_id: str):
 	"""List sessions for a patient from Mongo"""
 	try:
+		logger.info(f"GET /patients/{patient_id}/sessions")
 		return {"sessions": list_patient_sessions(patient_id)}
 	except Exception as e:
 		logger.error(f"Error listing sessions: {e}")
@@ -68,6 +70,7 @@ async def list_sessions_for_patient(patient_id: str):
 async def list_messages_for_session(session_id: str, limit: int | None = None):
 	"""List messages for a session from Mongo"""
 	try:
+		logger.info(f"GET /sessions/{session_id}/messages limit={limit}")
 		msgs = list_session_messages(session_id, limit=limit)
 		# ensure JSON-friendly timestamps
 		for m in msgs:
