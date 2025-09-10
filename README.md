@@ -160,3 +160,4 @@ MedAI/
 ## 🧾 License & Disclaimer
 - MIT License (see [LICENSE](https://huggingface.co/spaces/MedAI-COS30018/MedicalDiagnosisSystem/blob/main/LICENSE))
 - Educational information only; not a substitute for professional medical advice
+- Team D1 - COS30018, Swinburne University of Technology
