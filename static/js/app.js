@@ -124,10 +124,12 @@ class MedicalChatbotApp {
 
         // Theme toggle live
         document.getElementById('themeSelect').addEventListener('change', (e) => {
+            console.log('[Theme] change ->', e.target.value);
             this.setTheme(e.target.value);
         });
         // Font size live
         document.getElementById('fontSize').addEventListener('change', (e) => {
+            console.log('[Font] change ->', e.target.value);
             this.setFontSize(e.target.value);
         });
         // Other preferences live
@@ -309,6 +311,7 @@ How can I assist you today?`;
         const autoSave = document.getElementById('autoSave').checked;
         const notifications = document.getElementById('notifications').checked;
 
+        console.log('[Settings] save', { theme, fontSize, autoSave, notifications });
         this.setTheme(theme);
         this.setFontSize(fontSize);
 
@@ -319,6 +322,7 @@ How can I assist you today?`;
             autoSave: autoSave,
             notifications: notifications
         };
+        console.log('[Prefs] write', preferences);
         localStorage.setItem('medicalChatbotPreferences', JSON.stringify(preferences));
 
         this.hideModal('settingsModal');
