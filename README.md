@@ -103,7 +103,7 @@ MedicalDiagnosisSystem/
    echo "GEMINI_API_2=your_gemini_api_key_2" >> .env
    echo "GEMINI_API_3=your_gemini_api_key_3" >> .env
    # MongoDB (required for persistence)
-   echo "MONGO_URI=your_mongodb_connection_string" >> .env
+   echo "MONGO_USER=your_mongodb_connection_string" >> .env
    # Optional: override DB name (default: medicaldiagnosissystem)
    echo "MONGO_DB=medicaldiagnosissystem" >> .env
    ```
@@ -120,7 +120,7 @@ MedicalDiagnosisSystem/
 
 ### Environment Variables
 - `GEMINI_API_1` through `GEMINI_API_5`: Gemini API keys for rotation
-- `MONGO_URI`: MongoDB connection string (Atlas or local)
+- `MONGO_USER`: MongoDB connection string (Atlas or local)
 - `MONGO_DB`: MongoDB database name (default: `medicaldiagnosissystem`)
 - `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
 - `PORT`: Server port (default: 8000)
@@ -339,7 +339,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Common Issues
 - **API Keys**: Ensure Gemini API keys are properly set
-- **Database**: Ensure `MONGO_URI` is configured and reachable
+- **Database**: Ensure `MONGO_USER` is configured and reachable
 - **Dependencies**: Verify all requirements are installed
 - **Port Conflicts**: Check if port 8000 is available
 - **Memory Issues**: Monitor system resources

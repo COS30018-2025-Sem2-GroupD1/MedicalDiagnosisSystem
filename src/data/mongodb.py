@@ -33,7 +33,7 @@ def get_database() -> Database:
 	"""Get database instance with connection management"""
 	global _mongo_client
 	if _mongo_client is None:
-		CONNECTION_STRING = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/")
+		CONNECTION_STRING = os.getenv("MONGO_USER", "mongodb://127.0.0.1:27017/") # fall back to local host if no user is provided
 		try:
 			logger.info("Initializing MongoDB connection")
 			_mongo_client = MongoClient(CONNECTION_STRING)
