@@ -22,53 +22,52 @@ class MedicalHistoryManager:
 		session_id: str,
 		question: str,
 		answer: str,
-		gemini_rotator,
-		nvidia_rotator
+		gemini_rotator: APIKeyRotator,
+		nvidia_rotator: APIKeyRotator
 	) -> str:
-		"""
-		Process a medical Q&A exchange and store it in memory
-		"""
+		"""Processes and stores a medical Q&A exchange, returning a summary."""
 		try:
 			summary = await self._generate_summary(question, answer, gemini_rotator, nvidia_rotator)
-
-			# Store in memory
 			self.memory.add(user_id, summary)
-
-			# Add to session history
 			self.memory.add_message_to_session(session_id, "user", question)
 			self.memory.add_message_to_session(session_id, "assistant", answer)
-
-			# Update session title if it's the first message
 			self._update_session_if_first_message(session_id, question)
-
 			return summary
 
 		except Exception as e:
 			logger().error(f"Error processing medical exchange: {e}")
-			# Fallback: store without summary
 			summary = f"q: {question}\na: {answer}"
 			self.memory.add(user_id, summary)
 			self.memory.add_message_to_session(session_id, "user", question)
 			self.memory.add_message_to_session(session_id, "assistant", answer)
 			return summary
 
-	def _update_session_if_first_message(self, session_id: str, question: str) -> None:
-		"""Update session title if this is the first message."""
+	def _update_session_if_first_message(
+		self,
+		session_id: str,
+		question: str
+	) -> None:
+		"""Updates the session title if it's the first message."""
 		session = self.memory.get_session(session_id)
 		if session and len(session.messages) == 2:  # Just user + assistant
-			title = question[:settings.MAX_TITLE_LENGTH] + ("..." if len(question) > settings.MAX_TITLE_LENGTH else "")
+			title = question[:settings.MAX_TITLE_LENGTH]
+			if len(question) > settings.MAX_TITLE_LENGTH:
+				title += "..."
 			self.memory.update_session_title(session_id, title)
 
-	def get_conversation_context(self, user_id: str, session_id: str, question: str) -> str:
-		"""
-		Get relevant conversation context for a new question
-		"""
+	def get_conversation_context(
+		self,
+		user_id: str,
+	) -> str:
+		"""Retrieves relevant conversation context for a new question."""
 		return self.memory.get_medical_context(user_id, session_id, question)
 
-	def get_user_medical_history(self, user_id: str, limit: int = 10) -> list[str]:
-		"""
-		Get user's medical history (QA summaries)
-		"""
+	def get_user_medical_history(
+		self,
+		user_id: str,
+		limit: int = 10
+	) -> list[str]:
+		"""Retrieves a user's most recent medical history summaries."""
 		return self.memory.all(user_id)[-limit:]
 
 	def search_medical_context(
@@ -77,7 +76,7 @@ class MedicalHistoryManager:
 		query: str,
 		top_k: int = settings.DEFAULT_TOP_K
 	) -> list[str]:
-		"""Search through user's medical context for relevant information using embeddings."""
+		"""Searches a user's medical context for relevant information."""
 		if not self.embedder:
 			return self._fallback_text_search(user_id, query, top_k)
 
@@ -96,7 +95,7 @@ class MedicalHistoryManager:
 		query: str,
 		top_k: int
 	) -> list[str]:
-		"""Simple text-based search fallback."""
+		"""Performs a simple text-based search as a fallback."""
 		all_context = self.memory.all(user_id)
 		query_lower = query.lower()
 		relevant = [ctx for ctx in all_context if query_lower in ctx.lower()]
@@ -109,7 +108,7 @@ class MedicalHistoryManager:
 		gemini_rotator: APIKeyRotator,
 		nvidia_rotator: APIKeyRotator
 	) -> str:
-		"""Generate a summary of the Q&A exchange using available AI models."""
+		"""Generates a summary of the Q&A exchange using available AI models."""
 		if not gemini_rotator or not gemini_rotator.get_key():
 			return f"q: {question}\na: {answer}"
 
