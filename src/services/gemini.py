@@ -10,15 +10,14 @@ async def gemini_chat(
 	model: str = "gemini-2.5-flash-lite"
 ) -> str:
 	"""
-	Generate a response using Gemini API with key rotation.
+	Generates a response using the Gemini API with key rotation.
 	Falls back to empty string on failure.
 	"""
 	try:
 		from google import genai
-
 		api_key = rotator.get_key()
 		if not api_key:
-			logger().warning("No Gemini API key available")
+			logger().warning("No Gemini API key available.")
 			return ""
 
 		client = genai.Client(api_key=api_key)
