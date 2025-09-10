@@ -1,6 +1,4 @@
-- [ ] Untangle memory
-- [ ] Untangle history
-- [ ] Untangle all components that rely on state
-- [ ] Accounts
-- [ ] Saving chats
-- [ ] MongoDB hosting
+- [ ] Ensure chat history consistency
+- [ ] EMR integration
+- [ ] Accounts (doctor/patient) consistency
+- [ ] RAG integration
