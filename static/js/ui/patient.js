@@ -23,13 +23,17 @@ export function attachPatientUI(app) {
 	};
 
 	app.loadPatient = async function () {
+		console.log('[DEBUG] loadPatient called');
 		const input = document.getElementById('patientIdInput');
 		const status = document.getElementById('patientStatus');
 		const id = (input?.value || '').trim();
+		console.log('[DEBUG] Patient ID from input:', id);
 		if (!/^\d{8}$/.test(id)) {
+			console.log('[DEBUG] Invalid patient ID format');
 			if (status) { status.textContent = 'Invalid patient ID. Use 8 digits.'; status.style.color = 'var(--warning-color)'; }
 			return;
 		}
+		console.log('[DEBUG] Setting current patient ID:', id);
 		app.currentPatientId = id;
 		app.savePatientId();
 		if (status) { status.textContent = `Patient: ${id}`; status.style.color = 'var(--text-secondary)'; }
@@ -91,10 +95,14 @@ export function attachPatientUI(app) {
 
 	// Bind patient input + typeahead + load button
 	app.bindPatientHandlers = function () {
+		console.log('[DEBUG] bindPatientHandlers called');
 		const loadBtn = document.getElementById('loadPatientBtn');
+		console.log('[DEBUG] Load button found:', !!loadBtn);
 		if (loadBtn) loadBtn.addEventListener('click', () => app.loadPatient());
 		const patientInput = document.getElementById('patientIdInput');
 		const suggestionsEl = document.getElementById('patientSuggestions');
+		console.log('[DEBUG] Patient input found:', !!patientInput);
+		console.log('[DEBUG] Suggestions element found:', !!suggestionsEl);
 		if (!patientInput) return;
 		let debounceTimer;
 		const hideSuggestions = () => { if (suggestionsEl) suggestionsEl.style.display = 'none'; };
@@ -121,33 +129,45 @@ export function attachPatientUI(app) {
 		};
 		patientInput.addEventListener('input', () => {
 			const q = patientInput.value.trim();
+			console.log('[DEBUG] Patient input changed:', q);
 			clearTimeout(debounceTimer);
 			if (!q) { hideSuggestions(); return; }
 			debounceTimer = setTimeout(async () => {
 				try {
+					console.log('[DEBUG] Searching patients with query:', q);
 					const resp = await fetch(`/patients/search?q=${encodeURIComponent(q)}&limit=8`, { headers: { 'Accept': 'application/json' } });
+					console.log('[DEBUG] Search response status:', resp.status);
 					if (resp.ok) {
 						const data = await resp.json();
+						console.log('[DEBUG] Search results:', data);
 						renderSuggestions(data.results || []);
 					} else {
 						console.warn('Search request failed', resp.status);
 					}
-				} catch (_) { /* ignore */ }
+				} catch (e) { 
+					console.error('[DEBUG] Search error:', e);
+				}
 			}, 200);
 		});
 		patientInput.addEventListener('keydown', async (e) => {
 			if (e.key === 'Enter') {
 				const value = patientInput.value.trim();
+				console.log('[DEBUG] Patient input Enter pressed with value:', value);
 				if (/^\d{8}$/.test(value)) {
+					console.log('[DEBUG] Loading patient with 8-digit ID');
 					await app.loadPatient();
 					hideSuggestions();
 				} else {
+					console.log('[DEBUG] Searching for patient by name/partial ID');
 					try {
 						const resp = await fetch(`/patients/search?q=${encodeURIComponent(value)}&limit=1`);
+						console.log('[DEBUG] Search response status:', resp.status);
 						if (resp.ok) {
 							const data = await resp.json();
+							console.log('[DEBUG] Search results for Enter:', data);
 							const first = (data.results || [])[0];
 							if (first) {
+								console.log('[DEBUG] Found patient, setting as current:', first);
 								app.currentPatientId = first.patient_id;
 								app.savePatientId();
 								patientInput.value = first.patient_id;
@@ -158,7 +178,9 @@ export function attachPatientUI(app) {
 								return;
 							}
 						}
-					} catch (_) {}
+					} catch (e) {
+						console.error('[DEBUG] Search error on Enter:', e);
+					}
 					const status = document.getElementById('patientStatus');
 					if (status) { status.textContent = 'No matching patient found'; status.style.color = 'var(--warning-color)'; }
 				}

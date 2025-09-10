@@ -41,6 +41,10 @@ class MedicalChatbotApp {
         // Ensure a session exists and is displayed immediately if nothing to show
         this.ensureStartupSession();
         this.loadChatSessions();
+        
+        // Bind patient handlers
+        console.log('[DEBUG] Binding patient handlers');
+        this.bindPatientHandlers();
         // Apply saved theme immediately
         const prefs = JSON.parse(localStorage.getItem('medicalChatbotPreferences') || '{}');
         this.setTheme(prefs.theme || 'auto');
@@ -107,11 +111,13 @@ class MedicalChatbotApp {
 
         // User profile
         document.getElementById('userProfile').addEventListener('click', () => {
+            console.log('[DEBUG] User profile clicked');
             this.showUserModal();
         });
 
         // Settings
         document.getElementById('settingsBtn').addEventListener('click', () => {
+            console.log('[DEBUG] Settings clicked');
             this.showSettingsModal();
         });
 
@@ -301,7 +307,35 @@ How can I assist you today?`;
         }
     }
 
+    showModal(modalId) {
+        console.log('[DEBUG] showModal called with ID:', modalId);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('show');
+            console.log('[DEBUG] Modal shown:', modalId);
+        } else {
+            console.error('[DEBUG] Modal not found:', modalId);
+        }
+    }
+
+    hideModal(modalId) {
+        console.log('[DEBUG] hideModal called with ID:', modalId);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('show');
+            console.log('[DEBUG] Modal hidden:', modalId);
+        } else {
+            console.error('[DEBUG] Modal not found:', modalId);
+        }
+    }
+
+    showUserModal() {
+        console.log('[DEBUG] showUserModal called');
+        this.showModal('userModal');
+    }
+
     showSettingsModal() {
+        console.log('[DEBUG] showSettingsModal called');
         this.showModal('settingsModal');
     }
 
