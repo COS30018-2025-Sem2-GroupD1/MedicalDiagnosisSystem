@@ -158,10 +158,19 @@ class MedicalChatbotApp {
         // Modal events
         this.setupModalEvents();
 
-        // Theme toggle
+        // Theme toggle live
         document.getElementById('themeSelect').addEventListener('change', (e) => {
             this.setTheme(e.target.value);
         });
+        // Font size live
+        document.getElementById('fontSize').addEventListener('change', (e) => {
+            this.setFontSize(e.target.value);
+        });
+        // Other preferences live
+        const autoSaveEl = document.getElementById('autoSave');
+        const notificationsEl = document.getElementById('notifications');
+        if (autoSaveEl) autoSaveEl.addEventListener('change', () => this.savePreferences());
+        if (notificationsEl) notificationsEl.addEventListener('change', () => this.savePreferences());
     }
 
     loadDoctors() {
@@ -366,7 +375,9 @@ class MedicalChatbotApp {
     savePreferences() {
         const preferences = {
             theme: document.getElementById('themeSelect').value,
-            fontSize: document.getElementById('fontSize').value
+            fontSize: document.getElementById('fontSize').value,
+            autoSave: document.getElementById('autoSave').checked,
+            notifications: document.getElementById('notifications').checked
         };
         localStorage.setItem('medicalChatbotPreferences', JSON.stringify(preferences));
     }
