@@ -111,6 +111,7 @@ async def create_patient_profile(req: PatientCreateRequest):
 			assigned_doctor_id=req.assigned_doctor_id
 		)
 		patient["_id"] = str(patient.get("_id")) if patient.get("_id") else None
+		logger.info(f"Created patient {patient.get('name')} id={patient.get('patient_id')}")
 		return patient
 	except Exception as e:
 		logger.error(f"Error creating patient: {e}")
@@ -130,8 +131,9 @@ class PatientUpdateRequest(BaseModel):
 @router.patch("/patients/{patient_id}")
 async def update_patient(patient_id: str, req: PatientUpdateRequest):
 	try:
-		logger.info(f"PATCH /patients/{patient_id}")
-		modified = update_patient_profile(patient_id, {k: v for k, v in req.model_dump().items() if v is not None})
+		payload = {k: v for k, v in req.model_dump().items() if v is not None}
+		logger.info(f"PATCH /patients/{patient_id} fields={list(payload.keys())}")
+		modified = update_patient_profile(patient_id, payload)
 		if modified == 0:
 			return {"message": "No changes"}
 		return {"message": "Updated"}

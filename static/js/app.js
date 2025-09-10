@@ -47,12 +47,19 @@ class MedicalChatbotApp {
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('sidebarToggle');
+            const main = document.querySelector('.main-content');
             if (!sidebar) return;
             const isOpen = sidebar.classList.contains('show');
             const clickInside = sidebar.contains(e.target) || (toggleBtn && toggleBtn.contains(e.target));
-            if (isOpen && !clickInside) sidebar.classList.remove('show');
+            if (isOpen && !clickInside) {
+                sidebar.classList.remove('show');
+            }
+            // Also close if clicking the main-content while open
+            if (isOpen && main && main.contains(e.target) && !sidebar.contains(e.target)) {
+                sidebar.classList.remove('show');
+            }
             updateOverlay();
-        });
+        }, true);
         // Keep overlay synced when toggling
         const origToggle = this.toggleSidebar.bind(this);
         this.toggleSidebar = () => { origToggle(); updateOverlay(); };
