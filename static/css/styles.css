@@ -888,6 +888,10 @@ body {
     gap: var(--spacing-sm);
     align-items: center;
 }
+.patient-typeahead { position: relative; }
+.patient-suggestions { position:absolute; top: 100%; left:0; right:0; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: var(--shadow-lg); z-index: 3500; max-height: 220px; overflow-y: auto; }
+.patient-suggestion { padding: 8px 10px; cursor:pointer; color: var(--text-primary); }
+.patient-suggestion:hover { background: var(--bg-tertiary); }
 
 .patient-input {
     flex: 1;

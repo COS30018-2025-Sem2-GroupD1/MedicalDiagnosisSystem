@@ -40,10 +40,11 @@
             <!-- Patient Login Section -->
             <div class="patient-section">
                 <div class="patient-header">Patient</div>
-                <div class="patient-input-group">
-                    <input type="text" id="patientIdInput" class="patient-input" placeholder="Enter 8-digit Patient ID" maxlength="8" inputmode="numeric" pattern="\d{8}">
+                <div class="patient-input-group patient-typeahead">
+                    <input type="text" id="patientIdInput" class="patient-input" placeholder="Search patient by name or ID">
+                    <div id="patientSuggestions" class="patient-suggestions" style="display:none;"></div>
                     <button class="patient-load-btn" id="loadPatientBtn" title="Load Patient">
-                        <i class="fas fa-user-injured"></i>
+                        <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
                 <div class="patient-status" id="patientStatus">No patient selected</div>

@@ -2,6 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	const form = document.getElementById('patientForm');
 	const result = document.getElementById('result');
 	const cancelBtn = document.getElementById('cancelBtn');
+	const successModal = document.getElementById('patientSuccessModal');
+	const successClose = document.getElementById('patientSuccessClose');
+	const successReturn = document.getElementById('patientSuccessReturn');
+	const successEdit = document.getElementById('patientSuccessEdit');
+	const createdIdEl = document.getElementById('createdPatientId');
 
 	cancelBtn.addEventListener('click', () => {
 		window.location.href = '/';
@@ -30,13 +35,19 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			const data = await resp.json();
 			const pid = data.patient_id;
-			result.textContent = `Created patient ${data.name} (${pid}). Redirecting...`;
 			localStorage.setItem('medicalChatbotPatientId', pid);
-			setTimeout(() => window.location.href = '/', 800);
+			// Show success modal
+			if (createdIdEl) createdIdEl.textContent = pid;
+			successModal.classList.add('show');
 		} catch (err) {
 			console.error(err);
 			result.textContent = 'Failed to create patient. Please try again.';
 			result.style.color = 'crimson';
 		}
 	});
+
+	// Success modal wiring
+	if (successClose) successClose.addEventListener('click', () => successModal.classList.remove('show'));
+	if (successReturn) successReturn.addEventListener('click', () => { window.location.href = '/'; });
+	if (successEdit) successEdit.addEventListener('click', () => { successModal.classList.remove('show'); });
 });

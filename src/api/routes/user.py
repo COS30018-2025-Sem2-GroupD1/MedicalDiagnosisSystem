@@ -67,7 +67,7 @@ async def get_user_profile(
 
 # -------------------- Patient APIs --------------------
 from pydantic import BaseModel
-from src.data.mongodb import get_patient_by_id, create_patient, update_patient_profile
+from src.data.mongodb import get_patient_by_id, create_patient, update_patient_profile, search_patients
 
 class PatientCreateRequest(BaseModel):
 	name: str
@@ -134,4 +134,12 @@ async def update_patient(patient_id: str, req: PatientUpdateRequest):
 		return {"message": "Updated"}
 	except Exception as e:
 		logger.error(f"Error updating patient: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/patients/search")
+async def search_patients_route(q: str, limit: int = 10):
+	try:
+		return {"results": search_patients(q, limit=limit)}
+	except Exception as e:
+		logger.error(f"Error searching patients: {e}")
 		raise HTTPException(status_code=500, detail=str(e))

@@ -57,11 +57,54 @@ class MedicalChatbotApp {
             loadBtn.addEventListener('click', () => this.loadPatient());
         }
         const patientInput = document.getElementById('patientIdInput');
+        const suggestionsEl = document.getElementById('patientSuggestions');
         if (patientInput) {
+            let debounceTimer;
+            const hideSuggestions = () => { if (suggestionsEl) suggestionsEl.style.display = 'none'; };
+            const renderSuggestions = (items) => {
+                if (!suggestionsEl) return;
+                if (!items || items.length === 0) { hideSuggestions(); return; }
+                suggestionsEl.innerHTML = '';
+                items.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'patient-suggestion';
+                    div.textContent = `${p.name || 'Unknown'} (${p.patient_id})`;
+                    div.addEventListener('click', () => {
+                        this.currentPatientId = p.patient_id;
+                        this.savePatientId();
+                        patientInput.value = p.patient_id;
+                        hideSuggestions();
+                        this.fetchAndRenderPatientSessions();
+                        const status = document.getElementById('patientStatus');
+                        if (status) { status.textContent = `Patient: ${p.patient_id}`; status.style.color = 'var(--text-secondary)'; }
+                    });
+                    suggestionsEl.appendChild(div);
+                });
+                suggestionsEl.style.display = 'block';
+            };
+            patientInput.addEventListener('input', () => {
+                const q = patientInput.value.trim();
+                clearTimeout(debounceTimer);
+                if (!q) { hideSuggestions(); return; }
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const resp = await fetch(`/patients/search?q=${encodeURIComponent(q)}&limit=8`);
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            renderSuggestions(data.results || []);
+                        }
+                    } catch (_) { /* ignore */ }
+                }, 200);
+            });
             patientInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     this.loadPatient();
+                    hideSuggestions();
                 }
+            });
+            document.addEventListener('click', (ev) => {
+                if (!suggestionsEl) return;
+                if (!suggestionsEl.contains(ev.target) && ev.target !== patientInput) hideSuggestions();
             });
         }
 

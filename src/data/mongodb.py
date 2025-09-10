@@ -418,3 +418,23 @@ def update_patient_profile(patient_id: str, updates: dict[str, Any]) -> int:
 	updates["updated_at"] = datetime.now(timezone.utc)
 	result = collection.update_one({"patient_id": patient_id}, {"$set": updates})
 	return result.modified_count
+
+def search_patients(query: str, limit: int = 10) -> list[dict[str, Any]]:
+	"""Search patients by name (case-insensitive starts-with/contains) or partial patient_id."""
+	collection = get_collection(PATIENTS_COLLECTION)
+	if not query:
+		return []
+	# Build a regex for name search and patient_id partial match
+	import re
+	pattern = re.compile(re.escape(query), re.IGNORECASE)
+	cursor = collection.find({
+		"$or": [
+			{"name": {"$regex": pattern}},
+			{"patient_id": {"$regex": pattern}}
+		]
+	}).sort("name", ASCENDING).limit(limit)
+	results = []
+	for p in cursor:
+		p["_id"] = str(p.get("_id")) if p.get("_id") else None
+		results.append(p)
+	return results
