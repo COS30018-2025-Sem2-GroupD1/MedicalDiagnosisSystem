@@ -17,6 +17,9 @@
                     <i class="fas fa-plus"></i>
                     New Chat
                 </button>
+                <button class="sidebar-close" id="sidebarClose" title="Close sidebar">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
 
             <div class="user-section">
@@ -139,8 +142,16 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="profileName">Name:</label>
-                    <input type="text" id="profileName" placeholder="Enter your name">
+                    <label for="profileNameSelect">Name:</label>
+                    <select id="profileNameSelect"></select>
+                </div>
+                <div class="form-group" id="newDoctorSection" style="display:none;">
+                    <label for="newDoctorName">Doctor name</label>
+                    <input type="text" id="newDoctorName" placeholder="Enter doctor name">
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="button" class="btn btn-secondary" id="cancelNewDoctor">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="confirmNewDoctor">Confirm</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="profileRole">Medical Role:</label>

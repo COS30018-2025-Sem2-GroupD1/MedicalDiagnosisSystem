@@ -358,6 +358,19 @@ body {
     background-color: var(--bg-tertiary);
 }
 
+.sidebar-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: 6px;
+    transition: background-color var(--transition-fast);
+    margin-left: auto;
+}
+.sidebar-close:hover { background-color: var(--bg-tertiary); }
+
 .chat-title {
     flex: 1;
     font-size: 1.25rem;

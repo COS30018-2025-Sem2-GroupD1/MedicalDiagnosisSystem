@@ -8,6 +8,7 @@ class MedicalChatbotApp {
         this.backendSessions = [];
         this.memory = new Map(); // In-memory storage for demo
         this.isLoading = false;
+        this.doctors = this.loadDoctors();
 
         this.init();
     }
@@ -26,6 +27,9 @@ class MedicalChatbotApp {
         // Ensure a session exists and is displayed immediately if nothing to show
         this.ensureStartupSession();
         this.loadChatSessions();
+        // Apply saved theme immediately
+        const prefs = JSON.parse(localStorage.getItem('medicalChatbotPreferences') || '{}');
+        this.setTheme(prefs.theme || 'auto');
         this.setupTheme();
     }
 
@@ -34,6 +38,13 @@ class MedicalChatbotApp {
         document.getElementById('sidebarToggle').addEventListener('click', () => {
             this.toggleSidebar();
         });
+        const sidebarClose = document.getElementById('sidebarClose');
+        if (sidebarClose) {
+            sidebarClose.addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.remove('show');
+            });
+        }
 
         // New chat button
         document.getElementById('newChatBtn').addEventListener('click', () => {
@@ -97,6 +108,60 @@ class MedicalChatbotApp {
         document.getElementById('themeSelect').addEventListener('change', (e) => {
             this.setTheme(e.target.value);
         });
+    }
+
+    loadDoctors() {
+        try {
+            const raw = localStorage.getItem('medicalChatbotDoctors');
+            const arr = raw ? JSON.parse(raw) : [];
+            const seen = new Set();
+            return arr.filter(x => x && x.name && !seen.has(x.name) && seen.add(x.name));
+        } catch { return []; }
+    }
+
+    saveDoctors() {
+        localStorage.setItem('medicalChatbotDoctors', JSON.stringify(this.doctors));
+    }
+
+    populateDoctorSelect() {
+        const sel = document.getElementById('profileNameSelect');
+        const newSec = document.getElementById('newDoctorSection');
+        if (!sel) return;
+        sel.innerHTML = '';
+        const createOpt = document.createElement('option');
+        createOpt.value = '__create__';
+        createOpt.textContent = 'Create doctor user...';
+        sel.appendChild(createOpt);
+        this.doctors.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.name;
+            opt.textContent = d.name;
+            if (this.currentUser?.name === d.name) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+            if (sel.value === '__create__') {
+                newSec.style.display = '';
+                const input = document.getElementById('newDoctorName');
+                if (input) input.value = '';
+            } else {
+                newSec.style.display = 'none';
+            }
+        });
+        const cancelBtn = document.getElementById('cancelNewDoctor');
+        const confirmBtn = document.getElementById('confirmNewDoctor');
+        if (cancelBtn) cancelBtn.onclick = () => { newSec.style.display = 'none'; sel.value = this.currentUser?.name || ''; };
+        if (confirmBtn) confirmBtn.onclick = () => {
+            const name = (document.getElementById('newDoctorName').value || '').trim();
+            if (!name) return;
+            if (!this.doctors.find(d => d.name === name)) {
+                this.doctors.unshift({ name });
+                this.saveDoctors();
+            }
+            this.populateDoctorSelect();
+            sel.value = name;
+            newSec.style.display = 'none';
+        };
     }
 
     loadSavedPatientId() {
@@ -857,8 +922,7 @@ How can I assist you today?`;
     }
 
     showUserModal() {
-        // Populate form with current user data
-        document.getElementById('profileName').value = this.currentUser.name;
+        this.populateDoctorSelect();
         document.getElementById('profileRole').value = this.currentUser.role;
         document.getElementById('profileSpecialty').value = this.currentUser.specialty || '';
 
@@ -866,13 +930,19 @@ How can I assist you today?`;
     }
 
     saveUserProfile() {
-        const name = document.getElementById('profileName').value.trim();
+        const nameSel = document.getElementById('profileNameSelect');
+        const name = nameSel ? nameSel.value : '';
         const role = document.getElementById('profileRole').value;
         const specialty = document.getElementById('profileSpecialty').value.trim();
 
-        if (!name) {
-            alert('Please enter a name.');
+        if (!name || name === '__create__') {
+            alert('Please select or create a doctor name.');
             return;
+        }
+
+        if (!this.doctors.find(d => d.name === name)) {
+            this.doctors.unshift({ name });
+            this.saveDoctors();
         }
 
         this.currentUser.name = name;
