@@ -56,6 +56,7 @@ class MedicalChatbotApp {
         document.getElementById('sidebarToggle').addEventListener('click', () => {
             this.toggleSidebar();
         });
+        
         // Click outside sidebar to close (mobile/overlay behavior)
         const overlay = document.getElementById('appOverlay');
         console.log('[DEBUG] Overlay element found:', !!overlay);
@@ -255,7 +256,6 @@ class MedicalChatbotApp {
         this.updateUserDisplay();
     }
 
-
     startNewChat() {
         if (this.currentSession) {
             // Save current session (local only)
@@ -327,7 +327,6 @@ I'm here to help you with medical questions, diagnosis assistance, and healthcar
 How can I assist you today?`;
     }
 
-
     clearChatMessages() {
         const chatMessages = document.getElementById('chatMessages');
         chatMessages.innerHTML = '';
@@ -397,7 +396,6 @@ How can I assist you today?`;
         this.hideModal('settingsModal');
     }
 
-
     updateUserDisplay() {
         document.getElementById('userName').textContent = this.currentUser.name;
         document.getElementById('userStatus').textContent = this.currentUser.role;
@@ -407,11 +405,236 @@ How can I assist you today?`;
         localStorage.setItem('medicalChatbotUser', JSON.stringify(this.currentUser));
     }
 
-
     generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
+
+// ----------------------------------------------------------
+// Additional UI setup START
+// Including session.js and settings.js from ui/ and chat/
+// -----------------------------
+// Our submodules aren't lodaed on app.js, so we need to add them here
+// Perhaps this is FastAPI limitation, remove this when proper deploy this
+// On UI specific hosting site.
+// ----------------------------------------------------------  
+
+    // Additional methods that are called by the modules
+    loadUserPreferences() {
+        const prefs = JSON.parse(localStorage.getItem('medicalChatbotPreferences') || '{}');
+        if (prefs.theme) this.setTheme(prefs.theme);
+        if (prefs.fontSize) this.setFontSize(prefs.fontSize);
+        if (prefs.autoSave !== undefined) document.getElementById('autoSave').checked = prefs.autoSave;
+        if (prefs.notifications !== undefined) document.getElementById('notifications').checked = prefs.notifications;
+    }
+
+    setTheme(theme) {
+        const root = document.documentElement;
+        if (theme === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        } else {
+            root.setAttribute('data-theme', theme);
+        }
+    }
+
+    setFontSize(size) {
+        const root = document.documentElement;
+        const sizes = { small: '14px', medium: '16px', large: '18px' };
+        root.style.fontSize = sizes[size] || '16px';
+    }
+
+    setupTheme() {
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect) {
+            const prefs = JSON.parse(localStorage.getItem('medicalChatbotPreferences') || '{}');
+            themeSelect.value = prefs.theme || 'auto';
+        }
+    }
+
+    savePreferences() {
+        const preferences = {
+            theme: document.getElementById('themeSelect').value,
+            fontSize: document.getElementById('fontSize').value,
+            autoSave: document.getElementById('autoSave').checked,
+            notifications: document.getElementById('notifications').checked
+        };
+        localStorage.setItem('medicalChatbotPreferences', JSON.stringify(preferences));
+    }
+
+    getChatSessions() {
+        const sessions = localStorage.getItem('medicalChatbotSessions');
+        return sessions ? JSON.parse(sessions) : [];
+    }
+
+    saveCurrentSession() {
+        if (!this.currentSession) return;
+        const sessions = this.getChatSessions();
+        const existingIndex = sessions.findIndex(s => s.id === this.currentSession.id);
+        if (existingIndex >= 0) {
+            sessions[existingIndex] = this.currentSession;
+        } else {
+            sessions.unshift(this.currentSession);
+        }
+        localStorage.setItem('medicalChatbotSessions', JSON.stringify(sessions));
+    }
+
+    loadChatSessions() {
+        const sessionsContainer = document.getElementById('chatSessions');
+        if (!sessionsContainer) return;
+
+        // Combine backend and local sessions
+        const allSessions = [...this.backendSessions, ...this.getChatSessions()];
+        
+        // Remove duplicates and sort by last activity
+        const uniqueSessions = allSessions.reduce((acc, session) => {
+            const existing = acc.find(s => s.id === session.id);
+            if (!existing) {
+                acc.push(session);
+            } else if (session.lastActivity > existing.lastActivity) {
+                const index = acc.indexOf(existing);
+                acc[index] = session;
+            }
+            return acc;
+        }, []);
+
+        uniqueSessions.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+
+        sessionsContainer.innerHTML = '';
+        uniqueSessions.forEach(session => {
+            const sessionElement = document.createElement('div');
+            sessionElement.className = 'chat-session';
+            if (this.currentSession && this.currentSession.id === session.id) {
+                sessionElement.classList.add('active');
+            }
+            
+            const timeAgo = this.formatTime(session.lastActivity);
+            sessionElement.innerHTML = `
+                <div class="chat-session-row">
+                    <div class="chat-session-meta">
+                        <div class="chat-session-title">${session.title}</div>
+                        <div class="chat-session-time">${timeAgo}</div>
+                    </div>
+                    <div class="chat-session-actions">
+                        <button class="chat-session-menu" onclick="event.stopPropagation(); this.nextElementSibling.classList.toggle('show')">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="chat-session-menu-popover">
+                            <div class="chat-session-menu-item" onclick="window.medicalChatbot.renameChatSession('${session.id}')">
+                                <i class="fas fa-edit"></i> Rename
+                            </div>
+                            <div class="chat-session-menu-item" onclick="window.medicalChatbot.deleteChatSession('${session.id}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            sessionElement.addEventListener('click', () => {
+                this.loadChatSession(session.id);
+            });
+            
+            sessionsContainer.appendChild(sessionElement);
+        });
+    }
+
+    loadChatSession(sessionId) {
+        const allSessions = [...this.backendSessions, ...this.getChatSessions()];
+        const session = allSessions.find(s => s.id === sessionId);
+        if (!session) return;
+
+        this.currentSession = session;
+        this.clearChatMessages();
+        
+        if (session.source === 'backend') {
+            this.hydrateMessagesForSession(sessionId);
+        } else {
+            session.messages.forEach(m => this.displayMessage(m));
+        }
+        
+        this.updateChatTitle();
+        this.loadChatSessions();
+    }
+
+    renameChatSession(sessionId, newTitle) {
+        const allSessions = [...this.backendSessions, ...this.getChatSessions()];
+        const session = allSessions.find(s => s.id === sessionId);
+        if (session) {
+            session.title = newTitle;
+            if (session.source === 'backend') {
+                // Update backend session
+                this.updateBackendSession(sessionId, { title: newTitle });
+            } else {
+                // Update local session
+                this.saveCurrentSession();
+            }
+            this.loadChatSessions();
+            this.updateChatTitle();
+        }
+    }
+
+    deleteChatSession(sessionId) {
+        if (confirm('Are you sure you want to delete this chat session?')) {
+            const allSessions = [...this.backendSessions, ...this.getChatSessions()];
+            const session = allSessions.find(s => s.id === sessionId);
+            
+            if (session && session.source === 'backend') {
+                // Delete from backend
+                this.deleteBackendSession(sessionId);
+            } else {
+                // Delete from local storage
+                const sessions = this.getChatSessions();
+                const filtered = sessions.filter(s => s.id !== sessionId);
+                localStorage.setItem('medicalChatbotSessions', JSON.stringify(filtered));
+            }
+            
+            if (this.currentSession && this.currentSession.id === sessionId) {
+                this.startNewChat();
+            } else {
+                this.loadChatSessions();
+            }
+        }
+    }
+
+    updateBackendSession(sessionId, updates) {
+        // This would call the backend API to update session metadata
+        console.log('Updating backend session:', sessionId, updates);
+    }
+
+    deleteBackendSession(sessionId) {
+        // This would call the backend API to delete the session
+        console.log('Deleting backend session:', sessionId);
+    }
+
+    showLoading(show) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            if (show) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+        }
+        this.isLoading = show;
+    }
+
+    updateCurrentSession() {
+        if (this.currentSession) {
+            this.currentSession.lastActivity = new Date().toISOString();
+            this.saveCurrentSession();
+        }
+    }
 }
+
+// Initialize the app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.medicalChatbot = new MedicalChatbotApp();
+});
+
+
+// ----------------------------------------------------------
+// Additional UI setup END
+// ----------------------------------------------------------    
 
 // Handle system theme changes
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
