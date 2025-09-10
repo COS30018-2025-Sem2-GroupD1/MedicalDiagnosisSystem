@@ -1,4 +1,7 @@
 // Medical AI Assistant - Main Application JavaScript
+import { attachUIHandlers } from './ui/handlers.js';
+import { attachDoctorUI } from './ui/doctor.js';
+import { attachPatientUI } from './ui/patient.js';
 
 class MedicalChatbotApp {
     constructor() {
@@ -6,7 +9,7 @@ class MedicalChatbotApp {
         this.currentPatientId = null;
         this.currentSession = null;
         this.backendSessions = [];
-        this.memory = new Map(); // In-memory storage for demo
+        this.memory = new Map();  // In-memory storage for STM/demo
         this.isLoading = false;
         this.doctors = this.loadDoctors();
 
@@ -14,6 +17,11 @@ class MedicalChatbotApp {
     }
 
     async init() {
+        // Attach shared UI helpers once
+        attachUIHandlers(this);
+        // Attach specialized UIs
+        attachDoctorUI(this);
+        attachPatientUI(this);
         this.setupEventListeners();
         this.loadUserPreferences();
         this.initializeUser();
@@ -76,64 +84,7 @@ class MedicalChatbotApp {
             this.startNewChat();
         });
 
-        // Patient load button
-        const loadBtn = document.getElementById('loadPatientBtn');
-        if (loadBtn) {
-            loadBtn.addEventListener('click', () => this.loadPatient());
-        }
-        const patientInput = document.getElementById('patientIdInput');
-        const suggestionsEl = document.getElementById('patientSuggestions');
-        if (patientInput) {
-            let debounceTimer;
-            const hideSuggestions = () => { if (suggestionsEl) suggestionsEl.style.display = 'none'; };
-            const renderSuggestions = (items) => {
-                if (!suggestionsEl) return;
-                if (!items || items.length === 0) { hideSuggestions(); return; }
-                suggestionsEl.innerHTML = '';
-                items.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'patient-suggestion';
-                    div.textContent = `${p.name || 'Unknown'} (${p.patient_id})`;
-                    div.addEventListener('click', () => {
-                        this.currentPatientId = p.patient_id;
-                        this.savePatientId();
-                        patientInput.value = p.patient_id;
-                        hideSuggestions();
-                        this.fetchAndRenderPatientSessions();
-                        const status = document.getElementById('patientStatus');
-                        if (status) { status.textContent = `Patient: ${p.patient_id}`; status.style.color = 'var(--text-secondary)'; }
-                    });
-                    suggestionsEl.appendChild(div);
-                });
-                suggestionsEl.style.display = 'block';
-            };
-            patientInput.addEventListener('input', () => {
-                const q = patientInput.value.trim();
-                clearTimeout(debounceTimer);
-                if (!q) { hideSuggestions(); return; }
-                debounceTimer = setTimeout(async () => {
-                    try {
-                        const resp = await fetch(`/patients/search?q=${encodeURIComponent(q)}&limit=8`, { headers: { 'Accept': 'application/json' } });
-                        if (resp.ok) {
-                            const data = await resp.json();
-                            renderSuggestions(data.results || []);
-                        } else {
-                            console.warn('Search request failed', resp.status);
-                        }
-                    } catch (_) { /* ignore */ }
-                }, 200);
-            });
-            patientInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    this.loadPatient();
-                    hideSuggestions();
-                }
-            });
-            document.addEventListener('click', (ev) => {
-                if (!suggestionsEl) return;
-                if (!suggestionsEl.contains(ev.target) && ev.target !== patientInput) hideSuggestions();
-            });
-        }
+        // Patient handlers moved to ui/patient.js
 
         // Send button and input
         document.getElementById('sendBtn').addEventListener('click', () => {
@@ -148,9 +99,7 @@ class MedicalChatbotApp {
         });
 
         // Auto-resize textarea
-        document.getElementById('chatInput').addEventListener('input', (e) => {
-            this.autoResizeTextarea(e.target);
-        });
+        document.getElementById('chatInput').addEventListener('input', (e) => this.autoResizeTextarea(e.target));
 
         // User profile
         document.getElementById('userProfile').addEventListener('click', () => {
@@ -163,13 +112,8 @@ class MedicalChatbotApp {
         });
 
         // Action buttons
-        document.getElementById('exportBtn').addEventListener('click', () => {
-            this.exportChat();
-        });
-
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            this.clearChat();
-        });
+        document.getElementById('exportBtn').addEventListener('click', () => this.exportChat());
+        document.getElementById('clearBtn').addEventListener('click', () => this.clearChat());
 
         // Modal events
         this.setupModalEvents();
@@ -189,88 +133,9 @@ class MedicalChatbotApp {
         if (notificationsEl) notificationsEl.addEventListener('change', () => this.savePreferences());
     }
 
-    loadDoctors() {
-        try {
-            const raw = localStorage.getItem('medicalChatbotDoctors');
-            const arr = raw ? JSON.parse(raw) : [];
-            const seen = new Set();
-            return arr.filter(x => x && x.name && !seen.has(x.name) && seen.add(x.name));
-        } catch { return []; }
-    }
+    // doctor UI moved to ui/doctor.js
 
-    saveDoctors() {
-        localStorage.setItem('medicalChatbotDoctors', JSON.stringify(this.doctors));
-    }
-
-    populateDoctorSelect() {
-        const sel = document.getElementById('profileNameSelect');
-        const newSec = document.getElementById('newDoctorSection');
-        if (!sel) return;
-        sel.innerHTML = '';
-        const createOpt = document.createElement('option');
-        createOpt.value = '__create__';
-        createOpt.textContent = 'Create doctor user...';
-        sel.appendChild(createOpt);
-        // Ensure no duplicates, and include current user name if not in list
-        const names = new Set(this.doctors.map(d => d.name));
-        if (this.currentUser?.name && !names.has(this.currentUser.name)) {
-            this.doctors.unshift({ name: this.currentUser.name });
-            names.add(this.currentUser.name);
-            this.saveDoctors();
-        }
-        this.doctors.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.name;
-            opt.textContent = d.name;
-            if (this.currentUser?.name === d.name) opt.selected = true;
-            sel.appendChild(opt);
-        });
-        sel.addEventListener('change', () => {
-            if (sel.value === '__create__') {
-                newSec.style.display = '';
-                const input = document.getElementById('newDoctorName');
-                if (input) input.value = '';
-            } else {
-                newSec.style.display = 'none';
-            }
-        });
-        const cancelBtn = document.getElementById('cancelNewDoctor');
-        const confirmBtn = document.getElementById('confirmNewDoctor');
-        if (cancelBtn) cancelBtn.onclick = () => { newSec.style.display = 'none'; sel.value = this.currentUser?.name || ''; };
-        if (confirmBtn) confirmBtn.onclick = () => {
-            const name = (document.getElementById('newDoctorName').value || '').trim();
-            if (!name) return;
-            if (!this.doctors.find(d => d.name === name)) {
-                this.doctors.unshift({ name });
-                this.saveDoctors();
-            }
-            this.populateDoctorSelect();
-            sel.value = name;
-            newSec.style.display = 'none';
-        };
-    }
-
-    loadSavedPatientId() {
-        const pid = localStorage.getItem('medicalChatbotPatientId');
-        if (pid && /^\d{8}$/.test(pid)) {
-            this.currentPatientId = pid;
-            const status = document.getElementById('patientStatus');
-            if (status) {
-                status.textContent = `Patient: ${pid}`;
-                status.style.color = 'var(--text-secondary)';
-            }
-            const input = document.getElementById('patientIdInput');
-            if (input) input.value = pid;
-        }
-    }
-
-    savePatientId() {
-        if (this.currentPatientId) {
-            localStorage.setItem('medicalChatbotPatientId', this.currentPatientId);
-        } else {
-            localStorage.removeItem('medicalChatbotPatientId');
-        }
-    }
+    // patient state moved to ui/patient.js
 
     setupModalEvents() {
         // User modal
@@ -485,61 +350,9 @@ How can I assist you today?`;
         await this.fetchAndRenderPatientSessions();
     }
 
-    async fetchAndRenderPatientSessions() {
-        if (!this.currentPatientId) return;
-        try {
-            const resp = await fetch(`/patients/${this.currentPatientId}/sessions`);
-            if (resp.ok) {
-                const data = await resp.json();
-                const sessions = Array.isArray(data.sessions) ? data.sessions : [];
-                this.backendSessions = sessions.map(s => ({
-                    id: s.session_id,
-                    title: s.title || 'New Chat',
-                    messages: [],
-                    createdAt: s.created_at || new Date().toISOString(),
-                    lastActivity: s.last_activity || new Date().toISOString(),
-                    source: 'backend'
-                }));
-                // Prefer backend sessions if present
-                if (this.backendSessions.length > 0) {
-                    this.currentSession = this.backendSessions[0];
-                    await this.hydrateMessagesForSession(this.currentSession.id);
-                }
-            } else {
-                console.warn('Failed to fetch patient sessions', resp.status);
-                this.backendSessions = [];
-            }
-        } catch (e) {
-            console.error('Failed to load patient sessions', e);
-            this.backendSessions = [];
-        }
-        this.loadChatSessions();
-    }
+    // patient session fetch moved to ui/patient.js
 
-    async hydrateMessagesForSession(sessionId) {
-        try {
-            const resp = await fetch(`/sessions/${sessionId}/messages?limit=1000`);
-            if (!resp.ok) return;
-            const data = await resp.json();
-            const msgs = Array.isArray(data.messages) ? data.messages : [];
-            const normalized = msgs.map(m => ({
-                id: m._id || this.generateId(),
-                role: m.role,
-                content: m.content,
-                timestamp: m.timestamp
-            }));
-            // set into currentSession if matched
-            if (this.currentSession && this.currentSession.id === sessionId) {
-                this.currentSession.messages = normalized;
-                // Render
-                this.clearChatMessages();
-                this.currentSession.messages.forEach(m => this.displayMessage(m));
-                this.updateChatTitle();
-            }
-        } catch (e) {
-            console.error('Failed to hydrate session messages', e);
-        }
-    }
+    // patient message hydration moved to ui/patient.js
 
     async sendMessage() {
         const input = document.getElementById('chatInput');
@@ -776,40 +589,9 @@ How can I assist you today?`;
         chatMessages.innerHTML = '';
     }
 
-    clearChat() {
-        if (confirm('Are you sure you want to clear this chat? This action cannot be undone.')) {
-            this.clearChatMessages();
-            if (this.currentSession) {
-                this.currentSession.messages = [];
-                this.currentSession.title = 'New Chat';
-                this.updateChatTitle();
-            }
-        }
-    }
+    // clearChat() { /* moved to ui/handlers.js */ }
 
-    exportChat() {
-        if (!this.currentSession || this.currentSession.messages.length === 0) {
-            alert('No chat to export.');
-            return;
-        }
-
-        const chatData = {
-            user: this.currentUser.name,
-            session: this.currentSession.title,
-            date: new Date().toISOString(),
-            messages: this.currentSession.messages
-        };
-
-        const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `medical-chat-${this.currentSession.title.replace(/[^a-z0-9]/gi, '-')}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
+    // exportChat() { /* moved to ui/handlers.js */ }
 
     loadChatSessions() {
         const sessionsContainer = document.getElementById('chatSessions');
@@ -1009,48 +791,7 @@ How can I assist you today?`;
         this.loadChatSessions();
     }
 
-    showUserModal() {
-        this.populateDoctorSelect();
-        // Ensure the dropdown is visible immediately with options
-        const sel = document.getElementById('profileNameSelect');
-        if (sel && sel.options.length === 0) {
-            // Fallback in unlikely case populate didn't run
-            const createOpt = document.createElement('option');
-            createOpt.value = '__create__';
-            createOpt.textContent = 'Create doctor user...';
-            sel.appendChild(createOpt);
-        }
-        if (sel && !sel.value) sel.value = this.currentUser?.name || '__create__';
-        document.getElementById('profileRole').value = this.currentUser.role;
-        document.getElementById('profileSpecialty').value = this.currentUser.specialty || '';
-
-        this.showModal('userModal');
-    }
-
-    saveUserProfile() {
-        const nameSel = document.getElementById('profileNameSelect');
-        const name = nameSel ? nameSel.value : '';
-        const role = document.getElementById('profileRole').value;
-        const specialty = document.getElementById('profileSpecialty').value.trim();
-
-        if (!name || name === '__create__') {
-            alert('Please select or create a doctor name.');
-            return;
-        }
-
-        if (!this.doctors.find(d => d.name === name)) {
-            this.doctors.unshift({ name });
-            this.saveDoctors();
-        }
-
-        this.currentUser.name = name;
-        this.currentUser.role = role;
-        this.currentUser.specialty = specialty;
-
-        this.saveUser();
-        this.updateUserDisplay();
-        this.hideModal('userModal');
-    }
+    // doctor modal logic moved to ui/doctor.js
 
     showSettingsModal() {
         this.showModal('settingsModal');
@@ -1077,13 +818,8 @@ How can I assist you today?`;
         this.hideModal('settingsModal');
     }
 
-    showModal(modalId) {
-        document.getElementById(modalId).classList.add('show');
-    }
-
-    hideModal(modalId) {
-        document.getElementById(modalId).classList.remove('show');
-    }
+    // showModal(modalId) { /* moved to ui/handlers.js */ }
+    // hideModal(modalId) { /* moved to ui/handlers.js */ }
 
     showLoading(show) {
         this.isLoading = show;
@@ -1099,10 +835,8 @@ How can I assist you today?`;
         }
     }
 
-    toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('show');
-    }
+    // toggleSidebar logic moved to ui/handlers.js
+
 
     updateUserDisplay() {
         document.getElementById('userName').textContent = this.currentUser.name;
@@ -1113,10 +847,8 @@ How can I assist you today?`;
         localStorage.setItem('medicalChatbotUser', JSON.stringify(this.currentUser));
     }
 
-    autoResizeTextarea(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-    }
+    // autoResizeTextarea logic moved to ui/handlers.js
+
 
     generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
