@@ -8,7 +8,8 @@ from src.utils.logger import logger
 
 
 class ChatSession:
-	"""Represents a chat session with a user"""
+	"""Represents a single chat session with a user."""
+
 	def __init__(self, session_id: str, user_id: str, title: str = "New Chat"):
 		self.session_id = session_id
 		self.user_id = user_id
@@ -18,7 +19,7 @@ class ChatSession:
 		self.messages: list[dict[str, Any]] = []
 
 	def add_message(self, role: str, content: str, metadata: dict | None = None):
-		"""Add a message to the session"""
+		"""Adds a message to the session."""
 		message = {
 			"id": str(uuid.uuid4()),
 			"role": role,  # "user" or "assistant"
@@ -30,19 +31,19 @@ class ChatSession:
 		self.last_activity = datetime.now(timezone.utc)
 
 	def get_messages(self, limit: int | None = None) -> list[dict[str, Any]]:
-		"""Get messages from the session, optionally limited"""
+		"""Retrieves messages from the session, optionally limited."""
 		if limit is None:
 			return self.messages
 		return self.messages[-limit:]
 
 	def update_title(self, title: str):
-		"""Update the session title"""
+		"""Updates the session title."""
 		self.title = title
 		self.last_activity = datetime.now(timezone.utc)
 
 	@classmethod
 	def from_dict(cls, data: dict) -> "ChatSession":
-		"""Create a ChatSession from a dictionary"""
+		"""Creates a ChatSession instance from a dictionary."""
 		if not isinstance(data, dict):
 			logger().error(f"Invalid data type for ChatSession.from_dict: {type(data)}")
 			raise ValueError(f"Expected dict, got {type(data)}")
