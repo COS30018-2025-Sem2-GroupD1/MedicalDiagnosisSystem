@@ -38,13 +38,15 @@ class MedicalChatbotApp {
         document.getElementById('sidebarToggle').addEventListener('click', () => {
             this.toggleSidebar();
         });
-        const sidebarClose = document.getElementById('sidebarClose');
-        if (sidebarClose) {
-            sidebarClose.addEventListener('click', () => {
-                const sidebar = document.getElementById('sidebar');
-                sidebar.classList.remove('show');
-            });
-        }
+        // Click outside sidebar to close (mobile/overlay behavior)
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            if (!sidebar) return;
+            const isOpen = sidebar.classList.contains('show');
+            const clickInside = sidebar.contains(e.target) || (toggleBtn && toggleBtn.contains(e.target));
+            if (isOpen && !clickInside) sidebar.classList.remove('show');
+        });
 
         // New chat button
         document.getElementById('newChatBtn').addEventListener('click', () => {
@@ -175,6 +177,13 @@ class MedicalChatbotApp {
         createOpt.value = '__create__';
         createOpt.textContent = 'Create doctor user...';
         sel.appendChild(createOpt);
+        // Ensure no duplicates, and include current user name if not in list
+        const names = new Set(this.doctors.map(d => d.name));
+        if (this.currentUser?.name && !names.has(this.currentUser.name)) {
+            this.doctors.unshift({ name: this.currentUser.name });
+            names.add(this.currentUser.name);
+            this.saveDoctors();
+        }
         this.doctors.forEach(d => {
             const opt = document.createElement('option');
             opt.value = d.name;
@@ -788,7 +797,7 @@ How can I assist you today?`;
                     this.currentSession = { ...session };
                     await this.hydrateMessagesForSession(session.id);
                 } else {
-                    this.loadChatSession(session.id);
+                this.loadChatSession(session.id);
                 }
             });
 
@@ -813,10 +822,10 @@ How can I assist you today?`;
             // Wire 3-dot menu (local sessions only for now)
             const menuBtn = sessionElement.querySelector('.chat-session-menu');
             if (session.source !== 'backend') {
-                menuBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.showSessionMenu(e.currentTarget, session.id);
-                });
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showSessionMenu(e.currentTarget, session.id);
+            });
             } else {
                 menuBtn.disabled = true;
                 menuBtn.style.opacity = 0.5;
