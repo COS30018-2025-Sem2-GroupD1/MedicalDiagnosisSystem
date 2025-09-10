@@ -2,6 +2,8 @@
 import { attachUIHandlers } from './ui/handlers.js';
 import { attachDoctorUI } from './ui/doctor.js';
 import { attachPatientUI } from './ui/patient.js';
+import { attachSessionsUI } from './chat/sessions.js';
+import { attachMessagingUI } from './chat/messaging.js';
 
 class MedicalChatbotApp {
     constructor() {
@@ -22,6 +24,8 @@ class MedicalChatbotApp {
         // Attach specialized UIs
         attachDoctorUI(this);
         attachPatientUI(this);
+        attachSessionsUI(this);
+        attachMessagingUI(this);
         this.setupEventListeners();
         this.loadUserPreferences();
         this.initializeUser();
@@ -132,10 +136,6 @@ class MedicalChatbotApp {
         if (autoSaveEl) autoSaveEl.addEventListener('change', () => this.savePreferences());
         if (notificationsEl) notificationsEl.addEventListener('change', () => this.savePreferences());
     }
-
-    // doctor UI moved to ui/doctor.js
-
-    // patient state moved to ui/patient.js
 
     setupModalEvents() {
         // User modal
@@ -350,248 +350,11 @@ How can I assist you today?`;
         await this.fetchAndRenderPatientSessions();
     }
 
-    // patient session fetch moved to ui/patient.js
-
-    // patient message hydration moved to ui/patient.js
-
-    async sendMessage() {
-        const input = document.getElementById('chatInput');
-        const message = input.value.trim();
-
-        if (!message || this.isLoading) return;
-        if (!this.currentPatientId) {
-            const status = document.getElementById('patientStatus');
-            status.textContent = 'Select a patient before chatting.';
-            status.style.color = 'var(--warning-color)';
-            return;
-        }
-
-        // Clear input
-        input.value = '';
-        this.autoResizeTextarea(input);
-
-        // Add user message
-        this.addMessage('user', message);
-
-        // Show loading
-        this.showLoading(true);
-
-        try {
-            // Send to API
-            const response = await this.callMedicalAPI(message);
-
-            // Add assistant response
-            this.addMessage('assistant', response);
-
-            // Update session
-            this.updateCurrentSession();
-
-        } catch (error) {
-            console.error('Error sending message:', error);
-
-            // Show more specific error messages
-            let errorMessage = 'I apologize, but I encountered an error processing your request.';
-
-            if (error.message.includes('500')) {
-                errorMessage = 'The server encountered an internal error. Please try again in a moment.';
-            } else if (error.message.includes('404')) {
-                errorMessage = 'The requested service was not found. Please check your connection.';
-            } else if (error.message.includes('fetch')) {
-                errorMessage = 'Unable to connect to the server. Please check your internet connection.';
-            }
-
-            this.addMessage('assistant', errorMessage);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async callMedicalAPI(message) {
-        try {
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                user_id: this.currentUser.id,
-                patient_id: this.currentPatientId,
-                doctor_id: this.currentUser.id,
-                session_id: this.currentSession?.id || 'default',
-                message: message,
-                user_role: this.currentUser.role,
-                user_specialty: this.currentUser.specialty,
-                title: this.currentSession?.title || 'New Chat'
-            })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data.response || 'I apologize, but I received an empty response. Please try again.';
-
-        } catch (error) {
-            console.error('API call failed:', error);
-            // Log detailed error information
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack,
-                user: this.currentUser,
-                session: this.currentSession,
-                patientId: this.currentPatientId
-            });
-
-            // Only return mock response if it's a network error, not a server error
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                return this.generateMockResponse(message);
-            } else {
-                throw error; // Re-throw server errors to show proper error message
-            }
-        }
-    }
-
-    generateMockResponse(message) {
-        const responses = [
-            "Based on your question about medical topics, I can provide general information. However, please remember that this is for educational purposes only and should not replace professional medical advice.",
-            "That's an interesting medical question. While I can offer some general insights, it's important to consult with healthcare professionals for personalized medical advice.",
-            "I understand your medical inquiry. For accurate diagnosis and treatment recommendations, please consult with qualified healthcare providers who can assess your specific situation.",
-            "Thank you for your medical question. I can provide educational information, but medical decisions should always be made in consultation with healthcare professionals.",
-            "I appreciate your interest in medical topics. Remember that medical information found online should be discussed with healthcare providers for proper evaluation."
-        ];
-
-        return responses[Math.floor(Math.random() * responses.length)];
-    }
-
-    addMessage(role, content) {
-        if (!this.currentSession) {
-            this.startNewChat();
-        }
-
-        const message = {
-            id: this.generateId(),
-            role: role,
-            content: content,
-            timestamp: new Date().toISOString()
-        };
-
-        this.currentSession.messages.push(message);
-
-        // Update UI
-        this.displayMessage(message);
-
-        // Update session title if it's the first user message -> call summariser
-        if (role === 'user' && this.currentSession.messages.length === 2) {
-            this.summariseAndSetTitle(content);
-        }
-    }
-
-    async summariseAndSetTitle(text) {
-        try {
-            const resp = await fetch('/summarise', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, max_words: 5 })
-            });
-            if (resp.ok) {
-                const data = await resp.json();
-                const title = (data.title || 'New Chat').trim();
-                this.currentSession.title = title;
-                this.updateCurrentSession();
-                this.updateChatTitle();
-                this.loadChatSessions();
-            } else {
-                // Fallback: simple truncation
-                const fallback = text.length > 50 ? text.substring(0, 50) + '...' : text;
-                this.currentSession.title = fallback;
-                this.updateCurrentSession();
-                this.updateChatTitle();
-                this.loadChatSessions();
-            }
-        } catch (e) {
-            const fallback = text.length > 50 ? text.substring(0, 50) + '...' : text;
-            this.currentSession.title = fallback;
-            this.updateCurrentSession();
-            this.updateChatTitle();
-            this.loadChatSessions();
-        }
-    }
-
-    displayMessage(message) {
-        const chatMessages = document.getElementById('chatMessages');
-        const messageElement = document.createElement('div');
-        messageElement.className = `message ${message.role}-message fade-in`;
-        messageElement.id = `message-${message.id}`;
-
-        const avatar = message.role === 'user' ?
-            '<i class="fas fa-user"></i>' :
-            '<i class="fas fa-robot"></i>';
-
-        const time = this.formatTime(message.timestamp);
-
-        messageElement.innerHTML = `
-            <div class="message-avatar">
-                ${avatar}
-            </div>
-            <div class="message-content">
-                <div class="message-text">
-                    ${this.formatMessageContent(message.content)}
-                </div>
-                <div class="message-time">${time}</div>
-            </div>
-        `;
-
-        chatMessages.appendChild(messageElement);
-
-        // Scroll to bottom
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        // Add to session if it exists
-        if (this.currentSession) {
-            this.currentSession.lastActivity = new Date().toISOString();
-        }
-    }
-
-    formatMessageContent(content) {
-        // Convert markdown-like syntax to HTML
-        return content
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n/g, '<br>')
-            .replace(/🔍/g, '<span style="color: var(--primary-color);">🔍</span>')
-            .replace(/📋/g, '<span style="color: var(--secondary-color);">📋</span>')
-            .replace(/💊/g, '<span style="color: var(--accent-color);">💊</span>')
-            .replace(/📚/g, '<span style="color: var(--success-color);">📚</span>')
-            .replace(/⚠️/g, '<span style="color: var(--warning-color);">⚠️</span>');
-    }
-
-    formatTime(timestamp) {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diff = now - date;
-
-        if (diff < 60000) { // Less than 1 minute
-            return 'Just now';
-        } else if (diff < 3600000) { // Less than 1 hour
-            const minutes = Math.floor(diff / 60000);
-            return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-        } else if (diff < 86400000) { // Less than 1 day
-            const hours = Math.floor(diff / 3600000);
-            return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-        } else {
-            return date.toLocaleDateString();
-        }
-    }
 
     clearChatMessages() {
         const chatMessages = document.getElementById('chatMessages');
         chatMessages.innerHTML = '';
     }
-
-    // clearChat() { /* moved to ui/handlers.js */ }
-
-    // exportChat() { /* moved to ui/handlers.js */ }
 
     loadChatSessions() {
         const sessionsContainer = document.getElementById('chatSessions');
@@ -791,8 +554,6 @@ How can I assist you today?`;
         this.loadChatSessions();
     }
 
-    // doctor modal logic moved to ui/doctor.js
-
     showSettingsModal() {
         this.showModal('settingsModal');
     }
@@ -818,9 +579,6 @@ How can I assist you today?`;
         this.hideModal('settingsModal');
     }
 
-    // showModal(modalId) { /* moved to ui/handlers.js */ }
-    // hideModal(modalId) { /* moved to ui/handlers.js */ }
-
     showLoading(show) {
         this.isLoading = show;
         const overlay = document.getElementById('loadingOverlay');
@@ -835,9 +593,6 @@ How can I assist you today?`;
         }
     }
 
-    // toggleSidebar logic moved to ui/handlers.js
-
-
     updateUserDisplay() {
         document.getElementById('userName').textContent = this.currentUser.name;
         document.getElementById('userStatus').textContent = this.currentUser.role;
@@ -847,15 +602,12 @@ How can I assist you today?`;
         localStorage.setItem('medicalChatbotUser', JSON.stringify(this.currentUser));
     }
 
-    // autoResizeTextarea logic moved to ui/handlers.js
-
 
     generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 }
 
-// Add near setupEventListeners inside the class methods where others are wired
 // Patient modal open
 document.addEventListener('DOMContentLoaded', () => {
     const profileBtn = document.getElementById('patientMenuBtn');
