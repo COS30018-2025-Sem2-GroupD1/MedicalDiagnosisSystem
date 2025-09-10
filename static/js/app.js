@@ -57,10 +57,21 @@ class MedicalChatbotApp {
             this.toggleSidebar();
         });
         // Click outside sidebar to close (mobile/overlay behavior)
-        const overlay = document.getElementById('sidebarOverlay');
+        const overlay = document.getElementById('appOverlay');
+        console.log('[DEBUG] Overlay element found:', !!overlay);
         const updateOverlay = () => {
             const sidebar = document.getElementById('sidebar');
-            if (sidebar && overlay) overlay.style.display = sidebar.classList.contains('show') ? 'block' : 'none';
+            const isOpen = sidebar && sidebar.classList.contains('show');
+            console.log('[DEBUG] Updating overlay - sidebar open:', isOpen);
+            if (sidebar && overlay) {
+                if (isOpen) {
+                    overlay.classList.add('show');
+                    console.log('[DEBUG] Overlay shown');
+                } else {
+                    overlay.classList.remove('show');
+                    console.log('[DEBUG] Overlay hidden');
+                }
+            }
         };
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
@@ -69,17 +80,28 @@ class MedicalChatbotApp {
             if (!sidebar) return;
             const isOpen = sidebar.classList.contains('show');
             const clickInside = sidebar.contains(e.target) || (toggleBtn && toggleBtn.contains(e.target));
+            const clickOnOverlay = overlay && overlay.contains(e.target);
+            
+            console.log('[DEBUG] Click event - sidebar open:', isOpen, 'click inside:', clickInside, 'click on overlay:', clickOnOverlay);
+            
             if (isOpen && !clickInside) {
+                if (clickOnOverlay) {
+                    console.log('[DEBUG] Clicked on overlay, closing sidebar');
+                } else {
+                    console.log('[DEBUG] Clicked outside sidebar, closing sidebar');
+                }
                 sidebar.classList.remove('show');
             }
             // Also close if clicking the main-content while open
             if (isOpen && main && main.contains(e.target) && !sidebar.contains(e.target)) {
+                console.log('[DEBUG] Clicked on main content, closing sidebar');
                 sidebar.classList.remove('show');
             }
             updateOverlay();
         }, true);
         if (overlay) {
             overlay.addEventListener('click', () => {
+                console.log('[DEBUG] Overlay clicked directly');
                 const sidebar = document.getElementById('sidebar');
                 if (sidebar) sidebar.classList.remove('show');
                 updateOverlay();
@@ -87,7 +109,20 @@ class MedicalChatbotApp {
         }
         // Keep overlay synced when toggling
         const origToggle = this.toggleSidebar.bind(this);
-        this.toggleSidebar = () => { origToggle(); updateOverlay(); };
+        this.toggleSidebar = () => { 
+            console.log('[DEBUG] Wrapped toggleSidebar called');
+            origToggle(); 
+            updateOverlay(); 
+        };
+        
+        // Initialize overlay state
+        updateOverlay();
+        
+        // Handle window resize for responsive behavior
+        window.addEventListener('resize', () => {
+            console.log('[DEBUG] Window resized, updating overlay');
+            updateOverlay();
+        });
 
         // New chat button
         document.getElementById('newChatBtn').addEventListener('click', () => {

@@ -5,7 +5,15 @@ export function attachUIHandlers(app) {
 	// Sidebar toggle implementation
 	app.toggleSidebar = function () {
 		const sidebar = document.getElementById('sidebar');
-		if (sidebar) sidebar.classList.toggle('show');
+		console.log('[DEBUG] toggleSidebar called');
+		if (sidebar) {
+			const wasOpen = sidebar.classList.contains('show');
+			sidebar.classList.toggle('show');
+			const isNowOpen = sidebar.classList.contains('show');
+			console.log('[DEBUG] Sidebar toggled - was open:', wasOpen, 'now open:', isNowOpen);
+		} else {
+			console.error('[DEBUG] Sidebar element not found');
+		}
 	};
 
 	// Textarea autosize
