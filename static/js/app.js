@@ -39,10 +39,10 @@ class MedicalChatbotApp {
             this.toggleSidebar();
         });
         // Click outside sidebar to close (mobile/overlay behavior)
-        const overlay = document.getElementById('appOverlay');
+        const overlay = document.getElementById('sidebarOverlay');
         const updateOverlay = () => {
             const sidebar = document.getElementById('sidebar');
-            if (sidebar && overlay) overlay.classList.toggle('show', sidebar.classList.contains('show'));
+            if (sidebar && overlay) overlay.style.display = sidebar.classList.contains('show') ? 'block' : 'none';
         };
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
@@ -60,6 +60,13 @@ class MedicalChatbotApp {
             }
             updateOverlay();
         }, true);
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) sidebar.classList.remove('show');
+                updateOverlay();
+            });
+        }
         // Keep overlay synced when toggling
         const origToggle = this.toggleSidebar.bind(this);
         this.toggleSidebar = () => { origToggle(); updateOverlay(); };
@@ -106,10 +113,12 @@ class MedicalChatbotApp {
                 if (!q) { hideSuggestions(); return; }
                 debounceTimer = setTimeout(async () => {
                     try {
-                        const resp = await fetch(`/patients/search?q=${encodeURIComponent(q)}&limit=8`);
+                        const resp = await fetch(`/patients/search?q=${encodeURIComponent(q)}&limit=8`, { headers: { 'Accept': 'application/json' } });
                         if (resp.ok) {
                             const data = await resp.json();
                             renderSuggestions(data.results || []);
+                        } else {
+                            console.warn('Search request failed', resp.status);
                         }
                     } catch (_) { /* ignore */ }
                 }, 200);
@@ -1011,6 +1020,7 @@ How can I assist you today?`;
             createOpt.textContent = 'Create doctor user...';
             sel.appendChild(createOpt);
         }
+        if (sel && !sel.value) sel.value = this.currentUser?.name || '__create__';
         document.getElementById('profileRole').value = this.currentUser.role;
         document.getElementById('profileSpecialty').value = this.currentUser.specialty || '';
 
