@@ -952,6 +952,31 @@ body {
     color: var(--text-secondary);
 }
 
+.patient-actions {
+    margin-top: var(--spacing-sm);
+    text-align: center;
+}
+
+.emr-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.emr-link:hover {
+    background-color: var(--primary-color-dark);
+    transform: translateY(-1px);
+    color: white;
+}
+
 /* Sidebar mobile behavior */
 @media (max-width: 1024px) {
     .sidebar {

@@ -922,21 +922,29 @@ How can I assist you today?`;
         if (pid && /^\d{8}$/.test(pid)) {
             this.currentPatientId = pid;
             const status = document.getElementById('patientStatus');
+            const actions = document.getElementById('patientActions');
+            const emrLink = document.getElementById('emrLink');
+            
             if (status) {
                 // Try to fetch patient name
                 try {
                     const resp = await fetch(`/patients/${pid}`);
                     if (resp.ok) {
                         const patient = await resp.json();
-                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${pid})`;
+                        status.textContent = `Pat: ${patient.name || 'Unknown'} (${pid})`;
                     } else {
-                        status.textContent = `Patient: ${pid}`;
+                        status.textContent = `Pat: ${pid}`;
                     }
                 } catch (e) {
-                    status.textContent = `Patient: ${pid}`;
+                    status.textContent = `Pat: ${pid}`;
                 }
                 status.style.color = 'var(--text-secondary)';
             }
+            
+            // Show EMR link
+            if (actions) actions.style.display = 'block';
+            if (emrLink) emrLink.href = `/static/emr.html?patient_id=${pid}`;
+            
             const input = document.getElementById('patientIdInput');
             if (input) input.value = pid;
         }
@@ -945,6 +953,25 @@ How can I assist you today?`;
     savePatientId() {
         if (this.currentPatientId) localStorage.setItem('medicalChatbotPatientId', this.currentPatientId);
         else localStorage.removeItem('medicalChatbotPatientId');
+    }
+
+    updatePatientDisplay(patientId, patientName = null) {
+        const status = document.getElementById('patientStatus');
+        const actions = document.getElementById('patientActions');
+        const emrLink = document.getElementById('emrLink');
+        
+        if (status) {
+            if (patientName) {
+                status.textContent = `Pat: ${patientName} (${patientId})`;
+        } else {
+                status.textContent = `Pat: ${patientId}`;
+            }
+            status.style.color = 'var(--text-secondary)';
+        }
+        
+        // Show EMR link
+        if (actions) actions.style.display = 'block';
+        if (emrLink) emrLink.href = `/static/emr.html?patient_id=${patientId}`;
     }
 
     loadPatient = async function () {
@@ -970,15 +997,12 @@ How can I assist you today?`;
                 const resp = await fetch(`/patients/${value}`);
                 if (resp.ok) {
                     const patient = await resp.json();
-                    if (status) { 
-                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${value})`; 
-                        status.style.color = 'var(--text-secondary)'; 
-                    }
-                } else {
-                    if (status) { status.textContent = `Patient: ${value}`; status.style.color = 'var(--text-secondary)'; }
+                    this.updatePatientDisplay(value, patient.name || 'Unknown');
+            } else {
+                    this.updatePatientDisplay(value);
                 }
             } catch (e) {
-                if (status) { status.textContent = `Patient: ${value}`; status.style.color = 'var(--text-secondary)'; }
+                this.updatePatientDisplay(value);
             }
             await this.fetchAndRenderPatientSessions();
             return;
@@ -998,10 +1022,7 @@ How can I assist you today?`;
                     this.currentPatientId = first.patient_id;
                     this.savePatientId();
                     input.value = first.patient_id;
-                    if (status) { 
-                        status.textContent = `Patient: ${first.name || 'Unknown'} (${first.patient_id})`; 
-                        status.style.color = 'var(--text-secondary)'; 
-                    }
+                    this.updatePatientDisplay(first.patient_id, first.name || 'Unknown');
                     await this.fetchAndRenderPatientSessions();
                     return;
                 }
@@ -1057,12 +1078,12 @@ How can I assist you today?`;
                 content: m.content,
                 timestamp: m.timestamp
             }));
-            if (this.currentSession && this.currentSession.id === sessionId) {
+        if (this.currentSession && this.currentSession.id === sessionId) {
                 this.currentSession.messages = normalized;
                 this.clearChatMessages();
                 this.currentSession.messages.forEach(m => this.displayMessage(m));
-                this.updateChatTitle();
-            }
+            this.updateChatTitle();
+        }
         } catch (e) {
             console.error('Failed to hydrate session messages', e);
         }
@@ -1093,11 +1114,7 @@ How can I assist you today?`;
                     this.savePatientId();
                     patientInput.value = p.patient_id;
                     hideSuggestions();
-                    const status = document.getElementById('patientStatus');
-                    if (status) { 
-                        status.textContent = `Patient: ${p.name || 'Unknown'} (${p.patient_id})`; 
-                        status.style.color = 'var(--text-secondary)'; 
-                    }
+                    this.updatePatientDisplay(p.patient_id, p.name || 'Unknown');
                     await this.fetchAndRenderPatientSessions();
                 });
                 suggestionsEl.appendChild(div);
@@ -1296,7 +1313,7 @@ How can I assist you today?`;
                 this.updateCurrentSession();
                 this.updateChatTitle();
                 this.loadChatSessions();
-            } else {
+        } else {
                 const fallback = text.length > 50 ? text.substring(0, 50) + '...' : text;
                 this.currentSession.title = fallback;
                 this.updateCurrentSession();
