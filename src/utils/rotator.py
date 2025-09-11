@@ -17,11 +17,10 @@ class APIKeyRotator:
 	- on HTTP 401/429/5xx you should call rotate() and retry (bounded)
 	"""
 	def __init__(self, prefix: str, max_slots: int = 5):
-		self.keys = []
-		for i in range(1, max_slots + 1):
-			v = os.getenv(f"{prefix}{i}")
-			if v:
-				self.keys.append(v.strip())
+		self.keys = [
+			v.strip() for i in range(1, max_slots + 1)
+			if (v := os.getenv(f"{prefix}{i}"))
+		]
 		if not self.keys:
 			logger().warning(f"No API keys found for prefix '{prefix}'.")
 			self._cycle = itertools.cycle([None])
@@ -52,14 +51,14 @@ async def robust_post_json(
 	for attempt in range(max_retries):
 		try:
 			async with httpx.AsyncClient(timeout=60) as client:
-				r = await client.post(url, headers=headers, json=payload)
-				if r.status_code in (401, 403, 429) or (500 <= r.status_code < 600):
-					logger().warning(f"HTTP {r.status_code} from provider. Rotating key and retrying ({attempt+1}/{max_retries})")
+				response = await client.post(url, headers=headers, json=payload)
+				if response.status_code in (401, 403, 429) or (500 <= response.status_code < 600):
+					logger().warning(f"HTTP {response.status_code}. Rotating key and retrying ({attempt + 1}/{max_retries}).")
 					rotator.rotate()
 					continue
-				r.raise_for_status()
-				return r.json()
+				response.raise_for_status()
+				return response.json()
 		except Exception as e:
-			logger().warning(f"Request error: {e}. Rotating and retrying ({attempt+1}/{max_retries})")
+			logger().warning(f"Request error: {e}. Rotating and retrying ({attempt + 1}/{max_retries}).")
 			rotator.rotate()
-	raise RuntimeError("Provider request failed after retries.")
+	raise RuntimeError("API request failed after all retries.")
