@@ -91,7 +91,7 @@ body {
     display: flex;
     flex-direction: column;
     transition: transform var(--transition-normal);
-    z-index: 1000;
+    z-index: 1001;
 }
 
 .sidebar-header {
@@ -760,7 +760,7 @@ body {
         width: 300px;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
-        z-index: 1000;
+        z-index: 1001;
     }
 
     .sidebar.show {

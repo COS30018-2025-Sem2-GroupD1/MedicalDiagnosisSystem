@@ -71,7 +71,7 @@ class MedicalChatbotApp {
             const sidebar = document.getElementById('sidebar');
             const isOpen = sidebar && sidebar.classList.contains('show');
             console.log('[DEBUG] Updating overlay - sidebar open:', isOpen);
-            if (sidebar && overlay) {
+            if (overlay) {
                 if (isOpen) {
                     overlay.classList.add('show');
                     console.log('[DEBUG] Overlay shown');
@@ -90,7 +90,10 @@ class MedicalChatbotApp {
             updateOverlay(); 
         };
         
-        // Initialize overlay state
+        // Initialize overlay state - ensure it's hidden on startup
+        if (overlay) {
+            overlay.classList.remove('show');
+        }
         updateOverlay();
         
         // Handle window resize for responsive behavior
@@ -1052,7 +1055,7 @@ How can I assist you today?`;
                         const data = await resp.json();
                         console.log('[DEBUG] Search results:', data);
                         renderSuggestions(data.results || []);
-                    } else {
+        } else {
                         const errorText = await resp.text();
                         console.warn('Search request failed', resp.status, errorText);
                     }
