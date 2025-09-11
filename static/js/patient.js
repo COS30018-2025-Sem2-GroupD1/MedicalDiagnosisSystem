@@ -13,12 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	let isEditMode = false;
 	let currentPatientId = null;
 
-	function getPatientIdFromContext() {
+	function getPatientIdFromUrl() {
 		const urlParams = new URLSearchParams(window.location.search);
 		const pidFromUrl = urlParams.get('patient_id');
 		if (pidFromUrl && /^\d{8}$/.test(pidFromUrl)) return pidFromUrl;
-		const pidFromStorage = localStorage.getItem('medicalChatbotPatientId');
-		if (pidFromStorage && /^\d{8}$/.test(pidFromStorage)) return pidFromStorage;
 		return null;
 	}
 
@@ -47,11 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (titleEl) titleEl.textContent = 'Edit Patient';
 	}
 
-	// Initialize edit mode if patient_id is available
-	const detectedPid = getPatientIdFromContext();
-	if (detectedPid) {
-		enableEditMode(detectedPid);
-		loadPatientIntoForm(detectedPid);
+	// Initialize: only enter edit mode if patient_id is explicitly in URL
+	const pidFromUrl = getPatientIdFromUrl();
+	if (pidFromUrl) {
+		enableEditMode(pidFromUrl);
+		loadPatientIntoForm(pidFromUrl);
 	}
 
 	cancelBtn.addEventListener('click', () => {
@@ -92,11 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				const data = await resp.json();
 				const pid = data.patient_id;
 				localStorage.setItem('medicalChatbotPatientId', pid);
-				// Show success modal
+				// Show success modal (stay in create view until user opts to edit)
 				if (createdIdEl) createdIdEl.textContent = pid;
 				successModal.classList.add('show');
-				// Switch to edit mode automatically after creation
-				enableEditMode(pid);
 			}
 		} catch (err) {
 			console.error(err);
@@ -113,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const pid = createdIdEl?.textContent?.trim() || localStorage.getItem('medicalChatbotPatientId');
 		if (pid && /^\d{8}$/.test(pid)) {
 			enableEditMode(pid);
+			loadPatientIntoForm(pid);
 		}
 	});
 });
