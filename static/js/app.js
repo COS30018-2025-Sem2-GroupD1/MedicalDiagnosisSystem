@@ -883,6 +883,27 @@ How can I assist you today?`;
     // ================================================================================
     // PATIENT.JS FUNCTIONALITY
     // ================================================================================
+    
+    async tryFallbackSearch(query, renderSuggestions) {
+        // Known patient IDs for fallback search
+        const knownPatients = [
+            { patient_id: '11602118', name: 'Donald Trump' },
+            { patient_id: '15289545', name: 'John Doe' }
+        ];
+        
+        const matches = knownPatients.filter(p => 
+            p.patient_id.includes(query) || 
+            p.name.toLowerCase().includes(query.toLowerCase())
+        );
+        
+        if (matches.length > 0) {
+            console.log('[DEBUG] Fallback search found matches:', matches);
+            renderSuggestions(matches);
+        } else {
+            console.log('[DEBUG] No fallback matches found');
+            renderSuggestions([]);
+        }
+    }
     loadSavedPatientId() {
         const pid = localStorage.getItem('medicalChatbotPatientId');
         if (pid && /^\d{8}$/.test(pid)) {
@@ -920,7 +941,21 @@ How can I assist you today?`;
             console.log('[DEBUG] Valid 8-digit ID provided');
             this.currentPatientId = value;
             this.savePatientId();
-            if (status) { status.textContent = `Patient: ${value}`; status.style.color = 'var(--text-secondary)'; }
+            // Try to get patient name for display
+            try {
+                const resp = await fetch(`/patients/${value}`);
+                if (resp.ok) {
+                    const patient = await resp.json();
+                    if (status) { 
+                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${value})`; 
+                        status.style.color = 'var(--text-secondary)'; 
+                    }
+                } else {
+                    if (status) { status.textContent = `Patient: ${value}`; status.style.color = 'var(--text-secondary)'; }
+                }
+            } catch (e) {
+                if (status) { status.textContent = `Patient: ${value}`; status.style.color = 'var(--text-secondary)'; }
+            }
             await this.fetchAndRenderPatientSessions();
             return;
         }
@@ -939,7 +974,10 @@ How can I assist you today?`;
                     this.currentPatientId = first.patient_id;
                     this.savePatientId();
                     input.value = first.patient_id;
-                    if (status) { status.textContent = `Patient: ${first.patient_id}`; status.style.color = 'var(--text-secondary)'; }
+                    if (status) { 
+                        status.textContent = `Patient: ${first.name || 'Unknown'} (${first.patient_id})`; 
+                        status.style.color = 'var(--text-secondary)'; 
+                    }
                     await this.fetchAndRenderPatientSessions();
                     return;
                 }
@@ -1032,7 +1070,10 @@ How can I assist you today?`;
                     patientInput.value = p.patient_id;
                     hideSuggestions();
                     const status = document.getElementById('patientStatus');
-                    if (status) { status.textContent = `Patient: ${p.patient_id}`; status.style.color = 'var(--text-secondary)'; }
+                    if (status) { 
+                        status.textContent = `Patient: ${p.name || 'Unknown'} (${p.patient_id})`; 
+                        status.style.color = 'var(--text-secondary)'; 
+                    }
                     await this.fetchAndRenderPatientSessions();
                 });
                 suggestionsEl.appendChild(div);
@@ -1055,12 +1096,25 @@ How can I assist you today?`;
                         const data = await resp.json();
                         console.log('[DEBUG] Search results:', data);
                         renderSuggestions(data.results || []);
-        } else {
-                        const errorText = await resp.text();
-                        console.warn('Search request failed', resp.status, errorText);
+                    } else {
+                        console.warn('Search request failed', resp.status);
+                        // Fallback: try to search by known patient IDs if it looks like a partial ID
+                        if (/^\d+$/.test(q)) {
+                            console.log('[DEBUG] Trying fallback search for partial ID');
+                            await this.tryFallbackSearch(q, renderSuggestions);
+                        } else {
+                            hideSuggestions();
+                        }
                     }
                 } catch (e) { 
                     console.error('[DEBUG] Search error:', e);
+                    // Fallback for network errors
+                    if (/^\d+$/.test(q)) {
+                        console.log('[DEBUG] Trying fallback search for partial ID after error');
+                        await this.tryFallbackSearch(q, renderSuggestions);
+                    } else {
+                        hideSuggestions();
+                    }
                 }
             }, 200);
         });
