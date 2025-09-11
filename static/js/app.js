@@ -953,12 +953,12 @@ How can I assist you today?`;
                     const resp = await fetch(`/patients/${pid}`);
                     if (resp.ok) {
                         const patient = await resp.json();
-                        status.textContent = `Pat: ${patient.name || 'Unknown'} (${pid})`;
+                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${pid})`;
                     } else {
-                        status.textContent = `Pat: ${pid}`;
+                        status.textContent = `Patient: ${pid}`;
                     }
                 } catch (e) {
-                    status.textContent = `Pat: ${pid}`;
+                    status.textContent = `Patient: ${pid}`;
                 }
                 status.style.color = 'var(--text-secondary)';
             }
@@ -984,9 +984,9 @@ How can I assist you today?`;
         
         if (status) {
             if (patientName) {
-                status.textContent = `Pat: ${patientName} (${patientId})`;
+                status.textContent = `Patient: ${patientName} (${patientId})`;
         } else {
-                status.textContent = `Pat: ${patientId}`;
+                status.textContent = `Patient: ${patientId}`;
             }
             status.style.color = 'var(--text-secondary)';
         }
