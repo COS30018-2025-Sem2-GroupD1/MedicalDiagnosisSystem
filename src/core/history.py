@@ -109,20 +109,20 @@ class MedicalHistoryManager:
 		nvidia_rotator: APIKeyRotator
 	) -> str:
 		"""Generates a summary of the Q&A exchange using available AI models."""
+		fallback_summary = f"q: {question}\na: {answer}"
 		if not gemini_rotator or not gemini_rotator.get_key():
-			return f"q: {question}\na: {answer}"
+			return fallback_summary
 
 		try:
 			summary = await summariser.summarise_qa_with_gemini(
 				question, answer, gemini_rotator
 			)
 			if not summary or not summary.strip():
-				if nvidia_rotator.get_key():
+				if nvidia_rotator and nvidia_rotator.get_key():
 					summary = await summariser.summarise_qa_with_nvidia(
 						question, answer, nvidia_rotator
 					)
-			return summary if summary and summary.strip() else f"q: {question}\na: {answer}"
-
+			return summary if summary and summary.strip() else fallback_summary
 		except Exception as e:
 			logger().warning(f"Failed to generate AI summary: {e}")
-			return f"q: {question}\na: {answer}"
+			return fallback_summary
