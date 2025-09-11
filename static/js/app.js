@@ -877,6 +877,28 @@ How can I assist you today?`;
 
         this.saveUser();
         this.updateUserDisplay();
+
+        // Persist to backend (MongoDB) as well
+        const payload = {
+            user_id: this.currentUser.id,
+            name: this.currentUser.name,
+            role: this.currentUser.role,
+            specialty: this.currentUser.specialty || null,
+            medical_roles: [this.currentUser.role]
+        };
+        fetch('/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(resp => {
+            if (!resp.ok) throw new Error('Failed to save user to backend');
+            return resp.json();
+        }).then(() => {
+            console.log('[User] persisted to backend');
+        }).catch(err => {
+            console.warn('[User] failed to persist to backend:', err);
+        });
+
         this.hideModal('userModal');
     }
 

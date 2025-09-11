@@ -3,8 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.state import MedicalState, get_state
-from src.models.user import UserProfileRequest
+from src.models.user import UserProfileRequest, PatientCreateRequest, PatientUpdateRequest
 from src.utils.logger import get_logger
+from src.data.mongodb import create_account
 
 logger = get_logger("USER_ROUTES", __name__)
 router = APIRouter()
@@ -16,12 +17,25 @@ async def create_user_profile(
 ):
 	"""Create or update user profile"""
 	try:
+		# Persist to in-memory profile (existing behavior)
 		user = state.memory_system.create_user(request.user_id, request.name)
 		user.set_preference("role", request.role)
 		if request.specialty:
 			user.set_preference("specialty", request.specialty)
+		if request.medical_roles:
+			user.set_preference("medical_roles", request.medical_roles)
 
-		return {"message": "User profile created successfully", "user_id": request.user_id}
+		# Persist to MongoDB accounts collection
+		account_doc = {
+			"user_id": request.user_id,
+			"name": request.name,
+			"role": request.role,
+			"medical_roles": request.medical_roles or [request.role] if request.role else [],
+			"specialty": request.specialty or None,
+		}
+		account_id = create_account(account_doc)
+
+		return {"message": "User profile created successfully", "user_id": request.user_id, "account_id": account_id}
 	except Exception as e:
 		logger.error(f"Error creating user profile: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
@@ -45,6 +59,7 @@ async def get_user_profile(
 				"name": user.name,
 				"role": user.preferences.get("role", "Unknown"),
 				"specialty": user.preferences.get("specialty", ""),
+				"medical_roles": user.preferences.get("medical_roles", []),
 				"created_at": user.created_at,
 				"last_seen": user.last_seen
 			},
@@ -66,19 +81,7 @@ async def get_user_profile(
 		raise HTTPException(status_code=500, detail=str(e))
 
 # -------------------- Patient APIs --------------------
-from pydantic import BaseModel
 from src.data.mongodb import get_patient_by_id, create_patient, update_patient_profile, search_patients
-
-class PatientCreateRequest(BaseModel):
-	name: str
-	age: int
-	sex: str
-	address: str | None = None
-	phone: str | None = None
-	email: str | None = None
-	medications: list[str] | None = None
-	past_assessment_summary: str | None = None
-	assigned_doctor_id: str | None = None
 
 @router.get("/patients/{patient_id}")
 async def get_patient(patient_id: str):
@@ -116,17 +119,6 @@ async def create_patient_profile(req: PatientCreateRequest):
 	except Exception as e:
 		logger.error(f"Error creating patient: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
-
-class PatientUpdateRequest(BaseModel):
-	name: str | None = None
-	age: int | None = None
-	sex: str | None = None
-	address: str | None = None
-	phone: str | None = None
-	email: str | None = None
-	medications: list[str] | None = None
-	past_assessment_summary: str | None = None
-	assigned_doctor_id: str | None = None
 
 @router.patch("/patients/{patient_id}")
 async def update_patient(patient_id: str, req: PatientUpdateRequest):
