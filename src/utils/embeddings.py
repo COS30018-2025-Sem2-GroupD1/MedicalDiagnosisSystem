@@ -11,71 +11,54 @@ class EmbeddingClient:
 	def __init__(self, model_name: str = "default", dimension: int = 384):
 		self.model_name = model_name
 		self.dimension = dimension
+		self.model = None
 		self._fallback_mode = True
-
-		# Try to initialize proper embedding model
-		try:
-			self._init_embedding_model()
-		except Exception as e:
-			logger().warning(f"Could not initialize embedding model {model_name}: {e}")
-			logger().info("Using fallback embedding mode")
-			self._fallback_mode = True
+		self._init_embedding_model()
 
 	def _init_embedding_model(self):
-		"""Initialize the actual embedding model"""
+		"""Initializes the sentence-transformer embedding model."""
 		try:
-			# Try to import sentence transformers
-			from sentence_transformers import SentenceTransformer  # type: ignore
+			from sentence_transformers import SentenceTransformer # type: ignore
 			self.model = SentenceTransformer(self.model_name)
 			self._fallback_mode = False
 			logger().info(f"Successfully loaded embedding model: {self.model_name}")
 		except ImportError:
-			logger().warning("sentence-transformers not available, using fallback mode")
-			self._fallback_mode = True
+			logger().warning("sentence-transformers not found, using fallback embedding mode.")
 		except Exception as e:
-			logger().error(f"Error loading embedding model: {e}")
-			self._fallback_mode = True
+			logger().error(f"Error loading embedding model '{self.model_name}': {e}")
 
 	def embed(self, texts: str | list[str]) -> list[list[float]]:
 		"""Generates embeddings for the given texts."""
 		if isinstance(texts, str):
 			texts = [texts]
-
-		if self._fallback_mode:
-			return self._fallback_embed(texts)
-		else:
-			return self._proper_embed(texts)
+		return self._fallback_embed(texts) if self._fallback_mode else self._proper_embed(texts)
 
 	def _proper_embed(self, texts: list[str]) -> list[list[float]]:
-		"""Generate embeddings using the proper model"""
+		"""Generates embeddings using the sentence-transformer model."""
 		try:
-			embeddings = self.model.encode(texts, convert_to_numpy=True)
-			# Convert to list of lists for consistency
-			if len(texts) == 1:
-				return [embeddings.tolist()]
-			else:
-				return embeddings.tolist()
+			embeddings = self.model.encode(texts, convert_to_numpy=True) # type: ignore
+			return embeddings.tolist()
 		except Exception as e:
-			logger().error(f"Error in proper embedding: {e}")
+			logger().error(f"Error during embedding generation: {e}")
 			return self._fallback_embed(texts)
 
 	def _fallback_embed(self, texts: list[str]) -> list[list[float]]:
 		"""Generates deterministic, hash-based embeddings as a fallback."""
 		embeddings = []
-
 		for text in texts:
 			# Create a deterministic hash-based embedding
 			text_hash = hash(text) % (2**32)
 			np.random.seed(text_hash)
-
-			# Generate random vector with fixed dimension
-			embedding = np.random.normal(0, 1, self.dimension)
-			# Normalize to unit length
-			embedding = embedding / (np.linalg.norm(embedding) + 1e-8)
-
-			embeddings.append(embedding.tolist())
-
+			vector = np.random.normal(0, 1, self.dimension)
+			norm = np.linalg.norm(vector)
+			if norm > 0:
+				vector /= norm
+			embeddings.append(vector.tolist())
 		return embeddings
+
+	def is_available(self) -> bool:
+		"""Checks if the proper embedding model is available."""
+		return not self._fallback_mode
 
 	def similarity(self, text1: str, text2: str) -> float:
 		"""
@@ -135,10 +118,6 @@ class EmbeddingClient:
 				similarities.append(float(dot_product / (norm1 * norm2)))
 
 		return similarities
-
-	def is_available(self) -> bool:
-		"""Checks if the proper embedding model is available."""
-		return not self._fallback_mode
 
 	def get_model_info(self) -> dict:
 		"""Get information about the current embedding model"""
