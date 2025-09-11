@@ -52,7 +52,7 @@ async def robust_post_json(
 		try:
 			async with httpx.AsyncClient(timeout=60) as client:
 				response = await client.post(url, headers=headers, json=payload)
-				if response.status_code in (401, 403, 429) or (500 <= response.status_code < 600):
+				if response.status_code in {401, 403, 429} or 500 <= response.status_code < 600:
 					logger().warning(f"HTTP {response.status_code}. Rotating key and retrying ({attempt + 1}/{max_retries}).")
 					rotator.rotate()
 					continue
