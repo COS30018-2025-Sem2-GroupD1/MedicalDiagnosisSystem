@@ -6,10 +6,7 @@ from src.utils.logger import logger
 
 
 class EmbeddingClient:
-	"""
-	Simple embedding client that provides fallback functionality
-	when proper embedding models are not available
-	"""
+	"""A simple embedding client with a fallback mechanism."""
 
 	def __init__(self, model_name: str = "default", dimension: int = 384):
 		self.model_name = model_name
@@ -40,15 +37,7 @@ class EmbeddingClient:
 			self._fallback_mode = True
 
 	def embed(self, texts: str | list[str]) -> list[list[float]]:
-		"""
-		Generate embeddings for the given texts
-
-		Args:
-			texts: Single text string or list of text strings
-
-		Returns:
-			list of embedding vectors
-		"""
+		"""Generates embeddings for the given texts."""
 		if isinstance(texts, str):
 			texts = [texts]
 
@@ -71,10 +60,7 @@ class EmbeddingClient:
 			return self._fallback_embed(texts)
 
 	def _fallback_embed(self, texts: list[str]) -> list[list[float]]:
-		"""
-		Fallback embedding using simple hash-based approach
-		This is not semantically meaningful but provides consistent dimensionality
-		"""
+		"""Generates deterministic, hash-based embeddings as a fallback."""
 		embeddings = []
 
 		for text in texts:
@@ -151,7 +137,7 @@ class EmbeddingClient:
 		return similarities
 
 	def is_available(self) -> bool:
-		"""Check if proper embedding model is available"""
+		"""Checks if the proper embedding model is available."""
 		return not self._fallback_mode
 
 	def get_model_info(self) -> dict:

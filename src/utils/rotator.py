@@ -23,29 +23,32 @@ class APIKeyRotator:
 			if v:
 				self.keys.append(v.strip())
 		if not self.keys:
-			logger().warning(f"No API keys found for {prefix}. Operating in fallback mode.")
+			logger().warning(f"No API keys found for prefix '{prefix}'.")
 			self._cycle = itertools.cycle([None])
 		else:
-			logger().info(f"Loaded {len(self.keys)} API keys for {prefix}")
+			logger().info(f"Loaded {len(self.keys)} API keys for '{prefix}'.")
 			self._cycle = itertools.cycle(self.keys)
 		self.current = next(self._cycle)
 
 	def get_key(self) -> str | None:
-		"""Return current API key or None if no keys available."""
+		"""Returns the current API key."""
 		return self.current
 
 	def rotate(self) -> str | None:
-		"""Rotate to next API key, return None if no keys available."""
+		"""Rotates to the next API key."""
 		self.current = next(self._cycle)
-		if self.current:  # Only log rotation if we actually have keys
-			logger().info("Rotated API key")
+		if self.current:
+			logger().info("Rotated to next API key.")
 		return self.current
 
-async def robust_post_json(url: str, headers: dict, payload: dict, rotator: APIKeyRotator, max_retries: int = 5):
-	"""
-	POST JSON with simple retry+rotate on 401/403/429/5xx.
-	Returns json response.
-	"""
+async def robust_post_json(
+	url: str,
+	headers: dict,
+	payload: dict,
+	rotator: APIKeyRotator,
+	max_retries: int = 5
+):
+	"""POSTs JSON data with retry and key rotation on 401/403/429/5xx."""
 	for attempt in range(max_retries):
 		try:
 			async with httpx.AsyncClient(timeout=60) as client:

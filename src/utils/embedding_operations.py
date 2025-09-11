@@ -8,7 +8,7 @@ from src.utils.embeddings import EmbeddingClient
 
 
 def cosine_similarity(vec_a: NDArray[np.float32], vec_b: NDArray[np.float32]) -> float:
-	"""Calculate cosine similarity between two vectors."""
+	"""Calculates the cosine similarity between two vectors."""
 	denom = (np.linalg.norm(vec_a) * np.linalg.norm(vec_b)) or 1.0
 	return float(np.dot(vec_a, vec_b) / denom)
 
@@ -19,20 +19,7 @@ def semantic_search(
 	top_k: int = settings.SEMANTIC_CONTEXT_SIZE,
 	threshold: float = settings.SIMILARITY_THRESHOLD
 ) -> list[str]:
-	"""
-	Find semantically similar texts using embedding-based search.
-
-	Args:
-		query: Search query text
-		candidates: List of texts to search through
-		embedder: Embedding client for vector generation
-		top_k: Maximum number of results to return
-		threshold: Minimum similarity score threshold
-		join_results: If True, join results with newlines, otherwise return list
-
-	Returns:
-		Either list of matching texts or newline-joined string depending on join_results
-	"""
+	"""Finds semantically similar texts using embedding-based search."""
 	if not candidates:
 		return []
 
