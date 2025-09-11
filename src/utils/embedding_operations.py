@@ -26,7 +26,7 @@ def semantic_search(
 	if not candidates:
 		return []
 
-	query_vector = np.array(embedder.embed([query])[0], dtype="float32")
+	query_vector = np.array(embedder.embed(query)[0], dtype="float32")
 	candidate_vectors = embedder.embed([s.strip() for s in candidates])
 
 	similarities = [
@@ -35,6 +35,4 @@ def semantic_search(
 	]
 
 	similarities.sort(key=lambda x: x[0], reverse=True)
-	matches = [text for score, text in similarities[:top_k] if score > threshold]
-
-	return matches
+	return [text for score, text in similarities[:top_k] if score > threshold]
