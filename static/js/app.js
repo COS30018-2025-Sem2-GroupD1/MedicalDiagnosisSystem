@@ -903,18 +903,51 @@ How can I assist you today?`;
         console.log('[DEBUG] loadPatient called');
         const input = document.getElementById('patientIdInput');
         const status = document.getElementById('patientStatus');
-        const id = (input?.value || '').trim();
-        console.log('[DEBUG] Patient ID from input:', id);
-        if (!/^\d{8}$/.test(id)) {
-            console.log('[DEBUG] Invalid patient ID format');
-            if (status) { status.textContent = 'Invalid patient ID. Use 8 digits.'; status.style.color = 'var(--warning-color)'; }
+        const value = (input?.value || '').trim();
+        console.log('[DEBUG] Patient input value:', value);
+        
+        if (!value) {
+            console.log('[DEBUG] No input provided');
+            if (status) { status.textContent = 'Please enter patient ID or name.'; status.style.color = 'var(--warning-color)'; }
             return;
         }
-        console.log('[DEBUG] Setting current patient ID:', id);
-        this.currentPatientId = id;
-        this.savePatientId();
-        if (status) { status.textContent = `Patient: ${id}`; status.style.color = 'var(--text-secondary)'; }
-        await this.fetchAndRenderPatientSessions();
+        
+        // If it's a complete 8-digit ID, use it directly
+        if (/^\d{8}$/.test(value)) {
+            console.log('[DEBUG] Valid 8-digit ID provided');
+            this.currentPatientId = value;
+            this.savePatientId();
+            if (status) { status.textContent = `Patient: ${value}`; status.style.color = 'var(--text-secondary)'; }
+            await this.fetchAndRenderPatientSessions();
+            return;
+        }
+        
+        // Otherwise, search for patient by name or partial ID
+        console.log('[DEBUG] Searching for patient by name/partial ID');
+        try {
+            const resp = await fetch(`/patients/search?q=${encodeURIComponent(value)}&limit=1`);
+            console.log('[DEBUG] Search response status:', resp.status);
+            if (resp.ok) {
+                const data = await resp.json();
+                console.log('[DEBUG] Search results:', data);
+                const first = (data.results || [])[0];
+                if (first) {
+                    console.log('[DEBUG] Found patient, setting as current:', first);
+                    this.currentPatientId = first.patient_id;
+                    this.savePatientId();
+                    input.value = first.patient_id;
+                    if (status) { status.textContent = `Patient: ${first.patient_id}`; status.style.color = 'var(--text-secondary)'; }
+                    await this.fetchAndRenderPatientSessions();
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('[DEBUG] Search error:', e);
+        }
+        
+        // No patient found
+        console.log('[DEBUG] No patient found');
+        if (status) { status.textContent = 'No patient found. Try a different search.'; status.style.color = 'var(--warning-color)'; }
     }
 
     fetchAndRenderPatientSessions = async function () {
@@ -1032,37 +1065,8 @@ How can I assist you today?`;
             if (e.key === 'Enter') {
                 const value = patientInput.value.trim();
                 console.log('[DEBUG] Patient input Enter pressed with value:', value);
-                if (/^\d{8}$/.test(value)) {
-                    console.log('[DEBUG] Loading patient with 8-digit ID');
-                    await this.loadPatient();
-                    hideSuggestions();
-                } else {
-                    console.log('[DEBUG] Searching for patient by name/partial ID');
-                    try {
-                        const resp = await fetch(`/patients/search?q=${encodeURIComponent(value)}&limit=1`);
-                        console.log('[DEBUG] Search response status:', resp.status);
-                        if (resp.ok) {
-                            const data = await resp.json();
-                            console.log('[DEBUG] Search results for Enter:', data);
-                            const first = (data.results || [])[0];
-                            if (first) {
-                                console.log('[DEBUG] Found patient, setting as current:', first);
-                                this.currentPatientId = first.patient_id;
-                                this.savePatientId();
-                                patientInput.value = first.patient_id;
-                                hideSuggestions();
-                                const status = document.getElementById('patientStatus');
-                                if (status) { status.textContent = `Patient: ${first.patient_id}`; status.style.color = 'var(--text-secondary)'; }
-                                await this.fetchAndRenderPatientSessions();
-                                return;
-                            }
-                        }
-                    } catch (e) {
-                        console.error('[DEBUG] Search error on Enter:', e);
-                    }
-                    const status = document.getElementById('patientStatus');
-                    if (status) { status.textContent = 'No matching patient found'; status.style.color = 'var(--warning-color)'; }
-                }
+                hideSuggestions();
+                await this.loadPatient();
             }
         });
         document.addEventListener('click', (ev) => {
