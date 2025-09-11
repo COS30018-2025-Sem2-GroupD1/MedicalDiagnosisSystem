@@ -1,0 +1,136 @@
+# data/repositories/chat.py
+
+from datetime import datetime, timezone
+from typing import Any
+
+from bson import ObjectId
+from pymongo import DESCENDING
+from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
+                            OperationFailure, PyMongoError)
+
+from src.data.repositories.base import ActionFailed, get_collection
+from src.utils.logger import logger
+
+CHAT_SESSIONS_COLLECTION = "chat_sessions"
+
+def create_chat_session(
+	session_data: dict[str, Any],
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> str:
+	"""Creates a new chat session."""
+	collection = get_collection(collection_name)
+	now = datetime.now(timezone.utc)
+	session_data.update({
+		"created_at": now,
+		"updated_at": now,
+		"messages": session_data.get("messages", []),
+		"title": str(session_data.get("title", "New Chat")),
+		"user_id": str(session_data["user_id"])
+	})
+	#if "_id" not in session_data:
+	#	session_data["_id"] = str(ObjectId())
+	try:
+		result = collection.insert_one(session_data)
+		return str(result.inserted_id)
+	except Exception as e:
+		logger().error(f"Failed to create chat session with data {session_data}: {e}")
+		raise
+
+def get_user_sessions(
+	user_id: str,
+	/,
+	limit: int = 20,
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> list[dict[str, Any]]:
+	"""Retrieves chat sessions for a specific user."""
+	collection = get_collection(collection_name)
+	cursor = collection.find(
+		{"user_id": user_id}
+	).sort(
+		"updated_at", DESCENDING
+	).limit(limit)
+	return list(cursor)
+
+def add_message(
+	session_id: str,
+	/,
+	message_data: dict[str, Any],
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> str:
+	"""Adds a message to a chat session, raising an error if the session is not found."""
+	collection = get_collection(collection_name)
+	now = datetime.now(timezone.utc)
+	message_data["timestamp"] = now
+
+	result = collection.update_one(
+		{"_id": session_id},
+		{
+			"$push": {"messages": message_data},
+			"$set": {"updated_at": now}
+		}
+	)
+
+	if result.modified_count == 0:
+		raise ValueError(f"Chat session not found or not modified: {session_id}")
+
+	return session_id
+
+def get_session(
+	session_id: str,
+	/, *,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> dict[str, Any] | None:
+	"""Retrieves a single chat session by its ID."""
+	collection = get_collection(collection_name)
+	return collection.find_one({"_id": session_id})
+
+def get_session_messages(
+	session_id: str,
+	/,
+	limit: int | None = None,
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> list[dict[str, Any]]:
+	"""Get messages from a specific chat session"""
+	collection = get_collection(collection_name)
+	pipeline = [
+		{"$match": {"_id": session_id}},
+		{"$unwind": "$messages"},
+		{"$sort": {"messages.timestamp": -1}}
+	]
+	if limit:
+		pipeline.append({"$limit": limit})
+	return [doc["messages"] for doc in collection.aggregate(pipeline)]
+
+def update_session_title(
+	session_id: str,
+	/,
+	title: str,
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> bool:
+	"""Updates the title of a chat session."""
+	collection = get_collection(collection_name)
+	result = collection.update_one(
+		{"_id": session_id},
+		{
+			"$set": {
+				"title": title,
+				"updated_at": datetime.now(timezone.utc)
+			}
+		}
+	)
+	return result.modified_count > 0
+
+def delete_chat_session(
+	session_id: str,
+	/, *,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> bool:
+	"""Deletes a chat session."""
+	collection = get_collection(collection_name)
+	result = collection.delete_one({"_id": session_id})
+	return result.deleted_count > 0
