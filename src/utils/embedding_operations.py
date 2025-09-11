@@ -9,8 +9,11 @@ from src.utils.embeddings import EmbeddingClient
 
 def cosine_similarity(vec_a: NDArray[np.float32], vec_b: NDArray[np.float32]) -> float:
 	"""Calculates the cosine similarity between two vectors."""
-	denom = (np.linalg.norm(vec_a) * np.linalg.norm(vec_b)) or 1.0
-	return float(np.dot(vec_a, vec_b) / denom)
+	norm_a = np.linalg.norm(vec_a)
+	norm_b = np.linalg.norm(vec_b)
+	if norm_a == 0 or norm_b == 0:
+		return 0.0
+	return float(np.dot(vec_a, vec_b) / (norm_a * norm_b))
 
 def semantic_search(
 	query: str,
