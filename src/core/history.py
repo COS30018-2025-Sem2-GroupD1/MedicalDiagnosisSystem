@@ -3,7 +3,6 @@
 from src.config.settings import settings
 from src.core.memory import MemoryLRU
 from src.services import summariser
-from src.utils.embedding_operations import semantic_search
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
@@ -84,7 +83,7 @@ class MedicalHistoryManager:
 			all_context = self.memory.all(user_id)
 			if not all_context:
 				return []
-			return semantic_search(query, all_context, self.embedder, top_k)
+			return self.embedder.semantic_search(query, all_context, top_k)
 		except Exception as e:
 			logger().error(f"Semantic search failed: {e}")
 			return self._fallback_text_search(user_id, query, top_k)

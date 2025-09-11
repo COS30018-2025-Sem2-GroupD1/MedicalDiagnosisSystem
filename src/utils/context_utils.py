@@ -3,7 +3,6 @@
 import json
 
 from src.core.memory import MemoryLRU
-from src.utils.embedding_operations import semantic_search
 from src.utils.embeddings import EmbeddingClient
 
 RECENT_CONTEXT_SIZE = 3
@@ -45,6 +44,6 @@ async def related_recent_and_semantic_context(
 	older = memory.rest(user_id, recent_size)
 
 	recent_prompt = await _get_recent_related_prompt(question, recent)
-	semantic_text_list = semantic_search(question, older, embedder)
+	semantic_text_list = embedder.semantic_search(question, older)
 
 	return recent_prompt, "\n\n".join(semantic_text_list)
