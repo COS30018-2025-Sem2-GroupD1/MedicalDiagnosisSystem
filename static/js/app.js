@@ -34,7 +34,7 @@ class MedicalChatbotApp {
         this.setupEventListeners();
         this.loadUserPreferences();
         this.initializeUser();
-        this.loadSavedPatientId();
+        await this.loadSavedPatientId();
 
         // If a patient is selected, fetch sessions from backend first
         if (this.currentPatientId) {
@@ -901,16 +901,40 @@ How can I assist you today?`;
             renderSuggestions(matches);
         } else {
             console.log('[DEBUG] No fallback matches found');
-            renderSuggestions([]);
+            // Try to search by partial ID if it looks like a number
+            if (/^\d+$/.test(query)) {
+                const partialMatches = knownPatients.filter(p => 
+                    p.patient_id.startsWith(query)
+                );
+                if (partialMatches.length > 0) {
+                    console.log('[DEBUG] Partial ID fallback found matches:', partialMatches);
+                    renderSuggestions(partialMatches);
+                } else {
+                    renderSuggestions([]);
+                }
+            } else {
+                renderSuggestions([]);
+            }
         }
     }
-    loadSavedPatientId() {
+    async loadSavedPatientId() {
         const pid = localStorage.getItem('medicalChatbotPatientId');
         if (pid && /^\d{8}$/.test(pid)) {
             this.currentPatientId = pid;
             const status = document.getElementById('patientStatus');
             if (status) {
-                status.textContent = `Patient: ${pid}`;
+                // Try to fetch patient name
+                try {
+                    const resp = await fetch(`/patients/${pid}`);
+                    if (resp.ok) {
+                        const patient = await resp.json();
+                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${pid})`;
+                    } else {
+                        status.textContent = `Patient: ${pid}`;
+                    }
+                } catch (e) {
+                    status.textContent = `Patient: ${pid}`;
+                }
                 status.style.color = 'var(--text-secondary)';
             }
             const input = document.getElementById('patientIdInput');
@@ -1098,23 +1122,15 @@ How can I assist you today?`;
                         renderSuggestions(data.results || []);
                     } else {
                         console.warn('Search request failed', resp.status);
-                        // Fallback: try to search by known patient IDs if it looks like a partial ID
-                        if (/^\d+$/.test(q)) {
-                            console.log('[DEBUG] Trying fallback search for partial ID');
-                            await this.tryFallbackSearch(q, renderSuggestions);
-                        } else {
-                            hideSuggestions();
-                        }
+                        // Fallback: try to search by known patient IDs
+                        console.log('[DEBUG] Trying fallback search');
+                        await this.tryFallbackSearch(q, renderSuggestions);
                     }
                 } catch (e) { 
                     console.error('[DEBUG] Search error:', e);
                     // Fallback for network errors
-                    if (/^\d+$/.test(q)) {
-                        console.log('[DEBUG] Trying fallback search for partial ID after error');
-                        await this.tryFallbackSearch(q, renderSuggestions);
-                    } else {
-                        hideSuggestions();
-                    }
+                    console.log('[DEBUG] Trying fallback search after error');
+                    await this.tryFallbackSearch(q, renderSuggestions);
                 }
             }, 200);
         });
@@ -1353,19 +1369,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
         window.medicalChatbot.setTheme('auto');
     }
 });
-
-// Ensure sidebar toggle works in mobile
-(function ensureSidebarToggle() {
-    document.addEventListener('DOMContentLoaded', () => {
-        const sidebar = document.getElementById('sidebar');
-        const toggle = document.getElementById('sidebarToggle');
-        if (toggle && sidebar) {
-            toggle.addEventListener('click', () => {
-        sidebar.classList.toggle('show');
-            });
-        }
-    });
-})();
 
 // Add patient registration link under patient ID form if not present
 (function ensurePatientCreateLink() {
