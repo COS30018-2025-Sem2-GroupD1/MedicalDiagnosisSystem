@@ -1,5 +1,6 @@
 # services/medical_response.py
 
+from src.core import prompt_builder
 from src.data.medical_kb import search_medical_kb
 from src.services.gemini import gemini_chat
 from src.utils.logger import logger
@@ -13,28 +14,8 @@ async def generate_medical_response(
 	rotator: APIKeyRotator,
 	medical_context: str = ""
 ) -> str:
-	"""Generate a medical response using Gemini AI for intelligent, contextual responses"""
-	# Build context-aware prompt
-	# In future this should be moved to a prompt builder function that adds more information and direction based on the user's role and specialty.
-	prompt = f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
-**User Role:** {user_role}
-**User Specialty:** {user_specialty if user_specialty else 'General'}
-**Medical Context:** {medical_context if medical_context else 'No previous context'}
-**Question:** {user_message}
-**Instructions:**
-1. Provide a detailed, medically accurate response
-2. Consider the user's role and specialty
-3. Include relevant medical information and guidance
-4. Mention when professional medical consultation is needed
-5. Use clear, professional language
-6. Include appropriate medical disclaimers
-**Response Format:**
-- Start with a direct answer to the question
-- Provide relevant medical information
-- Include role-specific guidance
-- Add appropriate warnings and disclaimers
-- Keep the response comprehensive but focused
-Remember: This is for educational purposes only. Always emphasize consulting healthcare professionals for medical advice."""
+	"""Generates an intelligent, contextual medical response using Gemini AI."""
+	prompt = prompt_builder.medical_response_prompt(user_role, user_specialty, medical_context, user_message)
 
 	# Generate response using Gemini
 	response_text = await gemini_chat(prompt, rotator)
@@ -44,26 +25,19 @@ Remember: This is for educational purposes only. Always emphasize consulting hea
 		if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
 			response_text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
 
-		logger().info(f"Gemini response generated successfully, length: {len(response_text)} characters")
+		logger().info(f"Gemini response generated, length: {len(response_text)} chars")
 		return response_text
 
-	# Fallback if Gemini fails
-	logger().warning("Gemini response generation failed, using fallback")
-	return generate_medical_response_fallback(
-		user_message,
-		user_role,
-		user_specialty,
-		medical_context
-	)
+	logger().warning("Gemini response failed, using fallback.")
+	return _generate_fallback_response(user_message, user_role, user_specialty)
 
-def generate_medical_response_fallback(
+def _generate_fallback_response(
 	user_message: str,
 	user_role: str,
 	user_specialty: str,
 	medical_context: str = ""
 ) -> str:
-	"""Fallback medical response generator using local knowledge base"""
-	# Search medical knowledge base
+	"""Generates a fallback response using a local knowledge base."""
 	kb_info = search_medical_kb(user_message)
 
 	logger().info("Generating backup response")
