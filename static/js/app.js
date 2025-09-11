@@ -57,9 +57,12 @@ class MedicalChatbotApp {
 
     setupEventListeners() {
         // Sidebar toggle
-        document.getElementById('sidebarToggle').addEventListener('click', () => {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
             this.toggleSidebar();
         });
+        }
         
         // Click outside sidebar to close (mobile/overlay behavior)
         const overlay = document.getElementById('appOverlay');
@@ -78,6 +81,25 @@ class MedicalChatbotApp {
                 }
             }
         };
+        
+        // Keep overlay synced when toggling
+        const origToggle = this.toggleSidebar.bind(this);
+        this.toggleSidebar = () => { 
+            console.log('[DEBUG] Wrapped toggleSidebar called');
+            origToggle(); 
+            updateOverlay(); 
+        };
+        
+        // Initialize overlay state
+        updateOverlay();
+        
+        // Handle window resize for responsive behavior
+        window.addEventListener('resize', () => {
+            console.log('[DEBUG] Window resized, updating overlay');
+            updateOverlay();
+        });
+        
+        // Click outside to close sidebar
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('sidebarToggle');
@@ -104,6 +126,7 @@ class MedicalChatbotApp {
             }
             updateOverlay();
         }, true);
+        
         if (overlay) {
             overlay.addEventListener('click', () => {
                 console.log('[DEBUG] Overlay clicked directly');
@@ -112,34 +135,26 @@ class MedicalChatbotApp {
                 updateOverlay();
             });
         }
-        // Keep overlay synced when toggling
-        const origToggle = this.toggleSidebar.bind(this);
-        this.toggleSidebar = () => { 
-            console.log('[DEBUG] Wrapped toggleSidebar called');
-            origToggle(); 
-            updateOverlay(); 
-        };
-        
-        // Initialize overlay state
-        updateOverlay();
-        
-        // Handle window resize for responsive behavior
-        window.addEventListener('resize', () => {
-            console.log('[DEBUG] Window resized, updating overlay');
-            updateOverlay();
-        });
 
         // New chat button
-        document.getElementById('newChatBtn').addEventListener('click', () => {
+        const newChatBtn = document.getElementById('newChatBtn');
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', () => {
             this.startNewChat();
         });
+        }
 
         // Send button and input
-        document.getElementById('sendBtn').addEventListener('click', () => {
+        const sendBtn = document.getElementById('sendBtn');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => {
             this.sendMessage();
         });
+        }
 
-        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+        const chatInput = document.getElementById('chatInput');
+        if (chatInput) {
+            chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.sendMessage();
@@ -147,37 +162,52 @@ class MedicalChatbotApp {
         });
 
         // Auto-resize textarea
-        document.getElementById('chatInput').addEventListener('input', (e) => this.autoResizeTextarea(e.target));
+            chatInput.addEventListener('input', (e) => this.autoResizeTextarea(e.target));
+        }
 
         // User profile
-        document.getElementById('userProfile').addEventListener('click', () => {
-            console.log('[DEBUG] User profile clicked');
+        const userProfile = document.getElementById('userProfile');
+        if (userProfile) {
+            userProfile.addEventListener('click', () => {
+                console.log('[DEBUG] User profile clicked');
             this.showUserModal();
         });
+        }
 
         // Settings
-        document.getElementById('settingsBtn').addEventListener('click', () => {
-            console.log('[DEBUG] Settings clicked');
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                console.log('[DEBUG] Settings clicked');
             this.showSettingsModal();
         });
+        }
 
         // Action buttons
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportChat());
-        document.getElementById('clearBtn').addEventListener('click', () => this.clearChat());
+        const exportBtn = document.getElementById('exportBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        if (exportBtn) exportBtn.addEventListener('click', () => this.exportChat());
+        if (clearBtn) clearBtn.addEventListener('click', () => this.clearChat());
 
         // Modal events
         this.setupModalEvents();
 
         // Theme toggle live
-        document.getElementById('themeSelect').addEventListener('change', (e) => {
-            console.log('[Theme] change ->', e.target.value);
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect) {
+            themeSelect.addEventListener('change', (e) => {
+                console.log('[Theme] change ->', e.target.value);
             this.setTheme(e.target.value);
         });
+        }
         // Font size live
-        document.getElementById('fontSize').addEventListener('change', (e) => {
-            console.log('[Font] change ->', e.target.value);
-            this.setFontSize(e.target.value);
-        });
+        const fontSize = document.getElementById('fontSize');
+        if (fontSize) {
+            fontSize.addEventListener('change', (e) => {
+                console.log('[Font] change ->', e.target.value);
+                this.setFontSize(e.target.value);
+            });
+        }
         // Other preferences live
         const autoSaveEl = document.getElementById('autoSave');
         const notificationsEl = document.getElementById('notifications');
@@ -187,30 +217,50 @@ class MedicalChatbotApp {
 
     setupModalEvents() {
         // User modal
-        document.getElementById('userModalClose').addEventListener('click', () => {
+        const userModalClose = document.getElementById('userModalClose');
+        const userModalCancel = document.getElementById('userModalCancel');
+        const userModalSave = document.getElementById('userModalSave');
+        
+        if (userModalClose) {
+            userModalClose.addEventListener('click', () => {
             this.hideModal('userModal');
         });
+        }
 
-        document.getElementById('userModalCancel').addEventListener('click', () => {
+        if (userModalCancel) {
+            userModalCancel.addEventListener('click', () => {
             this.hideModal('userModal');
         });
+        }
 
-        document.getElementById('userModalSave').addEventListener('click', () => {
+        if (userModalSave) {
+            userModalSave.addEventListener('click', () => {
             this.saveUserProfile();
         });
+        }
 
         // Settings modal
-        document.getElementById('settingsModalClose').addEventListener('click', () => {
+        const settingsModalClose = document.getElementById('settingsModalClose');
+        const settingsModalCancel = document.getElementById('settingsModalCancel');
+        const settingsModalSave = document.getElementById('settingsModalSave');
+        
+        if (settingsModalClose) {
+            settingsModalClose.addEventListener('click', () => {
             this.hideModal('settingsModal');
         });
+        }
 
-        document.getElementById('settingsModalCancel').addEventListener('click', () => {
+        if (settingsModalCancel) {
+            settingsModalCancel.addEventListener('click', () => {
             this.hideModal('settingsModal');
         });
+        }
 
-        document.getElementById('settingsModalSave').addEventListener('click', () => {
+        if (settingsModalSave) {
+            settingsModalSave.addEventListener('click', () => {
             this.saveSettings();
         });
+        }
 
         // Close modals when clicking outside
         document.querySelectorAll('.modal').forEach(modal => {
@@ -225,9 +275,14 @@ class MedicalChatbotApp {
         const closeEdit = () => this.hideModal('editTitleModal');
         const editTitleModal = document.getElementById('editTitleModal');
         if (editTitleModal) {
-            document.getElementById('editTitleModalClose').addEventListener('click', closeEdit);
-            document.getElementById('editTitleModalCancel').addEventListener('click', closeEdit);
-            document.getElementById('editTitleModalSave').addEventListener('click', () => {
+            const editTitleModalClose = document.getElementById('editTitleModalClose');
+            const editTitleModalCancel = document.getElementById('editTitleModalCancel');
+            const editTitleModalSave = document.getElementById('editTitleModalSave');
+            
+            if (editTitleModalClose) editTitleModalClose.addEventListener('click', closeEdit);
+            if (editTitleModalCancel) editTitleModalCancel.addEventListener('click', closeEdit);
+            if (editTitleModalSave) {
+                editTitleModalSave.addEventListener('click', () => {
                 const input = document.getElementById('editSessionTitleInput');
                 const newTitle = input.value.trim();
                 if (!newTitle) return;
@@ -237,6 +292,7 @@ class MedicalChatbotApp {
                 input.value = '';
                 this.hideModal('editTitleModal');
             });
+            }
         }
     }
 
@@ -470,8 +526,8 @@ How can I assist you today?`;
         // Safely set role and specialty with null checks
         const roleEl = document.getElementById('profileRole');
         const specialtyEl = document.getElementById('profileSpecialty');
-        if (roleEl) roleEl.value = this.currentUser?.role || 'Medical Professional';
-        if (specialtyEl) specialtyEl.value = this.currentUser?.specialty || '';
+        if (roleEl) roleEl.value = (this.currentUser && this.currentUser.role) ? this.currentUser.role : 'Medical Professional';
+        if (specialtyEl) specialtyEl.value = (this.currentUser && this.currentUser.specialty) ? this.currentUser.specialty : '';
         
         this.showModal('userModal');
     }
@@ -957,15 +1013,8 @@ How can I assist you today?`;
                     console.log('[DEBUG] Searching patients with query:', q);
                     const url = `/patients/search?q=${encodeURIComponent(q)}&limit=8`;
                     console.log('[DEBUG] Search URL:', url);
-                    const resp = await fetch(url, { 
-                        method: 'GET',
-                        headers: { 
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        }
-                    });
+                    const resp = await fetch(url);
                     console.log('[DEBUG] Search response status:', resp.status);
-                    console.log('[DEBUG] Search response headers:', resp.headers);
                     if (resp.ok) {
                         const data = await resp.json();
                         console.log('[DEBUG] Search results:', data);
