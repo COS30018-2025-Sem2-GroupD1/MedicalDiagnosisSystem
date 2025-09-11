@@ -41,7 +41,7 @@ def get_database() -> Database:
 			logger.error(f"Failed to connect to MongoDB: {str(e)}")
 			# Pass the error down, code that calls this function should handle it
 			raise e
-	db_name = os.getenv("MONGO_DB", "medicaldiagnosissystem")
+	db_name = os.getenv("USER_DB", "medicaldiagnosissystem")
 	return _mongo_client[db_name]
 
 def close_connection():

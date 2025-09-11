@@ -145,7 +145,9 @@ async def update_patient(patient_id: str, req: PatientUpdateRequest):
 async def search_patients_route(q: str, limit: int = 10):
 	try:
 		logger.info(f"GET /patients/search q='{q}' limit={limit}")
-		return {"results": search_patients(q, limit=limit)}
+		results = search_patients(q, limit=limit)
+		logger.info(f"Search returned {len(results)} results")
+		return {"results": results}
 	except Exception as e:
 		logger.error(f"Error searching patients: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
