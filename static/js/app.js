@@ -1,4 +1,5 @@
 // Medical AI Assistant - Main Application JavaScript
+// static/js/app.js
 
 // TEMPORARILY DISABLED SUBMODULES
 // import { attachUIHandlers } from './ui/handlers.js';
@@ -465,8 +466,13 @@ How can I assist you today?`;
             sel.appendChild(createOpt);
         }
         if (sel && !sel.value) sel.value = this.currentUser?.name || '__create__';
-        document.getElementById('profileRole').value = this.currentUser.role;
-        document.getElementById('profileSpecialty').value = this.currentUser.specialty || '';
+        
+        // Safely set role and specialty with null checks
+        const roleEl = document.getElementById('profileRole');
+        const specialtyEl = document.getElementById('profileSpecialty');
+        if (roleEl) roleEl.value = this.currentUser?.role || 'Medical Professional';
+        if (specialtyEl) specialtyEl.value = this.currentUser?.specialty || '';
+        
         this.showModal('userModal');
     }
 
@@ -489,18 +495,29 @@ How can I assist you today?`;
 
     setTheme(theme) {
         const root = document.documentElement;
+        console.log('[Theme] Setting theme to:', theme);
         if (theme === 'auto') {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+            console.log('[Theme] Auto theme applied:', prefersDark ? 'dark' : 'light');
         } else {
             root.setAttribute('data-theme', theme);
+            console.log('[Theme] Manual theme applied:', theme);
         }
+        // Force a re-render by toggling a class
+        root.classList.add('theme-updated');
+        setTimeout(() => root.classList.remove('theme-updated'), 100);
     }
 
     setFontSize(size) {
         const root = document.documentElement;
         const sizes = { small: '14px', medium: '16px', large: '18px' };
-        root.style.fontSize = sizes[size] || '16px';
+        const fontSize = sizes[size] || '16px';
+        console.log('[Font] Setting font size to:', fontSize);
+        root.style.fontSize = fontSize;
+        // Force a re-render
+        root.classList.add('font-updated');
+        setTimeout(() => root.classList.remove('font-updated'), 100);
     }
 
     setupTheme() {
@@ -571,7 +588,7 @@ How can I assist you today?`;
                     this.currentSession = { ...session };
                     await this.hydrateMessagesForSession(session.id);
                 } else {
-                    this.loadChatSession(session.id);
+                this.loadChatSession(session.id);
                 }
             });
             const time = this.formatTime(session.lastActivity);
@@ -591,10 +608,10 @@ How can I assist you today?`;
             sessionsContainer.appendChild(sessionElement);
             const menuBtn = sessionElement.querySelector('.chat-session-menu');
             if (session.source !== 'backend') {
-                menuBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.showSessionMenu(e.currentTarget, session.id);
-                });
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showSessionMenu(e.currentTarget, session.id);
+            });
             } else {
                 menuBtn.disabled = true;
                 menuBtn.style.opacity = 0.5;
@@ -938,14 +955,24 @@ How can I assist you today?`;
             debounceTimer = setTimeout(async () => {
                 try {
                     console.log('[DEBUG] Searching patients with query:', q);
-                    const resp = await fetch(`/patients/search?q=${encodeURIComponent(q)}&limit=8`, { headers: { 'Accept': 'application/json' } });
+                    const url = `/patients/search?q=${encodeURIComponent(q)}&limit=8`;
+                    console.log('[DEBUG] Search URL:', url);
+                    const resp = await fetch(url, { 
+                        method: 'GET',
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
                     console.log('[DEBUG] Search response status:', resp.status);
+                    console.log('[DEBUG] Search response headers:', resp.headers);
                     if (resp.ok) {
                         const data = await resp.json();
                         console.log('[DEBUG] Search results:', data);
                         renderSuggestions(data.results || []);
                     } else {
-                        console.warn('Search request failed', resp.status);
+                        const errorText = await resp.text();
+                        console.warn('Search request failed', resp.status, errorText);
                     }
                 } catch (e) { 
                     console.error('[DEBUG] Search error:', e);

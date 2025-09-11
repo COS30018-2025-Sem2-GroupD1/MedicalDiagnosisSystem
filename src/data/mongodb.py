@@ -424,17 +424,26 @@ def search_patients(query: str, limit: int = 10) -> list[dict[str, Any]]:
 	collection = get_collection(PATIENTS_COLLECTION)
 	if not query:
 		return []
+	
+	logger.info(f"Searching patients with query: '{query}', limit: {limit}")
+	
 	# Build a regex for name search and patient_id partial match
 	import re
 	pattern = re.compile(re.escape(query), re.IGNORECASE)
-	cursor = collection.find({
-		"$or": [
-			{"name": {"$regex": pattern}},
-			{"patient_id": {"$regex": pattern}}
-		]
-	}).sort("name", ASCENDING).limit(limit)
-	results = []
-	for p in cursor:
-		p["_id"] = str(p.get("_id")) if p.get("_id") else None
-		results.append(p)
-	return results
+	
+	try:
+		cursor = collection.find({
+			"$or": [
+				{"name": {"$regex": pattern}},
+				{"patient_id": {"$regex": pattern}}
+			]
+		}).sort("name", ASCENDING).limit(limit)
+		results = []
+		for p in cursor:
+			p["_id"] = str(p.get("_id")) if p.get("_id") else None
+			results.append(p)
+		logger.info(f"Found {len(results)} patients matching query")
+		return results
+	except Exception as e:
+		logger.error(f"Error in search_patients: {e}")
+		return []
