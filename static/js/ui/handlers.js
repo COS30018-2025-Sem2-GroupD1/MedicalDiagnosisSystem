@@ -66,5 +66,3 @@ export function attachUIHandlers(app) {
 		document.getElementById(modalId)?.classList.remove('show');
 	};
 }
-
-

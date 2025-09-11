@@ -162,5 +162,3 @@ export function attachSessionsUI(app) {
 		});
 	};
 }
-
-

@@ -72,5 +72,3 @@ export function attachSettingsUI(app) {
 		if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('show'); });
 	});
 }
-
-
