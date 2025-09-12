@@ -315,11 +315,29 @@ def list_session_messages(
 	session_id: str,
 	/,
 	*,
+	patient_id: str | None = None,
 	limit: int | None = None,
 	collection_name: str = CHAT_MESSAGES_COLLECTION
 ) -> list[dict[str, Any]]:
 	collection = get_collection(collection_name)
-	cursor = collection.find({"session_id": session_id}).sort("timestamp", ASCENDING)
+	
+	# First verify the session belongs to the patient
+	if patient_id:
+		session_collection = get_collection(CHAT_SESSIONS_COLLECTION)
+		session = session_collection.find_one({
+			"session_id": session_id,
+			"patient_id": patient_id
+		})
+		if not session:
+			logger.warning(f"Session {session_id} not found for patient {patient_id}")
+			return []
+	
+	# Query messages with patient_id filter if provided
+	query = {"session_id": session_id}
+	if patient_id:
+		query["patient_id"] = patient_id
+		
+	cursor = collection.find(query).sort("timestamp", ASCENDING)
 	if limit is not None:
 		cursor = cursor.limit(limit)
 	return list(cursor)

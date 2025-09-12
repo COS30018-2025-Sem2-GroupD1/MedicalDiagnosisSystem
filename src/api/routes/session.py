@@ -67,11 +67,11 @@ async def list_sessions_for_patient(patient_id: str):
 		raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/sessions/{session_id}/messages")
-async def list_messages_for_session(session_id: str, limit: int | None = None):
-	"""List messages for a session from Mongo"""
+async def list_messages_for_session(session_id: str, patient_id: str, limit: int | None = None):
+	"""List messages for a session from Mongo, verified to belong to the patient"""
 	try:
-		logger.info(f"GET /sessions/{session_id}/messages limit={limit}")
-		msgs = list_session_messages(session_id, limit=limit)
+		logger.info(f"GET /sessions/{session_id}/messages patient_id={patient_id} limit={limit}")
+		msgs = list_session_messages(session_id, patient_id=patient_id, limit=limit)
 		# ensure JSON-friendly timestamps
 		for m in msgs:
 			if isinstance(m.get("timestamp"), datetime):

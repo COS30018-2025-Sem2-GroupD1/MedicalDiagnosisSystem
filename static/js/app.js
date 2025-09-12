@@ -1373,7 +1373,7 @@ How can I assist you today?`;
             
             // If no cache or cache is stale, fetch from backend
             if (messages.length === 0) {
-                const resp = await fetch(`/sessions/${sessionId}/messages?limit=1000`);
+                const resp = await fetch(`/sessions/${sessionId}/messages?patient_id=${this.currentPatientId}&limit=1000`);
                 if (!resp.ok) return;
                 const data = await resp.json();
                 const msgs = Array.isArray(data.messages) ? data.messages : [];

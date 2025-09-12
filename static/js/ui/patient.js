@@ -72,7 +72,7 @@ export function attachPatientUI(app) {
 
 	app.hydrateMessagesForSession = async function (sessionId) {
 		try {
-			const resp = await fetch(`/sessions/${sessionId}/messages?limit=1000`);
+			const resp = await fetch(`/sessions/${sessionId}/messages?patient_id=${app.currentPatientId}&limit=1000`);
 			if (!resp.ok) return;
 			const data = await resp.json();
 			const msgs = Array.isArray(data.messages) ? data.messages : [];
