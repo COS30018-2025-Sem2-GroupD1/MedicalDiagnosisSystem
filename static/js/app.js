@@ -1019,6 +1019,13 @@ How can I assist you today?`;
                         _id: result.doctor_id 
                     });
                     this.saveDoctors();
+                    
+                    // Update current user profile
+                    this.currentUser.name = name;
+                    this.currentUser.role = role;
+                    this.currentUser.specialty = specialty;
+                    this.saveUser();
+                    this.updateUserDisplay();
                 }
             }
             await this.populateDoctorSelect();
@@ -1038,52 +1045,65 @@ How can I assist you today?`;
             return;
         }
 
-        // Update or add doctor to the doctors list
+        // Check if this is a new doctor creation (not in our local list)
         const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
-        if (existingDoctorIndex >= 0) {
-            // Update existing doctor
-            this.doctors[existingDoctorIndex] = {
-                ...this.doctors[existingDoctorIndex],
-                role: role,
-                specialty: specialty
-            };
-        } else {
-            // Add new doctor
+        const isNewDoctor = existingDoctorIndex === -1;
+
+        // Update local doctors list
+        if (isNewDoctor) {
+            // Add new doctor to local list
             this.doctors.unshift({ 
                 name, 
                 role, 
                 specialty 
             });
+        } else {
+            // Update existing doctor in local list
+            this.doctors[existingDoctorIndex] = {
+                ...this.doctors[existingDoctorIndex],
+                role: role,
+                specialty: specialty
+            };
         }
         this.saveDoctors();
 
+        // Update current user profile
         this.currentUser.name = name;
         this.currentUser.role = role;
         this.currentUser.specialty = specialty;
-
         this.saveUser();
         this.updateUserDisplay();
 
-        // Persist to backend (MongoDB) as well
-        const payload = {
-            user_id: this.currentUser.id,
-            name: this.currentUser.name,
-            role: this.currentUser.role,
-            specialty: this.currentUser.specialty || null,
-            medical_roles: [this.currentUser.role]
-        };
-        fetch('/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).then(resp => {
-            if (!resp.ok) throw new Error('Failed to save user to backend');
-            return resp.json();
-        }).then(() => {
-            console.log('[User] persisted to backend');
-        }).catch(err => {
-            console.warn('[User] failed to persist to backend:', err);
-        });
+        // Only create new doctor in MongoDB if it's actually a new doctor
+        if (isNewDoctor) {
+            const doctorPayload = {
+                name: name,
+                role: role,
+                specialty: specialty || null,
+                medical_roles: [role]
+            };
+            
+            fetch('/doctors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(doctorPayload)
+            }).then(resp => {
+                if (!resp.ok) throw new Error('Failed to create doctor in backend');
+                return resp.json();
+            }).then((data) => {
+                console.log('[Doctor] Created new doctor in backend:', data);
+                // Update local doctor with the ID from backend
+                const localDoctor = this.doctors.find(d => d.name === name);
+                if (localDoctor) {
+                    localDoctor._id = data.doctor_id;
+                    this.saveDoctors();
+                }
+            }).catch(err => {
+                console.warn('[Doctor] failed to create doctor in backend:', err);
+            });
+        } else {
+            console.log('[Doctor] Updated existing doctor profile locally (no backend call needed)');
+        }
 
         this.hideModal('userModal');
     }
