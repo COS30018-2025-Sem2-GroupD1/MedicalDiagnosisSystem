@@ -27,7 +27,7 @@ _mongo_client: MongoClient | None = None
 ACCOUNTS_COLLECTION = "accounts"
 CHAT_SESSIONS_COLLECTION = "chat_sessions"
 MEDICAL_RECORDS_COLLECTION = "medical_records"
-DOCTORS_COLLECTION = "doctors"
+# DOCTORS_COLLECTION = "doctors"
 
 # Base Database Operations
 def get_database() -> Database:
@@ -524,7 +524,7 @@ def create_doctor(
 	medical_roles: list[str] | None = None
 ) -> str:
 	"""Create a new doctor profile"""
-	collection = get_collection(DOCTORS_COLLECTION)
+	collection = get_collection(ACCOUNTS_COLLECTION)
 	now = datetime.now(timezone.utc)
 	doctor_doc = {
 		"name": name,
@@ -543,16 +543,19 @@ def create_doctor(
 		raise e
 
 def get_doctor_by_name(name: str) -> dict[str, Any] | None:
-	"""Get doctor by name"""
-	collection = get_collection(DOCTORS_COLLECTION)
-	doctor = collection.find_one({"name": name})
+	"""Get doctor by name from accounts collection"""
+	collection = get_collection(ACCOUNTS_COLLECTION)
+	doctor = collection.find_one({
+		"name": name,
+		"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+	})
 	if doctor:
 		doctor["_id"] = str(doctor.get("_id")) if doctor.get("_id") else None
 	return doctor
 
 def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
-	"""Search doctors by name (case-insensitive contains)"""
-	collection = get_collection(DOCTORS_COLLECTION)
+	"""Search doctors by name (case-insensitive contains) from accounts collection"""
+	collection = get_collection(ACCOUNTS_COLLECTION)
 	if not query:
 		return []
 	
@@ -564,7 +567,8 @@ def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
 	
 	try:
 		cursor = collection.find({
-			"name": {"$regex": pattern}
+			"name": {"$regex": pattern},
+			"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
 		}).sort("name", ASCENDING).limit(limit)
 		results = []
 		for d in cursor:
@@ -577,10 +581,12 @@ def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
 		return []
 
 def get_all_doctors(limit: int = 50) -> list[dict[str, Any]]:
-	"""Get all doctors with optional limit"""
-	collection = get_collection(DOCTORS_COLLECTION)
+	"""Get all doctors with optional limit from accounts collection"""
+	collection = get_collection(ACCOUNTS_COLLECTION)
 	try:
-		cursor = collection.find().sort("name", ASCENDING).limit(limit)
+		cursor = collection.find({
+			"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+		}).sort("name", ASCENDING).limit(limit)
 		results = []
 		for d in cursor:
 			d["_id"] = str(d.get("_id")) if d.get("_id") else None
