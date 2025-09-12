@@ -809,27 +809,76 @@ How can I assist you today?`;
         this.loadChatSessions();
     }
 
-    deleteChatSession(sessionId) {
-        const sessions = this.getChatSessions();
-        const index = sessions.findIndex(s => s.id === sessionId);
-        if (index === -1) return;
+    async deleteChatSession(sessionId) {
         const confirmDelete = confirm('Delete this chat session? This cannot be undone.');
         if (!confirmDelete) return;
-        sessions.splice(index, 1);
-        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
-        if (this.currentSession && this.currentSession.id === sessionId) {
-            if (sessions.length > 0) {
-                this.currentSession = sessions[0];
-                this.clearChatMessages();
-                this.currentSession.messages.forEach(m => this.displayMessage(m));
-                this.updateChatTitle();
+        
+        try {
+            // Check if it's a backend session
+            const isBackendSession = this.backendSessions && this.backendSessions.some(s => s.id === sessionId);
+            
+            if (isBackendSession) {
+                // Delete from backend (MongoDB + memory system)
+                const resp = await fetch(`/sessions/${sessionId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
+                
+                const result = await resp.json();
+                console.log('[DEBUG] Backend deletion result:', result);
+                
+                // Remove from backend sessions
+                this.backendSessions = this.backendSessions.filter(s => s.id !== sessionId);
+                
+                // Invalidate caches
+                this.invalidateSessionCache(this.currentPatientId);
+                this.invalidateMessageCache(this.currentPatientId, sessionId);
             } else {
-                this.currentSession = null;
-                this.clearChatMessages();
+                // Delete from localStorage only
+                const sessions = this.getChatSessions();
+                const index = sessions.findIndex(s => s.id === sessionId);
+                if (index === -1) return;
+                
+                sessions.splice(index, 1);
+                localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
+            }
+            
+            // Handle current session cleanup
+            if (this.currentSession && this.currentSession.id === sessionId) {
+                if (isBackendSession) {
+                    // For backend sessions, switch to another session or clear
+                    if (this.backendSessions.length > 0) {
+                        this.currentSession = this.backendSessions[0];
+                        await this.hydrateMessagesForSession(this.currentSession.id);
+                    } else {
+                        this.currentSession = null;
+                        this.clearChatMessages();
+                    }
+                } else {
+                    // For local sessions, switch to another session or clear
+                    const remainingSessions = this.getChatSessions();
+                    if (remainingSessions.length > 0) {
+                        this.currentSession = remainingSessions[0];
+                        this.clearChatMessages();
+                        this.currentSession.messages.forEach(m => this.displayMessage(m));
+                    } else {
+                        this.currentSession = null;
+                        this.clearChatMessages();
+                    }
+                }
                 this.updateChatTitle();
             }
+            
+            this.loadChatSessions();
+            
+        } catch (error) {
+            console.error('Error deleting session:', error);
+            alert('Failed to delete session. Please try again.');
         }
-        this.loadChatSessions();
     }
 
     showSessionMenu(anchorEl, sessionId) {

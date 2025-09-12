@@ -449,6 +449,28 @@ def list_patient_sessions(
 			session["_id"] = str(session["_id"])
 	return sessions
 
+def delete_session(
+	session_id: str,
+	/,
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> bool:
+	"""Delete a chat session from MongoDB"""
+	collection = get_collection(collection_name)
+	result = collection.delete_one({"session_id": session_id})
+	return result.deleted_count > 0
+
+def delete_session_messages(
+	session_id: str,
+	/,
+	*,
+	collection_name: str = CHAT_MESSAGES_COLLECTION
+) -> int:
+	"""Delete all messages for a session from MongoDB"""
+	collection = get_collection(collection_name)
+	result = collection.delete_many({"session_id": session_id})
+	return result.deleted_count
+
 # Patients helpers
 
 def _generate_patient_id() -> str:

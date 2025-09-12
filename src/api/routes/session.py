@@ -6,7 +6,7 @@ from datetime import datetime
 from src.core.state import MedicalState, get_state
 from src.models.chat import SessionRequest
 from src.utils.logger import get_logger
-from src.data.mongodb import list_patient_sessions, list_session_messages, ensure_session
+from src.data.mongodb import list_patient_sessions, list_session_messages, ensure_session, delete_session, delete_session_messages
 
 logger = get_logger("SESSION_ROUTES", __name__)
 router = APIRouter()
@@ -87,10 +87,24 @@ async def delete_chat_session(
 	session_id: str,
 	state: MedicalState = Depends(get_state)
 ):
-	"""Delete a chat session"""
+	"""Delete a chat session from both memory system and MongoDB"""
 	try:
+		logger.info(f"DELETE /sessions/{session_id}")
+		
+		# Delete from memory system
 		state.memory_system.delete_session(session_id)
-		return {"message": "Session deleted successfully"}
+		
+		# Delete from MongoDB
+		session_deleted = delete_session(session_id)
+		messages_deleted = delete_session_messages(session_id)
+		
+		logger.info(f"Deleted session {session_id}: session={session_deleted}, messages={messages_deleted}")
+		
+		return {
+			"message": "Session deleted successfully",
+			"session_deleted": session_deleted,
+			"messages_deleted": messages_deleted
+		}
 	except Exception as e:
 		logger.error(f"Error deleting session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
