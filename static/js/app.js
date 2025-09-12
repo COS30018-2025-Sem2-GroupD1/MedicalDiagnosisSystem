@@ -770,6 +770,8 @@ How can I assist you today?`;
                     return timeA - timeB; // Ascending order for display
                 });
                 sortedMessages.forEach(message => this.displayMessage(message));
+                // Check if session needs title generation
+                this.checkAndGenerateSessionTitle();
             }
         }
         
@@ -1404,6 +1406,8 @@ How can I assist you today?`;
                 this.clearChatMessages();
                 this.currentSession.messages.forEach(m => this.displayMessage(m));
                 this.updateChatTitle();
+                // Check if session needs title generation
+                this.checkAndGenerateSessionTitle();
             }
         } catch (e) {
             console.error('Failed to hydrate session messages', e);
@@ -1661,6 +1665,19 @@ How can I assist you today?`;
         this.currentSession.messages.push(message);
         this.displayMessage(message);
         if (role === 'user' && this.currentSession.messages.length === 2) this.summariseAndSetTitle(content);
+    }
+
+    // Check if session needs title generation after messages are loaded
+    checkAndGenerateSessionTitle() {
+        if (!this.currentSession || !this.currentSession.messages) return;
+        
+        // Check if this is a new session that needs a title (exactly 2 messages: user + assistant)
+        if (this.currentSession.messages.length === 2 && 
+            this.currentSession.title === 'New Chat' && 
+            this.currentSession.messages[0].role === 'user') {
+            const firstMessage = this.currentSession.messages[0].content;
+            this.summariseAndSetTitle(firstMessage);
+        }
     }
 
     summariseAndSetTitle = async function (text) {

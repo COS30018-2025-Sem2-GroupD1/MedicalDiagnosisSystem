@@ -146,9 +146,21 @@ class MedicalHistoryManager:
 			# Update session title if it's the first message
 			session = self.memory.get_session(session_id)
 			if session and len(session.messages) == 2:  # Just user + assistant
-				# Generate a title from the first question
-				title = question[:50] + ("..." if len(question) > 50 else "")
+				# Generate a title using NVIDIA API if available
+				try:
+					from src.services.summariser import summarise_title_with_nvidia
+					title = await summarise_title_with_nvidia(question, nvidia_rotator, max_words=5)
+					if not title or title.strip() == "":
+						title = question[:50] + ("..." if len(question) > 50 else "")
+				except Exception as e:
+					logger.warning(f"Failed to generate title with NVIDIA: {e}")
+					title = question[:50] + ("..." if len(question) > 50 else "")
+				
 				self.memory.update_session_title(session_id, title)
+				
+				# Also update the session in MongoDB
+				if patient_id and doctor_id:
+					ensure_session(session_id=session_id, patient_id=patient_id, doctor_id=doctor_id, title=title, last_activity=datetime.now(timezone.utc))
 
 			return summary
 
