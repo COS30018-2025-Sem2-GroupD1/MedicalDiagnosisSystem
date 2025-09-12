@@ -27,6 +27,7 @@ _mongo_client: MongoClient | None = None
 ACCOUNTS_COLLECTION = "accounts"
 CHAT_SESSIONS_COLLECTION = "chat_sessions"
 MEDICAL_RECORDS_COLLECTION = "medical_records"
+DOCTORS_COLLECTION = "doctors"
 
 # Base Database Operations
 def get_database() -> Database:
@@ -446,4 +447,80 @@ def search_patients(query: str, limit: int = 10) -> list[dict[str, Any]]:
 		return results
 	except Exception as e:
 		logger.error(f"Error in search_patients: {e}")
+		return []
+
+# Doctor Management
+def create_doctor(
+	*,
+	name: str,
+	role: str | None = None,
+	specialty: str | None = None,
+	medical_roles: list[str] | None = None
+) -> str:
+	"""Create a new doctor profile"""
+	collection = get_collection(DOCTORS_COLLECTION)
+	now = datetime.now(timezone.utc)
+	doctor_doc = {
+		"name": name,
+		"role": role,
+		"specialty": specialty,
+		"medical_roles": medical_roles or [],
+		"created_at": now,
+		"updated_at": now
+	}
+	try:
+		result = collection.insert_one(doctor_doc)
+		logger.info(f"Created new doctor: {name} with id {result.inserted_id}")
+		return str(result.inserted_id)
+	except Exception as e:
+		logger.error(f"Error creating doctor: {e}")
+		raise e
+
+def get_doctor_by_name(name: str) -> dict[str, Any] | None:
+	"""Get doctor by name"""
+	collection = get_collection(DOCTORS_COLLECTION)
+	doctor = collection.find_one({"name": name})
+	if doctor:
+		doctor["_id"] = str(doctor.get("_id")) if doctor.get("_id") else None
+	return doctor
+
+def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
+	"""Search doctors by name (case-insensitive contains)"""
+	collection = get_collection(DOCTORS_COLLECTION)
+	if not query:
+		return []
+	
+	logger.info(f"Searching doctors with query: '{query}', limit: {limit}")
+	
+	# Build a regex for name search
+	import re
+	pattern = re.compile(re.escape(query), re.IGNORECASE)
+	
+	try:
+		cursor = collection.find({
+			"name": {"$regex": pattern}
+		}).sort("name", ASCENDING).limit(limit)
+		results = []
+		for d in cursor:
+			d["_id"] = str(d.get("_id")) if d.get("_id") else None
+			results.append(d)
+		logger.info(f"Found {len(results)} doctors matching query")
+		return results
+	except Exception as e:
+		logger.error(f"Error in search_doctors: {e}")
+		return []
+
+def get_all_doctors(limit: int = 50) -> list[dict[str, Any]]:
+	"""Get all doctors with optional limit"""
+	collection = get_collection(DOCTORS_COLLECTION)
+	try:
+		cursor = collection.find().sort("name", ASCENDING).limit(limit)
+		results = []
+		for d in cursor:
+			d["_id"] = str(d.get("_id")) if d.get("_id") else None
+			results.append(d)
+		logger.info(f"Retrieved {len(results)} doctors")
+		return results
+	except Exception as e:
+		logger.error(f"Error getting all doctors: {e}")
 		return []

@@ -90,6 +90,22 @@ document.addEventListener('DOMContentLoaded', () => {
 				const data = await resp.json();
 				const pid = data.patient_id;
 				localStorage.setItem('medicalChatbotPatientId', pid);
+				
+				// Add to localStorage for future suggestions
+				const existingPatients = JSON.parse(localStorage.getItem('medicalChatbotPatients') || '[]');
+				const newPatient = {
+					patient_id: pid,
+					name: payload.name,
+					age: payload.age,
+					sex: payload.sex
+				};
+				// Check if patient already exists to avoid duplicates
+				const exists = existingPatients.some(p => p.patient_id === pid);
+				if (!exists) {
+					existingPatients.push(newPatient);
+					localStorage.setItem('medicalChatbotPatients', JSON.stringify(existingPatients));
+				}
+				
 				// Show success modal (stay in create view until user opts to edit)
 				if (createdIdEl) createdIdEl.textContent = pid;
 				successModal.classList.add('show');

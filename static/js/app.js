@@ -794,23 +794,80 @@ How can I assist you today?`;
     // ================================================================================
     // DOCTOR.JS FUNCTIONALITY
     // ================================================================================
-    loadDoctors() {
+    async loadDoctors() {
         try {
+            // Fetch doctors from MongoDB
+            const resp = await fetch('/doctors');
+            if (resp.ok) {
+                const data = await resp.json();
+                this.doctors = data.results || [];
+                // Also save to localStorage for offline access
+                localStorage.setItem('medicalChatbotDoctors', JSON.stringify(this.doctors));
+                return this.doctors;
+            } else {
+                // Fallback to localStorage if API fails
+                const raw = localStorage.getItem('medicalChatbotDoctors');
+                const arr = raw ? JSON.parse(raw) : [];
+                const seen = new Set();
+                this.doctors = arr.filter(x => x && x.name && !seen.has(x.name) && seen.add(x.name));
+                return this.doctors;
+            }
+        } catch (e) {
+            console.warn('Failed to load doctors from API, using localStorage fallback:', e);
+            // Fallback to localStorage
             const raw = localStorage.getItem('medicalChatbotDoctors');
             const arr = raw ? JSON.parse(raw) : [];
             const seen = new Set();
-            return arr.filter(x => x && x.name && !seen.has(x.name) && seen.add(x.name));
-        } catch { return []; }
+            this.doctors = arr.filter(x => x && x.name && !seen.has(x.name) && seen.add(x.name));
+            return this.doctors;
+        }
+    }
+
+    async searchDoctors(query) {
+        try {
+            const resp = await fetch(`/doctors/search?q=${encodeURIComponent(query)}&limit=10`);
+            if (resp.ok) {
+                const data = await resp.json();
+                return data.results || [];
+            }
+        } catch (e) {
+            console.warn('Doctor search failed:', e);
+        }
+        return [];
+    }
+
+    async createDoctor(doctorData) {
+        try {
+            const resp = await fetch('/doctors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(doctorData)
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                // Add to local doctors list
+                this.doctors.push({ name: data.name, _id: data.doctor_id });
+                this.saveDoctors();
+                return data;
+            }
+        } catch (e) {
+            console.error('Failed to create doctor:', e);
+        }
+        return null;
     }
 
     saveDoctors() {
         localStorage.setItem('medicalChatbotDoctors', JSON.stringify(this.doctors));
     }
 
-    populateDoctorSelect() {
+    async populateDoctorSelect() {
         const sel = document.getElementById('profileNameSelect');
         const newSec = document.getElementById('newDoctorSection');
         if (!sel) return;
+        
+        // Load doctors from MongoDB
+        await this.loadDoctors();
+        
         sel.innerHTML = '';
         const createOpt = document.createElement('option');
         createOpt.value = '__create__';
@@ -842,14 +899,18 @@ How can I assist you today?`;
         const cancelBtn = document.getElementById('cancelNewDoctor');
         const confirmBtn = document.getElementById('confirmNewDoctor');
         if (cancelBtn) cancelBtn.onclick = () => { newSec.style.display = 'none'; sel.value = this.currentUser?.name || ''; };
-        if (confirmBtn) confirmBtn.onclick = () => {
+        if (confirmBtn) confirmBtn.onclick = async () => {
             const name = (document.getElementById('newDoctorName').value || '').trim();
             if (!name) return;
             if (!this.doctors.find(d => d.name === name)) {
-                this.doctors.unshift({ name });
-                this.saveDoctors();
+                // Create doctor in MongoDB
+                const result = await this.createDoctor({ name });
+                if (result) {
+                    this.doctors.unshift({ name, _id: result.doctor_id });
+                    this.saveDoctors();
+                }
             }
-            this.populateDoctorSelect();
+            await this.populateDoctorSelect();
             sel.value = name;
             newSec.style.display = 'none';
         };
@@ -906,37 +967,52 @@ How can I assist you today?`;
     // PATIENT.JS FUNCTIONALITY
     // ================================================================================
     
+    async getLocalStorageSuggestions(query) {
+        try {
+            const storedPatients = JSON.parse(localStorage.getItem('medicalChatbotPatients') || '[]');
+            return storedPatients.filter(p => 
+                p.patient_id.includes(query) || 
+                p.name.toLowerCase().includes(query.toLowerCase())
+            );
+        } catch (e) {
+            console.warn('Failed to get localStorage suggestions:', e);
+            return [];
+        }
+    }
+
+    combinePatientResults(mongoResults, localResults) {
+        // Create a map to deduplicate by patient_id, with MongoDB results taking priority
+        const resultMap = new Map();
+        
+        // Add MongoDB results first (they take priority)
+        mongoResults.forEach(patient => {
+            resultMap.set(patient.patient_id, patient);
+        });
+        
+        // Add localStorage results only if not already present
+        localResults.forEach(patient => {
+            if (!resultMap.has(patient.patient_id)) {
+                resultMap.set(patient.patient_id, patient);
+            }
+        });
+        
+        return Array.from(resultMap.values());
+    }
+
     async tryFallbackSearch(query, renderSuggestions) {
-        // Known patient IDs for fallback search
-        const knownPatients = [
-            { patient_id: '11602118', name: 'Donald Trump' },
-            { patient_id: '15289545', name: 'John Doe' }
-        ];
-        
-        const matches = knownPatients.filter(p => 
-            p.patient_id.includes(query) || 
-            p.name.toLowerCase().includes(query.toLowerCase())
-        );
-        
-        if (matches.length > 0) {
-            console.log('[DEBUG] Fallback search found matches:', matches);
-            renderSuggestions(matches);
-        } else {
-            console.log('[DEBUG] No fallback matches found');
-            // Try to search by partial ID if it looks like a number
-            if (/^\d+$/.test(query)) {
-                const partialMatches = knownPatients.filter(p => 
-                    p.patient_id.startsWith(query)
-                );
-                if (partialMatches.length > 0) {
-                    console.log('[DEBUG] Partial ID fallback found matches:', partialMatches);
-                    renderSuggestions(partialMatches);
-                } else {
-                    renderSuggestions([]);
-                }
+        // Use localStorage for fallback suggestions
+        try {
+            const localResults = await this.getLocalStorageSuggestions(query);
+            if (localResults.length > 0) {
+                console.log('[DEBUG] Fallback search found matches from localStorage:', localResults);
+                renderSuggestions(localResults);
             } else {
+                console.log('[DEBUG] No fallback matches found');
                 renderSuggestions([]);
             }
+        } catch (e) {
+            console.warn('Fallback search failed:', e);
+            renderSuggestions([]);
         }
     }
     async loadSavedPatientId() {
@@ -1155,16 +1231,24 @@ How can I assist you today?`;
                     console.log('[DEBUG] Search URL:', url);
                     const resp = await fetch(url);
                     console.log('[DEBUG] Search response status:', resp.status);
+                    
+                    let mongoResults = [];
                     if (resp.ok) {
                         const data = await resp.json();
-                        console.log('[DEBUG] Search results:', data);
-                        renderSuggestions(data.results || []);
+                        mongoResults = data.results || [];
+                        console.log('[DEBUG] MongoDB search results:', mongoResults);
                     } else {
-                        console.warn('Search request failed', resp.status);
-                        // Fallback: try to search by known patient IDs
-                        console.log('[DEBUG] Trying fallback search');
-                        await this.tryFallbackSearch(q, renderSuggestions);
+                        console.warn('MongoDB search request failed', resp.status);
                     }
+                    
+                    // Get localStorage suggestions as fallback/additional results
+                    const localResults = await this.getLocalStorageSuggestions(q);
+                    
+                    // Combine and deduplicate results (MongoDB results take priority)
+                    const combinedResults = this.combinePatientResults(mongoResults, localResults);
+                    console.log('[DEBUG] Combined search results:', combinedResults);
+                    renderSuggestions(combinedResults);
+                    
                 } catch (e) { 
                     console.error('[DEBUG] Search error:', e);
                     // Fallback for network errors
