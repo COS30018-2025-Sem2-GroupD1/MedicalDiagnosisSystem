@@ -11,7 +11,7 @@ from src.services.summariser import (summarise_qa_with_gemini,
                                      summarise_qa_with_nvidia)
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import get_logger
-from src.data.mongodb import save_memory_summary, save_chat_message, ensure_session, get_recent_memory_summaries
+from src.data.mongodb import save_memory_summary, save_chat_message, ensure_session, get_recent_memory_summaries, search_memory_summaries_semantic
 
 logger = get_logger("MED_HISTORY")
 
@@ -132,7 +132,16 @@ class MedicalHistoryManager:
 				ensure_session(session_id=session_id, patient_id=patient_id, doctor_id=doctor_id, title=session_title or "New Chat", last_activity=datetime.now(timezone.utc))
 				save_chat_message(session_id=session_id, patient_id=patient_id, doctor_id=doctor_id, role="user", content=question)
 				save_chat_message(session_id=session_id, patient_id=patient_id, doctor_id=doctor_id, role="assistant", content=answer)
-				save_memory_summary(patient_id=patient_id, doctor_id=doctor_id, summary=summary)
+				
+				# Generate embedding for semantic search
+				embedding = None
+				if self.embedder:
+					try:
+						embedding = self.embedder.embed([summary])[0]
+					except Exception as e:
+						logger.warning(f"Failed to generate embedding for summary: {e}")
+				
+				save_memory_summary(patient_id=patient_id, doctor_id=doctor_id, summary=summary, embedding=embedding)
 
 			# Update session title if it's the first message
 			session = self.memory.get_session(session_id)
@@ -188,6 +197,72 @@ class MedicalHistoryManager:
 		if session_context:
 			context_parts.append("Current conversation:\n" + session_context)
 
+		return "\n\n".join(context_parts) if context_parts else ""
+
+	async def get_enhanced_conversation_context(self, user_id: str, session_id: str, question: str, nvidia_rotator, *, patient_id: str | None = None) -> str:
+		"""
+		Enhanced context retrieval combining STM (3) + LTM semantic search (2) with NVIDIA reasoning.
+		Returns context that NVIDIA model can use to decide between STM and LTM information.
+		"""
+		cache_key = patient_id or user_id
+		
+		# Get STM summaries (recent 3)
+		recent_qa = self.memory.recent(cache_key, 3)
+		
+		# Get LTM semantic matches (top 2 most similar)
+		ltm_semantic = []
+		if patient_id and self.embedder:
+			try:
+				query_embedding = self.embedder.embed([question])[0]
+				ltm_results = search_memory_summaries_semantic(
+					patient_id=patient_id,
+					query_embedding=query_embedding,
+					limit=2,
+					similarity_threshold=0.5  # >= 50% semantic similarity
+				)
+				ltm_semantic = [result["summary"] for result in ltm_results]
+			except Exception as e:
+				logger.warning(f"Failed to perform LTM semantic search: {e}")
+		
+		# Get current session messages for context
+		session = self.memory.get_session(session_id)
+		session_context = ""
+		if session:
+			recent_messages = session.get_messages(10)
+			session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
+		
+		# Use NVIDIA to reason about STM relevance
+		relevant_stm = []
+		if recent_qa and nvidia_rotator:
+			try:
+				sys = "You are a medical AI assistant. Select only the most relevant recent medical context that directly relates to the new question. Return the selected items verbatim, no commentary. If none are relevant, return nothing."
+				numbered = [{"id": i+1, "text": s} for i, s in enumerate(recent_qa)]
+				user = f"Question: {question}\n\nRecent medical context (last 3 exchanges):\n{json.dumps(numbered, ensure_ascii=False)}\n\nSelect any relevant items and output ONLY their 'text' lines concatenated."
+				relevant_stm_text = await nvidia_chat(sys, user, nvidia_rotator)
+				if relevant_stm_text and relevant_stm_text.strip():
+					relevant_stm = [relevant_stm_text.strip()]
+			except Exception as e:
+				logger.warning(f"Failed to get NVIDIA STM reasoning: {e}")
+				# Fallback to all recent QA if NVIDIA fails
+				relevant_stm = recent_qa
+		else:
+			relevant_stm = recent_qa
+		
+		# Combine all relevant context
+		context_parts = []
+		
+		# Add STM context
+		if relevant_stm:
+			context_parts.append("Recent relevant medical context (STM):\n" + "\n".join(relevant_stm))
+		
+		# Add LTM semantic context
+		if ltm_semantic:
+			context_parts.append("Semantically relevant medical history (LTM):\n" + "\n".join(ltm_semantic))
+		
+		# Add current session context
+		if session_context:
+			context_parts.append("Current conversation:\n" + session_context)
+		
 		return "\n\n".join(context_parts) if context_parts else ""
 
 	def get_user_medical_history(self, user_id: str, limit: int = 20) -> list[str]:

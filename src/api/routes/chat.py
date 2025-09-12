@@ -52,11 +52,12 @@ async def chat_endpoint(
 		# Ensure session exists in Mongo with patient/doctor context
 		ensure_session(session_id=request.session_id, patient_id=request.patient_id, doctor_id=request.doctor_id, title=request.title or "New Chat", last_activity=datetime.now(timezone.utc))
 
-		# Get medical context from memory (short-term) + Mongo long-term
-		medical_context = state.history_manager.get_conversation_context(
+		# Get enhanced medical context with STM + LTM semantic search + NVIDIA reasoning
+		medical_context = await state.history_manager.get_enhanced_conversation_context(
 			request.user_id,
 			request.session_id,
 			request.message,
+			state.nvidia_rotator,
 			patient_id=request.patient_id
 		)
 
