@@ -532,7 +532,69 @@ How can I assist you today?`;
         if (roleEl) roleEl.value = (this.currentUser && this.currentUser.role) ? this.currentUser.role : 'Medical Professional';
         if (specialtyEl) specialtyEl.value = (this.currentUser && this.currentUser.specialty) ? this.currentUser.specialty : '';
         
+        // Add event listener for doctor selection changes
+        this.setupDoctorSelectionHandler();
+        
         this.showModal('userModal');
+    }
+
+    setupDoctorSelectionHandler() {
+        const sel = document.getElementById('profileNameSelect');
+        const roleEl = document.getElementById('profileRole');
+        const specialtyEl = document.getElementById('profileSpecialty');
+        
+        if (!sel || !roleEl || !specialtyEl) return;
+        
+        // Remove existing listeners to avoid duplicates
+        sel.removeEventListener('change', this.handleDoctorSelection);
+        
+        // Add new listener
+        this.handleDoctorSelection = async (event) => {
+            const selectedName = event.target.value;
+            console.log('[DEBUG] Doctor selected:', selectedName);
+            
+            if (selectedName === '__create__') {
+                // Reset to default values for new doctor
+                roleEl.value = 'Medical Professional';
+                specialtyEl.value = '';
+                return;
+            }
+            
+            // Find the selected doctor in our doctors list
+            const selectedDoctor = this.doctors.find(d => d.name === selectedName);
+            if (selectedDoctor) {
+                // Update role and specialty from the selected doctor
+                if (selectedDoctor.role) {
+                    roleEl.value = selectedDoctor.role;
+                }
+                if (selectedDoctor.specialty) {
+                    specialtyEl.value = selectedDoctor.specialty;
+                }
+                console.log('[DEBUG] Updated role and specialty for doctor:', selectedName, selectedDoctor.role, selectedDoctor.specialty);
+            } else {
+                // If doctor not found in local list, try to fetch from backend
+                try {
+                    const resp = await fetch(`/doctors/search?q=${encodeURIComponent(selectedName)}&limit=1`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const doctor = data.results && data.results[0];
+                        if (doctor) {
+                            if (doctor.role) {
+                                roleEl.value = doctor.role;
+                            }
+                            if (doctor.specialty) {
+                                specialtyEl.value = doctor.specialty;
+                            }
+                            console.log('[DEBUG] Fetched and updated role/specialty from backend:', doctor.role, doctor.specialty);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch doctor details from backend:', e);
+                }
+            }
+        };
+        
+        sel.addEventListener('change', this.handleDoctorSelection);
     }
 
     showSettingsModal() {
@@ -824,8 +886,16 @@ How can I assist you today?`;
             if (resp.ok) {
                 const data = await resp.json();
                 this.doctors = data.results || [];
+                // Ensure each doctor has role and specialty information
+                this.doctors = this.doctors.map(doctor => ({
+                    name: doctor.name,
+                    role: doctor.role || 'Medical Professional',
+                    specialty: doctor.specialty || '',
+                    _id: doctor._id || doctor.doctor_id
+                }));
                 // Also save to localStorage for offline access
                 localStorage.setItem('medicalChatbotDoctors', JSON.stringify(this.doctors));
+                console.log('[DEBUG] Loaded doctors with role/specialty:', this.doctors);
                 return this.doctors;
             } else {
                 // Fallback to localStorage if API fails
@@ -917,6 +987,10 @@ How can I assist you today?`;
                 if (input) input.value = '';
             } else {
                 newSec.style.display = 'none';
+                // Trigger doctor selection handler to update role/specialty
+                if (this.handleDoctorSelection) {
+                    this.handleDoctorSelection({ target: sel });
+                }
             }
         });
         const cancelBtn = document.getElementById('cancelNewDoctor');
@@ -926,10 +1000,24 @@ How can I assist you today?`;
             const name = (document.getElementById('newDoctorName').value || '').trim();
             if (!name) return;
             if (!this.doctors.find(d => d.name === name)) {
+                // Get current role and specialty from the form
+                const role = document.getElementById('profileRole').value || 'Medical Professional';
+                const specialty = document.getElementById('profileSpecialty').value.trim() || '';
+                
                 // Create doctor in MongoDB
-                const result = await this.createDoctor({ name });
+                const result = await this.createDoctor({ 
+                    name, 
+                    role, 
+                    specialty,
+                    medical_roles: [role]
+                });
                 if (result) {
-                    this.doctors.unshift({ name, _id: result.doctor_id });
+                    this.doctors.unshift({ 
+                        name, 
+                        role, 
+                        specialty, 
+                        _id: result.doctor_id 
+                    });
                     this.saveDoctors();
                 }
             }
@@ -950,10 +1038,24 @@ How can I assist you today?`;
             return;
         }
 
-        if (!this.doctors.find(d => d.name === name)) {
-            this.doctors.unshift({ name });
-            this.saveDoctors();
+        // Update or add doctor to the doctors list
+        const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
+        if (existingDoctorIndex >= 0) {
+            // Update existing doctor
+            this.doctors[existingDoctorIndex] = {
+                ...this.doctors[existingDoctorIndex],
+                role: role,
+                specialty: specialty
+            };
+        } else {
+            // Add new doctor
+            this.doctors.unshift({ 
+                name, 
+                role, 
+                specialty 
+            });
         }
+        this.saveDoctors();
 
         this.currentUser.name = name;
         this.currentUser.role = role;
