@@ -688,38 +688,15 @@ How can I assist you today?`;
         }
     }
 
-    async switchToSession(session) {
-        console.log('[DEBUG] Switching to session:', session.id, session.source);
-        this.currentSession = { ...session };
-        this.clearChatMessages();
-        
-        if (session.source === 'backend') {
-            // For backend sessions, always fetch fresh messages
-            await this.hydrateMessagesForSession(session.id);
-        } else {
-            // For local sessions, load from localStorage
-            const localSessions = this.getChatSessions();
-            const localSession = localSessions.find(s => s.id === session.id);
-            if (localSession && localSession.messages) {
-                // Sort messages by timestamp
-                const sortedMessages = localSession.messages.sort((a, b) => {
-                    const timeA = new Date(a.timestamp || 0).getTime();
-                    const timeB = new Date(b.timestamp || 0).getTime();
-                    return timeA - timeB; // Ascending order for display
-                });
-                sortedMessages.forEach(message => this.displayMessage(message));
-            }
-        }
-        
-        this.updateChatTitle();
-        this.loadChatSessions(); // Re-render to update active state
-    }
-
     loadChatSession(sessionId) {
         const sessions = this.getChatSessions();
         const session = sessions.find(s => s.id === sessionId);
         if (!session) return;
-        this.switchToSession(session);
+        this.currentSession = session;
+        this.clearChatMessages();
+        session.messages.forEach(message => this.displayMessage(message));
+        this.updateChatTitle();
+        this.loadChatSessions();
     }
 
     renameChatSession(sessionId, newTitle) {
@@ -1166,123 +1143,52 @@ How can I assist you today?`;
 
     fetchAndRenderPatientSessions = async function () {
         if (!this.currentPatientId) return;
-        
-        // Check localStorage cache first
-        const cacheKey = `sessions_${this.currentPatientId}`;
-        const cached = localStorage.getItem(cacheKey);
-        let sessions = [];
-        
-        if (cached) {
-            try {
-                const cachedData = JSON.parse(cached);
-                // Check if cache is recent (less than 2 minutes old)
-                const cacheTime = new Date(cachedData.timestamp || 0).getTime();
-                const now = new Date().getTime();
-                if (now - cacheTime < 2 * 60 * 1000) { // 2 minutes
-                    sessions = cachedData.sessions || [];
-                    console.log('[DEBUG] Using cached sessions for patient:', this.currentPatientId);
+        try {
+            const resp = await fetch(`/patients/${this.currentPatientId}/sessions`);
+            if (resp.ok) {
+                const data = await resp.json();
+                const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+                this.backendSessions = sessions.map(s => ({
+                    id: s.session_id,
+                    title: s.title || 'New Chat',
+                    messages: [],
+                    createdAt: s.created_at || new Date().toISOString(),
+                    lastActivity: s.last_activity || new Date().toISOString(),
+                    source: 'backend'
+                }));
+                if (this.backendSessions.length > 0) {
+                    this.currentSession = this.backendSessions[0];
+                    await this.hydrateMessagesForSession(this.currentSession.id);
                 }
-            } catch (e) {
-                console.warn('Failed to parse cached sessions:', e);
+            } else {
+                console.warn('Failed to fetch patient sessions', resp.status);
+                this.backendSessions = [];
             }
+        } catch (e) {
+            console.error('Failed to load patient sessions', e);
+            this.backendSessions = [];
         }
-        
-        // If no cache or cache is stale, fetch from backend
-        if (sessions.length === 0) {
-            try {
-                const resp = await fetch(`/patients/${this.currentPatientId}/sessions`);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    sessions = Array.isArray(data.sessions) ? data.sessions : [];
-                    
-                    // Cache the sessions
-                    localStorage.setItem(cacheKey, JSON.stringify({
-                        sessions: sessions,
-                        timestamp: new Date().toISOString()
-                    }));
-                    console.log('[DEBUG] Cached sessions for patient:', this.currentPatientId);
-                } else {
-                    console.warn('Failed to fetch patient sessions', resp.status);
-                }
-            } catch (e) {
-                console.error('Failed to load patient sessions', e);
-            }
-        }
-        
-        // Process sessions
-        this.backendSessions = sessions.map(s => ({
-            id: s.session_id,
-            title: s.title || 'New Chat',
-            messages: [],
-            createdAt: s.created_at || new Date().toISOString(),
-            lastActivity: s.last_activity || new Date().toISOString(),
-            source: 'backend'
-        }));
-        
-        if (this.backendSessions.length > 0) {
-            this.currentSession = this.backendSessions[0];
-            await this.hydrateMessagesForSession(this.currentSession.id);
-        }
-        
         this.loadChatSessions();
     }
 
     hydrateMessagesForSession = async function (sessionId) {
         try {
-            // Check localStorage cache first
-            const cacheKey = `messages_${this.currentPatientId}_${sessionId}`;
-            const cached = localStorage.getItem(cacheKey);
-            let messages = [];
-            
-            if (cached) {
-                try {
-                    const cachedData = JSON.parse(cached);
-                    // Check if cache is recent (less than 5 minutes old)
-                    const cacheTime = new Date(cachedData.timestamp || 0).getTime();
-                    const now = new Date().getTime();
-                    if (now - cacheTime < 5 * 60 * 1000) { // 5 minutes
-                        messages = cachedData.messages || [];
-                        console.log('[DEBUG] Using cached messages for session:', sessionId);
-                    }
-                } catch (e) {
-                    console.warn('Failed to parse cached messages:', e);
-                }
-            }
-            
-            // If no cache or cache is stale, fetch from backend
-            if (messages.length === 0) {
-                const resp = await fetch(`/sessions/${sessionId}/messages?limit=1000`);
-                if (!resp.ok) return;
-                const data = await resp.json();
-                const msgs = Array.isArray(data.messages) ? data.messages : [];
-                messages = msgs.map(m => ({
-                    id: m._id || this.generateId(),
-                    role: m.role,
-                    content: m.content,
-                    timestamp: m.timestamp
-                }));
-                
-                // Cache the messages
-                localStorage.setItem(cacheKey, JSON.stringify({
-                    messages: messages,
-                    timestamp: new Date().toISOString()
-                }));
-                console.log('[DEBUG] Cached messages for session:', sessionId);
-            }
-            
-            // Sort messages by timestamp (ascending order for display)
-            const sortedMessages = messages.sort((a, b) => {
-                const timeA = new Date(a.timestamp || 0).getTime();
-                const timeB = new Date(b.timestamp || 0).getTime();
-                return timeA - timeB;
-            });
-            
-            if (this.currentSession && this.currentSession.id === sessionId) {
-                this.currentSession.messages = sortedMessages;
+            const resp = await fetch(`/sessions/${sessionId}/messages?limit=1000`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const msgs = Array.isArray(data.messages) ? data.messages : [];
+            const normalized = msgs.map(m => ({
+                id: m._id || this.generateId(),
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp
+            }));
+        if (this.currentSession && this.currentSession.id === sessionId) {
+                this.currentSession.messages = normalized;
                 this.clearChatMessages();
                 this.currentSession.messages.forEach(m => this.displayMessage(m));
-                this.updateChatTitle();
-            }
+            this.updateChatTitle();
+        }
         } catch (e) {
             console.error('Failed to hydrate session messages', e);
         }
@@ -1429,31 +1335,6 @@ How can I assist you today?`;
     // ================================================================================
     // MESSAGING.JS FUNCTIONALITY
     // ================================================================================
-    // Cache invalidation methods
-    invalidateSessionCache(patientId) {
-        const cacheKey = `sessions_${patientId}`;
-        localStorage.removeItem(cacheKey);
-        console.log('[DEBUG] Invalidated session cache for patient:', patientId);
-    }
-
-    invalidateMessageCache(patientId, sessionId) {
-        const cacheKey = `messages_${patientId}_${sessionId}`;
-        localStorage.removeItem(cacheKey);
-        console.log('[DEBUG] Invalidated message cache for session:', sessionId);
-    }
-
-    invalidateAllCaches(patientId) {
-        this.invalidateSessionCache(patientId);
-        // Invalidate all message caches for this patient
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-            if (key.startsWith(`messages_${patientId}_`)) {
-                localStorage.removeItem(key);
-            }
-        });
-        console.log('[DEBUG] Invalidated all caches for patient:', patientId);
-    }
-
     sendMessage = async function () {
         const input = document.getElementById('chatInput');
         const message = input.value.trim();
@@ -1471,12 +1352,6 @@ How can I assist you today?`;
             const response = await this.callMedicalAPI(message);
             this.addMessage('assistant', response);
             this.updateCurrentSession();
-            
-            // Invalidate caches after successful message exchange
-            if (this.currentSession && this.currentSession.id) {
-                this.invalidateMessageCache(this.currentPatientId, this.currentSession.id);
-                this.invalidateSessionCache(this.currentPatientId);
-            }
         } catch (error) {
             console.error('Error sending message:', error);
             let errorMessage = 'I apologize, but I encountered an error processing your request.';
