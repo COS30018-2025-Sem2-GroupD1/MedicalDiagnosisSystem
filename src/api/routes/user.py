@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from src.core.state import MedicalState, get_state
 from src.models.user import UserProfileRequest, PatientCreateRequest, PatientUpdateRequest, DoctorCreateRequest
 from src.utils.logger import get_logger
-from src.data.mongodb import create_account, create_doctor, get_doctor_by_name, search_doctors, get_all_doctors
+from src.data import create_account, create_doctor, get_doctor_by_name, search_doctors, get_all_doctors
 
 logger = get_logger("USER_ROUTES", __name__)
 router = APIRouter()
@@ -81,7 +81,7 @@ async def get_user_profile(
 		raise HTTPException(status_code=500, detail=str(e))
 
 # -------------------- Patient APIs --------------------
-from src.data.mongodb import get_patient_by_id, create_patient, update_patient_profile, search_patients
+from src.data import get_patient_by_id, create_patient, update_patient_profile, search_patients
 
 @router.get("/patients/search")
 async def search_patients_route(q: str, limit: int = 20):

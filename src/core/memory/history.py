@@ -11,7 +11,7 @@ from src.services.summariser import (summarise_qa_with_gemini,
                                      summarise_qa_with_nvidia)
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import get_logger
-from src.data.mongodb import save_memory_summary, save_chat_message, ensure_session, get_recent_memory_summaries, search_memory_summaries_semantic
+from src.data import save_memory_summary, save_chat_message, ensure_session, get_recent_memory_summaries, search_memory_summaries_semantic
 
 logger = get_logger("MED_HISTORY")
 

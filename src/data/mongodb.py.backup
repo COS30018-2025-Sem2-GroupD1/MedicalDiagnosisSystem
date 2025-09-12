@@ -2,7 +2,7 @@
 
 """
 	Interface for mongodb using pymongo.
-	Current code is simply a proof of concept and is not ready for implementation.
+	This file has been refactored.
 """
 
 from datetime import datetime, timedelta, timezone

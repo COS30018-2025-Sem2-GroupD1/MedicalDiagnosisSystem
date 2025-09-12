@@ -11,7 +11,7 @@ from src.services.medical_response import generate_medical_response
 from src.services.summariser import summarise_title_with_nvidia
 from src.utils.logger import get_logger
 
-from src.data.mongodb import ensure_session
+from src.data import ensure_session
 
 logger = get_logger("CHAT_ROUTES", __name__)
 router = APIRouter()

@@ -6,7 +6,7 @@ from datetime import datetime
 from src.core.state import MedicalState, get_state
 from src.models.chat import SessionRequest
 from src.utils.logger import get_logger
-from src.data.mongodb import list_patient_sessions, list_session_messages, ensure_session, delete_session, delete_session_messages
+from src.data import list_patient_sessions, list_session_messages, ensure_session, delete_session, delete_session_messages
 
 logger = get_logger("SESSION_ROUTES", __name__)
 router = APIRouter()
