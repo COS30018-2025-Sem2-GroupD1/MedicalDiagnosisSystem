@@ -83,6 +83,17 @@ async def get_user_profile(
 # -------------------- Patient APIs --------------------
 from src.data.mongodb import get_patient_by_id, create_patient, update_patient_profile, search_patients
 
+@router.get("/patients/search")
+async def search_patients_route(q: str, limit: int = 20):
+	try:
+		logger.info(f"GET /patients/search q='{q}' limit={limit}")
+		results = search_patients(q, limit=limit)
+		logger.info(f"Search returned {len(results)} results")
+		return {"results": results}
+	except Exception as e:
+		logger.error(f"Error searching patients: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/patients/{patient_id}")
 async def get_patient(patient_id: str):
 	try:
@@ -131,17 +142,6 @@ async def update_patient(patient_id: str, req: PatientUpdateRequest):
 		return {"message": "Updated"}
 	except Exception as e:
 		logger.error(f"Error updating patient: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/patients/search")
-async def search_patients_route(q: str, limit: int = 10):
-	try:
-		logger.info(f"GET /patients/search q='{q}' limit={limit}")
-		results = search_patients(q, limit=limit)
-		logger.info(f"Search returned {len(results)} results")
-		return {"results": results}
-	except Exception as e:
-		logger.error(f"Error searching patients: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
 # -------------------- Doctor APIs --------------------
