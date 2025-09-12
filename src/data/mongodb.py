@@ -424,7 +424,12 @@ def list_patient_sessions(
 	collection_name: str = CHAT_SESSIONS_COLLECTION
 ) -> list[dict[str, Any]]:
 	collection = get_collection(collection_name)
-	return list(collection.find({"patient_id": patient_id}).sort("last_activity", DESCENDING))
+	sessions = list(collection.find({"patient_id": patient_id}).sort("last_activity", DESCENDING))
+	# Convert ObjectId to string for JSON serialization
+	for session in sessions:
+		if "_id" in session:
+			session["_id"] = str(session["_id"])
+	return sessions
 
 # Patients helpers
 
