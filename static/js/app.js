@@ -752,14 +752,21 @@ How can I assist you today?`;
 
     async switchToSession(session) {
         console.log('[DEBUG] Switching to session:', session.id, session.source);
-        this.currentSession = { ...session };
+        
+        // Clear current session and messages first
+        this.currentSession = null;
         this.clearChatMessages();
+        
+        // Set new session
+        this.currentSession = { ...session };
         
         if (session.source === 'backend') {
             // For backend sessions, always fetch fresh messages
+            console.log('[DEBUG] Fetching messages for backend session:', session.id);
             await this.hydrateMessagesForSession(session.id);
         } else {
             // For local sessions, load from localStorage
+            console.log('[DEBUG] Loading messages for local session:', session.id);
             const localSessions = this.getChatSessions();
             const localSession = localSessions.find(s => s.id === session.id);
             if (localSession && localSession.messages) {
@@ -769,9 +776,12 @@ How can I assist you today?`;
                     const timeB = new Date(b.timestamp || 0).getTime();
                     return timeA - timeB; // Ascending order for display
                 });
+                console.log('[DEBUG] Displaying', sortedMessages.length, 'messages for local session');
                 sortedMessages.forEach(message => this.displayMessage(message));
                 // Check if session needs title generation
                 this.checkAndGenerateSessionTitle();
+            } else {
+                console.log('[DEBUG] No messages found for local session:', session.id);
             }
         }
         
@@ -1036,7 +1046,7 @@ How can I assist you today?`;
         };
     }
 
-    saveUserProfile() {
+    async saveUserProfile() {
         const nameSel = document.getElementById('profileNameSelect');
         const name = nameSel ? nameSel.value : '';
         const role = document.getElementById('profileRole').value;
@@ -1047,12 +1057,25 @@ How can I assist you today?`;
             return;
         }
 
-        // Check if this is a new doctor creation (not in our local list)
-        const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
-        const isNewDoctor = existingDoctorIndex === -1;
+        // Check if doctor exists in MongoDB first
+        let doctorExists = false;
+        try {
+            const resp = await fetch(`/doctors/${encodeURIComponent(name)}`);
+            doctorExists = resp.ok;
+        } catch (e) {
+            console.warn('Failed to check doctor existence:', e);
+        }
+
+        // Update current user profile
+        this.currentUser.name = name;
+        this.currentUser.role = role;
+        this.currentUser.specialty = specialty;
+        this.saveUser();
+        this.updateUserDisplay();
 
         // Update local doctors list
-        if (isNewDoctor) {
+        const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
+        if (existingDoctorIndex === -1) {
             // Add new doctor to local list
             this.doctors.unshift({ 
                 name, 
@@ -1069,15 +1092,8 @@ How can I assist you today?`;
         }
         this.saveDoctors();
 
-        // Update current user profile
-        this.currentUser.name = name;
-        this.currentUser.role = role;
-        this.currentUser.specialty = specialty;
-        this.saveUser();
-        this.updateUserDisplay();
-
-        // Only create new doctor in MongoDB if it's actually a new doctor
-        if (isNewDoctor) {
+        // Only create new doctor in MongoDB if it doesn't exist
+        if (!doctorExists) {
             const doctorPayload = {
                 name: name,
                 role: role,
@@ -1085,26 +1101,28 @@ How can I assist you today?`;
                 medical_roles: [role]
             };
             
-            fetch('/doctors', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(doctorPayload)
-            }).then(resp => {
+            try {
+                const resp = await fetch('/doctors', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(doctorPayload)
+                });
+                
                 if (!resp.ok) throw new Error('Failed to create doctor in backend');
-                return resp.json();
-            }).then((data) => {
+                const data = await resp.json();
                 console.log('[Doctor] Created new doctor in backend:', data);
+                
                 // Update local doctor with the ID from backend
                 const localDoctor = this.doctors.find(d => d.name === name);
                 if (localDoctor) {
                     localDoctor._id = data.doctor_id;
                     this.saveDoctors();
                 }
-            }).catch(err => {
+            } catch (err) {
                 console.warn('[Doctor] failed to create doctor in backend:', err);
-            });
+            }
         } else {
-            console.log('[Doctor] Updated existing doctor profile locally (no backend call needed)');
+            console.log('[Doctor] Doctor already exists in backend, no creation needed');
         }
 
         this.hideModal('userModal');
@@ -1376,7 +1394,10 @@ How can I assist you today?`;
             // If no cache or cache is stale, fetch from backend
             if (messages.length === 0) {
                 const resp = await fetch(`/sessions/${sessionId}/messages?patient_id=${this.currentPatientId}&limit=1000`);
-                if (!resp.ok) return;
+                if (!resp.ok) {
+                    console.warn(`Failed to fetch messages for session ${sessionId}:`, resp.status);
+                    return;
+                }
                 const data = await resp.json();
                 const msgs = Array.isArray(data.messages) ? data.messages : [];
                 messages = msgs.map(m => ({
@@ -1391,7 +1412,7 @@ How can I assist you today?`;
                     messages: messages,
                     timestamp: new Date().toISOString()
                 }));
-                console.log('[DEBUG] Cached messages for session:', sessionId);
+                console.log('[DEBUG] Cached messages for session:', sessionId, 'count:', messages.length);
             }
             
             // Sort messages by timestamp (ascending order for display)
@@ -1404,10 +1425,13 @@ How can I assist you today?`;
             if (this.currentSession && this.currentSession.id === sessionId) {
                 this.currentSession.messages = sortedMessages;
                 this.clearChatMessages();
+                console.log('[DEBUG] Displaying', sortedMessages.length, 'messages for session:', sessionId);
                 this.currentSession.messages.forEach(m => this.displayMessage(m));
                 this.updateChatTitle();
                 // Check if session needs title generation
                 this.checkAndGenerateSessionTitle();
+            } else {
+                console.warn('[DEBUG] Session mismatch - current session:', this.currentSession?.id, 'requested session:', sessionId);
             }
         } catch (e) {
             console.error('Failed to hydrate session messages', e);
