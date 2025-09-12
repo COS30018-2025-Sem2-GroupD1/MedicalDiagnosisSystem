@@ -42,7 +42,14 @@ purposes
 Backend (FastAPI):
 - `src/core/memory/memory.py`: LRU short‑term memory + sessions
 - `src/core/memory/history.py`: builds context; writes memory/messages to Mongo
-- `src/data/mongodb.py`: Mongo helpers (sessions, messages, memory, patients, search)
+- `src/data/`: Mongo helpers (modularized)
+  - `connection.py`: Mongo connection + collection names
+  - `session/operations.py`: chat sessions (ensure/list/delete/etc.)
+  - `message/operations.py`: chat messages (save/list)
+  - `patient/operations.py`: patients (get/create/update/search)
+  - `user/operations.py`: accounts/doctors (create/search/list)
+  - `medical/operations.py`: medical records + memory summaries
+  - `utils.py`: generic helpers (indexing, backups)
 - `src/api/routes/`: `chat`, `session`, `user` (patients), `system`, `static`
 
 Frontend (static):
@@ -70,7 +77,8 @@ echo "NVIDIA_API_1=your_nvidia_api_key_1" >> .env
 # MongoDB (required)
 echo "MONGO_USER=your_mongodb_connection_string" >> .env
 # Optional DB name (default: medicaldiagnosissystem)
-echo "MONGO_DB=medicaldiagnosissystem" >> .env
+# Optional DB name (default: medicaldiagnosissystem). Env var key: USER_DB
+echo "USER_DB=medicaldiagnosissystem" >> .env
 ```
 3. Run
 ```bash
@@ -96,6 +104,7 @@ Helpful: [UI SETUP](https://huggingface.co/spaces/MedAI-COS30018/MedicalDiagnosi
 - `POST /sessions` → `{ session_id }`
 - `GET /patients/{patient_id}/sessions`
 - `GET /sessions/{session_id}/messages`
+- `DELETE /sessions/{session_id}` → deletes session (cache + Mongo) and its messages
 - `GET /patients/search?q=term&limit=8`
 
 ## 🔒 Data & Privacy
@@ -128,7 +137,19 @@ MedAI/
 │   │   │   └── history.py       # Context builder, persistence hooks
 │   │   └── state.py             # App state (rotators, embeddings, memory)
 │   ├── data/
-│   │   └── mongodb.py           # Mongo helpers (sessions, messages, memory, patients)
+│   │   ├── __init__.py          # Barrel exports for data layer
+│   │   ├── connection.py        # Mongo connection + collection names
+│   │   ├── utils.py             # Indexing, backups
+│   │   ├── session/
+│   │   │   └── operations.py    # Sessions: ensure/list/delete
+│   │   ├── message/
+│   │   │   └── operations.py    # Messages: save/list
+│   │   ├── patient/
+│   │   │   └── operations.py    # Patients: get/create/update/search
+│   │   ├── user/
+│   │   │   └── operations.py    # Accounts/Doctors
+│   │   └── medical/
+│   │       └── operations.py    # Medical records + memory summaries
 │   ├── models/
 │   │   ├── chat.py
 │   │   └── user.py
