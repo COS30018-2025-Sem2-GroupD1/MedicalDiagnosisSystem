@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.state import MedicalState, get_state
-from src.models.user import UserProfileRequest, PatientCreateRequest, PatientUpdateRequest
+from src.models.user import UserProfileRequest, PatientCreateRequest, PatientUpdateRequest, DoctorCreateRequest
 from src.utils.logger import get_logger
 from src.data.mongodb import create_account, create_doctor, get_doctor_by_name, search_doctors, get_all_doctors
 
@@ -145,12 +145,6 @@ async def search_patients_route(q: str, limit: int = 10):
 		raise HTTPException(status_code=500, detail=str(e))
 
 # -------------------- Doctor APIs --------------------
-class DoctorCreateRequest(BaseModel):
-	name: str
-	role: str | None = None
-	specialty: str | None = None
-	medical_roles: list[str] | None = None
-
 @router.post("/doctors")
 async def create_doctor_profile(req: DoctorCreateRequest):
 	try:

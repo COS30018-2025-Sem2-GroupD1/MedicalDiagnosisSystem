@@ -30,3 +30,9 @@ class PatientUpdateRequest(BaseModel):
 	medications: Optional[List[str]] = None
 	past_assessment_summary: Optional[str] = None
 	assigned_doctor_id: Optional[str] = None
+
+class DoctorCreateRequest(BaseModel):
+	name: str
+	role: Optional[str] = None
+	specialty: Optional[str] = None
+	medical_roles: Optional[List[str]] = None
