@@ -970,10 +970,17 @@ How can I assist you today?`;
     async getLocalStorageSuggestions(query) {
         try {
             const storedPatients = JSON.parse(localStorage.getItem('medicalChatbotPatients') || '[]');
-            return storedPatients.filter(p => 
-                p.patient_id.includes(query) || 
-                p.name.toLowerCase().includes(query.toLowerCase())
-            );
+            return storedPatients.filter(p => {
+                // Check name match (case-insensitive contains)
+                const nameMatch = p.name.toLowerCase().includes(query.toLowerCase());
+                // Check patient_id match
+                let idMatch = p.patient_id.includes(query);
+                // Special handling for numeric queries - check if patient_id starts with the query
+                if (/^\d+$/.test(query)) {
+                    idMatch = p.patient_id.startsWith(query) || p.patient_id.includes(query);
+                }
+                return nameMatch || idMatch;
+            });
         } catch (e) {
             console.warn('Failed to get localStorage suggestions:', e);
             return [];

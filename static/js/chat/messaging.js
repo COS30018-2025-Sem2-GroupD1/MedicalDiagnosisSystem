@@ -129,9 +129,18 @@ export function attachMessagingUI(app) {
 
 	app.formatMessageContent = function (content) {
 		return content
+			// Handle headers (1-6 # symbols)
+			.replace(/^#{1,6}\s+(.+)$/gm, (match, text, offset, string) => {
+				const level = match.match(/^#+/)[0].length;
+				return `<h${level}>${text}</h${level}>`;
+			})
+			// Handle bold text
 			.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+			// Handle italic text
 			.replace(/\*(.*?)\*/g, '<em>$1</em>')
+			// Handle line breaks
 			.replace(/\n/g, '<br>')
+			// Handle emojis with colors
 			.replace(/🔍/g, '<span style="color: var(--primary-color);">🔍</span>')
 			.replace(/📋/g, '<span style="color: var(--secondary-color);">📋</span>')
 			.replace(/💊/g, '<span style="color: var(--accent-color);">💊</span>')
