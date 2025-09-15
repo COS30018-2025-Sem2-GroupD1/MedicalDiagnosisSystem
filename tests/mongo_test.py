@@ -4,166 +4,123 @@ To run this file, execute `python -m tests.mongo_test` from the project root dir
 """
 
 import unittest
-from datetime import datetime, timezone
 
 from pymongo.errors import DuplicateKeyError
 
-from src.data import mongodb
+from src.data.repositories import account as account_repo
+from src.data.repositories import base as db_base
+from src.data.repositories import medical as medical_repo
+from src.data.repositories import session as chat_repo
+from src.data.repositories import utils as db_utils
+from src.data.repositories.account import ACCOUNTS_COLLECTION
+from src.data.repositories.medical import (MEDICAL_CONTEXT_COLLECTION,
+                                           MEDICAL_RECORDS_COLLECTION)
+from src.data.repositories.session import CHAT_SESSIONS_COLLECTION
 from src.utils.logger import logger
 
 
-class TestMongoDB(unittest.TestCase):
+class TestMongoDBRepositories(unittest.TestCase):
+	"""Integration tests for the MongoDB repository modules."""
+
 	@classmethod
 	def setUpClass(cls):
-		"""Initialize test database"""
-		cls.db = mongodb.get_database()
-		# Map production collections to test collections
-		# Doing it this make makes sure that if any collection is ever removed, the tests cannot be run
+		"""Initializes a test database and collection mappings."""
+		cls.db = db_base.get_database()
 		cls.test_collections = {
-			mongodb.ACCOUNTS_COLLECTION: "test_accounts",
-			mongodb.CHAT_SESSIONS_COLLECTION: "test_chat_sessions",
-			mongodb.MEDICAL_RECORDS_COLLECTION: "test_medical_records"
+			ACCOUNTS_COLLECTION: "test_accounts",
+			CHAT_SESSIONS_COLLECTION: "test_chat_sessions",
+			MEDICAL_RECORDS_COLLECTION: "test_medical_records",
+			MEDICAL_CONTEXT_COLLECTION: "test_medical_context"
 		}
-		logger().info("Test database initialized")
+		logger().info("Test database initialized.")
 
 	def setUp(self):
-		"""Reset collections before each test"""
-		for prod_name, test_name in self.test_collections.items():
-			if test_name in self.db.list_collection_names():
-				self.db.drop_collection(test_name)
+		"""Clears all test collections before each test."""
+		for test_name in self.test_collections.values():
+			self.db.drop_collection(test_name)
 
 	def test_account_operations(self):
-		"""Test account creation and updates"""
-		test_coll = self.test_collections[mongodb.ACCOUNTS_COLLECTION]
+		"""Tests account creation, updates, and retrieval."""
+		test_coll = self.test_collections[ACCOUNTS_COLLECTION]
 
-		# Create test account
-		user_data = {
-			"_id": "test_user_1",
-			"name": "Test User",
-			"email": "test@example.com"
-		}
-		user_id = mongodb.create_account(user_data, collection_name=test_coll)
-		self.assertIsNotNone(user_id)
+		user_id = account_repo.create_account(user_id="test_user_1", name="Test User", collection_name=test_coll)
+		self.assertEqual(user_id, "test_user_1")
 
-		# Test updating account
-		updates = {"name": "Updated Name"}
-		success = mongodb.update_account(user_id, updates, collection_name=test_coll)
+		success = account_repo.update_account(user_id, {"name": "Updated Name"}, collection_name=test_coll)
 		self.assertTrue(success)
 
-		# Test DataFrame conversion
-		df = mongodb.get_account_frame(collection_name=test_coll)
-		self.assertFalse(df.empty)
-		self.assertEqual(df.iloc[0]["name"], "Updated Name")
+		profile = account_repo.get_user_profile(user_id, collection_name=test_coll)
+		self.assertIsNotNone(profile)
+		self.assertEqual(profile["name"], "Updated Name") # type: ignore
 
 	def test_chat_session_operations(self):
-		"""Test chat session management"""
-		test_coll = self.test_collections[mongodb.CHAT_SESSIONS_COLLECTION]
+		"""Tests chat session creation, message handling, and retrieval."""
+		test_coll = self.test_collections[CHAT_SESSIONS_COLLECTION]
 
-		# Create session
-		session_data = {
-			"user_id": "test_user_1",
-			"title": "Test Chat"
-		}
-		session_id = mongodb.create_chat_session(session_data, collection_name=test_coll)
+		session_id = chat_repo.create_session("test_user_1", "Test Chat", collection_name=test_coll)
 		self.assertIsNotNone(session_id)
 
-		# Add messages
 		messages = [
-			{"role": "user", "content": "Test message 1"},
-			{"role": "assistant", "content": "Test response 1"},
-			{"role": "user", "content": "Test message 2"}
+			{"role": "user", "content": "Message 1"},
+			{"role": "assistant", "content": "Response 1"},
 		]
 		for msg in messages:
-			result = mongodb.add_message(session_id, msg, collection_name=test_coll)
-			self.assertIsNotNone(result)
+			result_id = chat_repo.add_message(session_id, msg, collection_name=test_coll)
+			self.assertEqual(result_id, session_id)
 
-		# Get session messages
-		retrieved_msgs = mongodb.get_session_messages(session_id, collection_name=test_coll)
-		self.assertEqual(len(retrieved_msgs), 3)
+		session = chat_repo.get_session(session_id, collection_name=test_coll)
+		self.assertIsNotNone(session)
+		self.assertEqual(len(session["messages"]), 2) # type: ignore
 
-		# Test user sessions
-		sessions = mongodb.get_user_sessions("test_user_1", collection_name=test_coll)
-		self.assertEqual(len(sessions), 1)
-		self.assertEqual(sessions[0]["title"], "Test Chat")
+		user_sessions = chat_repo.get_user_sessions("test_user_1", collection_name=test_coll)
+		self.assertEqual(len(user_sessions), 1)
+		self.assertEqual(user_sessions[0]["title"], "Test Chat")
 
 	def test_medical_records(self):
-		"""Test medical record operations"""
-		test_coll = self.test_collections[mongodb.MEDICAL_RECORDS_COLLECTION]
+		"""Tests medical record creation and retrieval."""
+		test_coll = self.test_collections[MEDICAL_RECORDS_COLLECTION]
+		record_data = {"user_id": "test_user_1", "type": "lab_result", "notes": "Normal"}
 
-		# Create record
-		record_data = {
-			"user_id": "test_user_1",
-			"type": "examination",
-			"notes": "Test medical record"
-		}
-		record_id = mongodb.create_medical_record(record_data, collection_name=test_coll)
+		record_id = medical_repo.create_medical_record(record_data, collection_name=test_coll)
 		self.assertIsNotNone(record_id)
 
-		# Get user records
-		records = mongodb.get_user_medical_records("test_user_1", collection_name=test_coll)
+		records = medical_repo.get_user_medical_records("test_user_1", collection_name=test_coll)
 		self.assertEqual(len(records), 1)
-		self.assertEqual(records[0]["type"], "examination")
+		self.assertEqual(records[0]["type"], "lab_result")
 
 	def test_utility_functions(self):
-		"""Test utility functions"""
-		test_accounts = self.test_collections[mongodb.ACCOUNTS_COLLECTION]
-		test_sessions = self.test_collections[mongodb.CHAT_SESSIONS_COLLECTION]
+		"""Tests database utility functions like indexing and backups."""
+		test_accounts = self.test_collections[ACCOUNTS_COLLECTION]
+		test_sessions = self.test_collections[CHAT_SESSIONS_COLLECTION]
 
-		# Test index creation
-		mongodb.create_index(test_accounts, "email", unique=True)
+		db_utils.create_index(test_accounts, "email", unique=True)
+		chat_repo.create_session("test_user_1", "Old Chat", collection_name=test_sessions)
 
-		# Create test session
-		session_data = {
-			"user_id": "test_user_1",
-			"title": "Old Chat",
-			"updated_at": datetime.now(timezone.utc)
-		}
-		mongodb.create_chat_session(session_data, collection_name=test_sessions)
+		deleted_count = db_utils.delete_old_data(test_sessions, days=0)
+		self.assertEqual(deleted_count, 1)
 
-		# Test session deletion
-		deleted = mongodb.delete_old_sessions(days=0, collection_name=test_sessions)
-		self.assertEqual(deleted, 1)
-
-		# Test backup
-		backup_name = mongodb.backup_collection(test_accounts)
+		backup_name = db_utils.backup_collection(test_accounts)
 		self.assertTrue(backup_name.startswith(f"{test_accounts}_backup_"))
+		self.assertIn(backup_name, self.db.list_collection_names())
 
 	def test_error_handling(self):
-		"""Test error cases"""
-		test_accounts = self.test_collections[mongodb.ACCOUNTS_COLLECTION]
-		test_sessions = self.test_collections[mongodb.CHAT_SESSIONS_COLLECTION]
+		"""Tests expected error cases, such as duplicate keys and invalid IDs."""
+		test_accounts = self.test_collections[ACCOUNTS_COLLECTION]
+		test_sessions = self.test_collections[CHAT_SESSIONS_COLLECTION]
 
-		# Test duplicate email handling
-		mongodb.create_index(test_accounts, "email", unique=True)
+		db_utils.create_index(test_accounts, "name", unique=True)
+		account_repo.create_account(name="User", user_id="user1", collection_name=test_accounts)
 
-		user1 = {
-			"_id": "user1",
-			"email": "same@email.com",
-			"name": "User 1"
-		}
-		mongodb.create_account(user1, collection_name=test_accounts)
-
-		# Has the same email
-		user2 = {
-			"_id": "user2",
-			"email": "same@email.com",
-			"name": "User 2"
-		}
 		with self.assertRaises(DuplicateKeyError):
-			mongodb.create_account(user2, collection_name=test_accounts)
+			account_repo.create_account(name="User", user_id="user2", collection_name=test_accounts)
 
-		# Test invalid session ID
 		with self.assertRaises(ValueError):
-			mongodb.add_message(
-				"invalid_id",
-				{"content": "test"},
-				collection_name=test_sessions
-			)
+			chat_repo.add_message("invalid_session_id", {"role": "user", "content": "test"}, collection_name=test_sessions)
 
 if __name__ == "__main__":
 	try:
-		logger().info("Starting MongoDB integration tests...")
+		logger().info("Starting MongoDB repository integration tests...")
 		unittest.main(verbosity=2)
 	finally:
-		mongodb.close_connection()
-		logger().info("Tests completed, connection closed")
+		db_base.close_connection()
+		logger().info("Tests completed and database connection closed.")
