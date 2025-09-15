@@ -24,7 +24,7 @@ except Exception as e:
 
 # Import project modules after trying to load environment variables
 from src.api.routes import chat, session, static, system, user
-from src.core.state import MedicalState
+from src.core.state import MedicalState, get_state
 
 
 def startup_event(state: MedicalState):
@@ -73,7 +73,7 @@ def shutdown_event():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 	# Initialize state
-	state = MedicalState.get_instance()
+	state = get_state()
 	state.initialize()
 
 	# Startup code here

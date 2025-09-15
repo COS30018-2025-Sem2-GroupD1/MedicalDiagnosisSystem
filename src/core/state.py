@@ -7,30 +7,33 @@ from src.utils.rotator import APIKeyRotator
 
 
 class MedicalState:
-	"""Global state management for Medical AI system"""
-	_instance: 'MedicalState | None' = None
+	"""Manages the global state of the application using a Singleton pattern."""
+	_instance = None
+
+	def __new__(cls):
+		if cls._instance is None:
+			cls._instance = super(MedicalState, cls).__new__(cls)
+			cls._instance._initialized = False
+		return cls._instance
 
 	def __init__(self):
+		if self._initialized:
+			return
 		self.memory_system: MemoryLRU
 		self.embedding_client: EmbeddingClient
 		self.history_manager: MedicalHistoryManager
 		self.gemini_rotator: APIKeyRotator
 		self.nvidia_rotator: APIKeyRotator
+		self._initialized = True
 
 	def initialize(self):
-		"""Initialize all core components"""
+		"""Initializes all core application components."""
 		self.memory_system = MemoryLRU(max_sessions_per_user=20)
-		self.embedding_client = EmbeddingClient("all-MiniLM-L6-v2", 384)
+		self.embedding_client = EmbeddingClient(model_name="all-MiniLM-L6-v2", dimension=384)
 		self.history_manager = MedicalHistoryManager(self.memory_system, self.embedding_client)
 		self.gemini_rotator = APIKeyRotator("GEMINI_API_", max_slots=5)
 		self.nvidia_rotator = APIKeyRotator("NVIDIA_API_", max_slots=5)
 
-	@classmethod
-	def get_instance(cls) -> 'MedicalState':
-		if cls._instance is None:
-			cls._instance = MedicalState()
-		return cls._instance
-
 def get_state() -> MedicalState:
-	"""FastAPI dependency for getting application state"""
-	return MedicalState.get_instance()
+	"""Provides access to the application state, for use as a dependency."""
+	return MedicalState()

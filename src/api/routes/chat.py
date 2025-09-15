@@ -30,7 +30,10 @@ async def chat_endpoint(
 		if not user_profile:
 			state.memory_system.create_user(request.user_id, request.user_role or "Anonymous")
 			if request.user_specialty:
-				state.memory_system.set_user_preference(request.user_id, "specialty", request.user_specialty)
+				state.memory_system.set_user_preferences(
+					request.user_id,
+					{"specialty": request.user_specialty}
+				)
 
 		# Get or create session
 		session = state.memory_system.get_session(request.session_id)
@@ -43,8 +46,8 @@ async def chat_endpoint(
 		# Get medical context from memory
 		medical_context = state.history_manager.get_conversation_context(
 			request.user_id,
-			request.session_id,
-			request.message
+			#request.session_id,
+			#request.message
 		)
 
 		# Generate response using Gemini AI

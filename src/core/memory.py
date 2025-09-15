@@ -6,132 +6,110 @@ from typing import Any
 
 from src.core.profile import UserProfile
 from src.core.session import ChatSession
-from src.data import mongodb
+from src.data.repositories import account as account_repo
+from src.data.repositories import medical as medical_repo
+from src.data.repositories import session as chat_repo
 from src.utils.logger import logger
 
 
 class MemoryLRU:
 	"""
-	Memory system using MongoDB for persistence, supporting:
-	- Multiple users with profiles
-	- Multiple chat sessions per user
-	- Chat history and continuity
-	- Medical context summaries
+	A memory system that orchestrates data access between the application core
+	and the data repositories, managing users, sessions, and medical context.
 	"""
+
 	def __init__(self, max_sessions_per_user: int = 10):
 		self.max_sessions_per_user = max_sessions_per_user
 
 	def create_user(self, user_id: str, name: str = "Anonymous") -> UserProfile:
-		"""Create a new user profile"""
-		user = UserProfile(user_id, name)
-		mongodb.create_account({
-			"_id": user_id,
-			"name": name,
-			"created_at": datetime.now(timezone.utc),
-			"last_seen": datetime.now(timezone.utc),
-			"preferences": {}
-		})
-		return user
+		"""Creates a new user profile."""
+		account_repo.create_account(name=name, user_id=user_id)
+		return UserProfile(user_id, name)
 
 	def get_user(self, user_id: str) -> UserProfile | None:
-		"""Get user profile by ID"""
-		data = mongodb.get_user_profile(user_id)
+		"""Retrieves a user profile by its ID."""
+		data = account_repo.get_user_profile(user_id)
 		return UserProfile.from_dict(data) if data else None
 
 	def create_session(self, user_id: str, title: str = "New Chat") -> str:
-		"""Create a new chat session"""
-		session_id = str(uuid.uuid4())
-		mongodb.create_chat_session({
-			"_id": session_id,
-			"user_id": user_id,
-			"title": title,
-			"messages": []
-		})
-		return session_id
+		"""Creates a new chat session for a user."""
+		return chat_repo.create_session(user_id, title)
 
 	def get_session(self, session_id: str) -> ChatSession | None:
-		"""Get chat session by ID"""
+		"""Retrieves a single chat session by its ID."""
 		try:
-			data = mongodb.get_session(session_id)
-			if not data:
-				logger().info(f"Session not found: {session_id}")
-				return None
-
-			logger().debug(f"Retrieved session data: {data}")
-			return ChatSession.from_dict(data)
+			data = chat_repo.get_session(session_id)
+			return ChatSession.from_dict(data) if data else None
 		except Exception as e:
 			logger().error(f"Error retrieving session {session_id}: {e}")
-			logger().error(f"Stack trace:", exc_info=True)
 			raise
 
 	def get_user_sessions(self, user_id: str) -> list[ChatSession]:
-		"""Get all sessions for a user"""
-		sessions_data = mongodb.get_user_sessions(user_id, limit=self.max_sessions_per_user)
+		"""Retrieves all sessions for a specific user."""
+		sessions_data = chat_repo.get_user_sessions(user_id, limit=self.max_sessions_per_user)
 		return [ChatSession.from_dict(data) for data in sessions_data]
 
-	def add_message_to_session(self, session_id: str, role: str, content: str, metadata: dict | None = None):
-		"""Add a message to a session"""
+	def add_message_to_session(
+		self,
+		session_id: str,
+		role: str,
+		content: str,
+		metadata: dict = {}
+	):
+		"""Adds a message to a chat session."""
 		message = {
 			"id": str(uuid.uuid4()),
 			"role": role,
 			"content": content,
 			"timestamp": datetime.now(timezone.utc),
-			"metadata": metadata or {}
+			"metadata": metadata
 		}
-		mongodb.add_message(session_id, message)
+		chat_repo.add_message(session_id, message)
 
 	def update_session_title(self, session_id: str, title: str):
-		"""Update session title"""
-		mongodb.update_session_title(session_id, title)
+		"""Updates the title of a session."""
+		chat_repo.update_session_title(session_id, title)
 
 	def delete_session(self, session_id: str):
-		"""Delete a chat session"""
-		mongodb.delete_chat_session(session_id)
+		"""Deletes a chat session."""
+		chat_repo.delete_chat_session(session_id)
 
-	def set_user_preference(self, user_id: str, key: str, value: Any):
-		"""Set user preference"""
-		mongodb.set_user_preference(user_id, key, value)
+	def set_user_preferences(
+		self,
+		user_id: str,
+		update_data: dict[str, Any]
+	):
+		"""Sets a preference for a user."""
+		account_repo.set_user_preferences(user_id, update_data)
 
-	# Medical context methods
 	def add(self, user_id: str, summary: str):
-		"""Add a medical context summary"""
-		mongodb.add_medical_context(user_id, summary)
+		"""Adds a medical context summary for a user."""
+		medical_repo.add_medical_context(user_id, summary)
 
 	def all(self, user_id: str) -> list[str]:
-		"""Get all medical context summaries for a user"""
-		contexts = mongodb.get_medical_context(user_id)
+		"""Retrieves all medical context summaries for a user."""
+		contexts = medical_repo.get_medical_context(user_id)
 		return [ctx["summary"] for ctx in contexts]
 
 	def recent(self, user_id: str, n: int) -> list[str]:
-		"""Get n most recent medical context summaries"""
-		contexts = mongodb.get_medical_context(user_id, limit=n)
+		"""Retrieves the N most recent medical context summaries."""
+		contexts = medical_repo.get_medical_context(user_id, limit=n)
 		return [ctx["summary"] for ctx in contexts]
 
 	def rest(self, user_id: str, skip: int) -> list[str]:
-		"""Get all summaries except the most recent n"""
-		contexts = mongodb.get_medical_context(user_id)
-		return [ctx["summary"] for ctx in contexts[skip:]]
+		"""Retrieves all summaries except for the N most recent ones."""
+		all_contexts = self.all(user_id)
+		return all_contexts[skip:]
 
-	def get_medical_context(self, user_id: str, session_id: str, question: str) -> str:
-		"""Get relevant medical context for a question"""
+	def get_medical_context(
+		self,
+		user_id: str,
+		limit: int = 5
+	) -> str:
+		"""Retrieves and formats recent medical context into a single string."""
 		try:
-			# Get recent contexts
-			contexts = mongodb.get_medical_context(user_id, limit=5)
-			if not contexts:
-				return ""
-
-			# Format contexts into a string
-			context_texts = []
-			for ctx in contexts:
-				summary = ctx.get("summary")
-				if summary:
-					context_texts.append(summary)
-
-			if not context_texts:
-				return ""
-
-			return "\n\n".join(context_texts)
+			contexts = self.recent(user_id, limit)
+			return "\n\n".join(contexts)
 		except Exception as e:
-			logger().error(f"Error getting medical context: {e}")
-			logger().error("Stack trace:", exc_info=True)
+			logger().error(f"Error getting medical context for user {user_id}: {e}")
 			return ""

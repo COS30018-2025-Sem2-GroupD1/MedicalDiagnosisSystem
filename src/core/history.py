@@ -59,7 +59,7 @@ class MedicalHistoryManager:
 		user_id: str,
 	) -> str:
 		"""Retrieves relevant conversation context for a new question."""
-		return self.memory.get_medical_context(user_id, session_id, question)
+		return self.memory.get_medical_context(user_id=user_id)
 
 	def get_user_medical_history(
 		self,
