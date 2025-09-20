@@ -10,6 +10,7 @@
 </head>
 <body>
     <div class="app-container">
+        <div class="app-overlay" id="appOverlay"></div>
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -26,11 +27,32 @@
                     </div>
                     <div class="user-info">
                         <div class="user-name" id="userName">Anonymous</div>
-                        <div class="user-status">Medical Professional</div>
+                        <div class="user-status" id="userStatus">Medical Professional</div>
                     </div>
                     <button class="user-menu-btn" id="userMenuBtn">
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
+                </div>
+            </div>
+
+            <!-- Patient Login Section -->
+            <div class="patient-section">
+                <div class="patient-header">Patient</div>
+                <div class="patient-input-group patient-typeahead">
+                    <input type="text" id="patientIdInput" class="patient-input" placeholder="Search patient by name or ID">
+                    <div id="patientSuggestions" class="patient-suggestions" style="display:none;"></div>
+                    <button class="patient-load-btn" id="loadPatientBtn" title="Load Patient">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <a class="patient-create-link" id="createPatientLink" href="/static/patient.html" title="Create new patient">
+                        <i class="fas fa-user-plus"></i>
+                    </a>
+                </div>
+                <div class="patient-status" id="patientStatus">No patient selected</div>
+                <div class="patient-actions" id="patientActions" style="display: none;">
+                    <a href="#" id="emrLink" class="emr-link">
+                        <i class="fas fa-file-medical"></i> EMR
+                    </a>
                 </div>
             </div>
 
@@ -122,22 +144,31 @@
     <div class="modal" id="userModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>User Profile</h3>
+                <h3>Doctor Profile</h3>
                 <button class="modal-close" id="userModalClose">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="profileName">Name:</label>
-                    <input type="text" id="profileName" placeholder="Enter your name">
+                    <label for="profileNameSelect">Name:</label>
+                    <select id="profileNameSelect"></select>
+                </div>
+                <div class="form-group" id="newDoctorSection" style="display:none;">
+                    <label for="newDoctorName">Doctor name</label>
+                    <input type="text" id="newDoctorName" placeholder="Enter doctor name">
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="button" class="btn btn-secondary" id="cancelNewDoctor">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="confirmNewDoctor">Confirm</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="profileRole">Medical Role:</label>
                     <select id="profileRole">
-                        <option value="Physician">Physician</option>
+                        <option value="Doctor">Doctor</option>
+                        <option value="Healthcare Prof">Healthcare Prof</option>
                         <option value="Nurse">Nurse</option>
+                        <option value="Caregiver">Caregiver</option>
+                        <option value="Physician">Physician</option>
                         <option value="Medical Student">Medical Student</option>
-                        <option value="Healthcare Professional">Healthcare Professional</option>
-                        <option value="Patient">Patient</option>
                         <option value="Other">Other</option>
                     </select>
                 </div>
@@ -187,10 +218,7 @@
                     </label>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="settingsModalCancel">Cancel</button>
-                <button class="btn btn-primary" id="settingsModalSave">Save</button>
-            </div>
+            <div class="modal-footer"></div>
         </div>
     </div>
 
@@ -214,6 +242,27 @@
         </div>
     </div>
 
+    <!-- Patient Modal -->
+    <div class="modal" id="patientModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Patient Profile</h3>
+                <button class="modal-close" id="patientModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="patient-summary" id="patientSummary"></div>
+                <div class="patient-details">
+                    <div><strong>Medications:</strong> <span id="patientMedications">-</span></div>
+                    <div><strong>Past Assessment:</strong> <span id="patientAssessment">-</span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="patientLogoutBtn" class="btn-danger">Log out patient</button>
+                <a id="patientCreateBtn" class="btn-primary" href="/static/patient.html">Create new patient</a>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner">
@@ -222,6 +271,9 @@
         </div>
     </div>
 
-    <script src="/static/js/app.js"></script>
+    <!-- Sidebar overlay for outside-click close -->
+    <div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:900;"></div>
+
+    <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>

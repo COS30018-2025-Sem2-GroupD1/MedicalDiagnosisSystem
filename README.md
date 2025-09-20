@@ -13,310 +13,172 @@ app_port: 7860
 
 # Medical AI Assistant
 
-A sophisticated AI-powered medical chatbot system with ChatGPT-like UI, multi-user support, session management, and medical context awareness.
+AI-powered medical chatbot with patient-centric memory, MongoDB persistence, and a fast, modern UI.
 
-## 🚀 Features
+## 🚀 Key Features
 
-### Core Functionality
-- **AI-Powered Medical Chat**: Intelligent responses to medical questions using advanced language models
-- **Multi-User Support**: Individual user profiles with role-based customization (Physician, Nurse, Medical Student, etc.)
-- **Chat Session Management**: Multiple concurrent chat sessions per user with persistent history
-- **Medical Context Memory**: LRU-based memory system that maintains conversation context and medical history
-- **API Key Rotation**: Dynamic rotation of Gemini API keys for reliability and rate limit management
+- Patient-centric RAG memory
+  - Short-term: last 3 QA summaries in in-memory LRU (fast context)
+  - Long-term: last 20 QA summaries per patient persisted in MongoDB (continuity)
+- Chat history persistence per session in MongoDB
+- Patient/Doctor context saved on all messages and summaries
+- Patient search typeahead (name or ID) with instant session hydration
+- Doctor dropdown with built‑in "Create doctor user..." flow
+- Modern UI: sidebar sessions, modals (doctor, settings, patient profile), dark/light mode, mobile-friendly
+- Model integration: Gemini responses, NVIDIA summariser fallback via key rotators
 
-### User Interface
-- **ChatGPT-like Design**: Familiar, intuitive interface optimized for medical professionals
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
-- **Dark/Light Theme**: Automatic theme switching with system preference detection
-- **Real-time Chat**: Smooth, responsive chat experience with typing indicators
-- **Session Management**: Easy navigation between different chat sessions
+## 🏗️ Architecture (high-level)
 
 ### Medical Features
-- **Medical Knowledge Base**: Built-in medical information for common symptoms, conditions, and medications
-- **Context Awareness**: Remembers previous conversations and provides relevant medical context
+- **Medical Knowledge Base**: Built-in medical information for common symptoms, 
+conditions, and medications
+- **Context Awareness**: Remembers previous conversations and provides relevant medical 
+context
 - **Role-Based Responses**: Tailored responses based on user's medical role and specialty
 - **Medical Disclaimers**: Appropriate warnings and disclaimers for medical information
-- **Export Functionality**: Export chat sessions for medical records or educational purposes
+- **Export Functionality**: Export chat sessions for medical records or educational 
+purposes
 
-## 🏗️ Architecture
+Backend (FastAPI):
+- `src/core/memory/memory.py`: LRU short‑term memory + sessions
+- `src/core/memory/history.py`: builds context; writes memory/messages to Mongo
+- `src/data/`: Mongo helpers (modularized)
+  - `connection.py`: Mongo connection + collection names
+  - `session/operations.py`: chat sessions (ensure/list/delete/etc.)
+  - `message/operations.py`: chat messages (save/list)
+  - `patient/operations.py`: patients (get/create/update/search)
+  - `user/operations.py`: accounts/doctors (create/search/list)
+  - `medical/operations.py`: medical records + memory summaries
+  - `utils.py`: generic helpers (indexing, backups)
+- `src/api/routes/`: `chat`, `session`, `user` (patients), `system`, `static`
 
-### Core Components
-```
-MedicalDiagnosisSystem/
-├── app.py                 # FastAPI main application
-├── memo/
-│   ├── memory.py         # Enhanced LRU memory system
-│   └── history.py        # Medical history manager
-├── utils/
-│   ├── rotator.py        # API key rotation system
-│   ├── embeddings.py     # Embedding client with fallback
-│   └── logger.py         # Structured logging
-└── static/
-    ├── index.html        # Main UI
-    ├── styles.css        # Styling
-    └── app.js           # Frontend logic
-```
+Frontend (static):
+- `static/index.html`, `static/css/styles.css`
+- `static/js/app.js` (or modularized under `static/js/ui/*` and `static/js/chat/*` — see `UI_SETUP.md`)
 
-### Memory System
-- **User Profiles**: Persistent user data with preferences and roles
-- **Chat Sessions**: Individual conversation threads with message history
-- **Medical Context**: QA summaries stored in LRU cache for quick retrieval
-- **Semantic Search**: Embedding-based similarity search for relevant medical information
-
-### API Integration
-- **Gemini API**: Google's advanced language model for medical responses
-- **Key Rotation**: Automatic rotation on rate limits or errors
-- **Fallback Support**: Graceful degradation when external APIs are unavailable
-
-## 🛠️ Installation
+## 🛠️ Quick Start
 
 ### Prerequisites
-- Python 3.8+
-- pip package manager
-- Modern web browser
+- Python 3.11+
+- pip
 
 ### Setup
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd MedicalDiagnosisSystem
-   ```
+1. Clone and install
+```bash
+git clone https://huggingface.co/spaces/MedAI-COS30018/MedicalDiagnosisSystem
+cd MedAI
+pip install -r requirements.txt
+```
+2. Configure environment
+```bash
+# Create .env
+echo "GEMINI_API_1=your_gemini_api_key_1" > .env
+echo "NVIDIA_API_1=your_nvidia_api_key_1" >> .env
+# MongoDB (required)
+echo "MONGO_USER=your_mongodb_connection_string" >> .env
+# Optional DB name (default: medicaldiagnosissystem)
+# Optional DB name (default: medicaldiagnosissystem). Env var key: USER_DB
+echo "USER_DB=medicaldiagnosissystem" >> .env
+```
+3. Run
+```bash
+python -m src.main
+```
+Helpful: [UI SETUP](https://huggingface.co/spaces/MedAI-COS30018/MedicalDiagnosisSystem/blob/main/UI_SETUP.md) | [SETUP GUIDE](https://huggingface.co/spaces/MedAI-COS30018/MedicalDiagnosisSystem/blob/main/SETUP_GUIDE.md)
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set environment variables**
-   ```bash
-   # Create .env file
-   echo "GEMINI_API_1=your_gemini_api_key_1" > .env
-   echo "GEMINI_API_2=your_gemini_api_key_2" >> .env
-   echo "GEMINI_API_3=your_gemini_api_key_3" >> .env
-   ```
-
-4. **Run the application**
-   ```bash
-   python app.py
-   ```
-
-5. **Access the UI**
-   Open your browser and navigate to `http://localhost:8000`
-
-## 🔧 Configuration
-
-### Environment Variables
-- `GEMINI_API_1` through `GEMINI_API_5`: Gemini API keys for rotation
-- `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
-- `PORT`: Server port (default: 8000)
-
-### Memory Settings
-- **LRU Capacity**: Default 50 QA summaries per user
-- **Max Sessions**: Default 20 sessions per user
-- **Session Timeout**: Configurable session expiration
-
-### Embedding Model
-- **Default Model**: `all-MiniLM-L6-v2` (384 dimensions)
-- **Fallback Mode**: Hash-based embeddings when model unavailable
-- **GPU Support**: Optional CUDA acceleration for embeddings
+## 🔧 Config
+- `GEMINI_API_1..5`, `NVIDIA_API_1..5`
+- `MONGO_USER`, `MONGO_DB`
+- `LOG_LEVEL`, `PORT`
+- Memory: 3 short‑term, 20 long‑term
 
 ## 📱 Usage
+1. Select/create a doctor; set role/specialty.
+2. Search patient by name/ID; select a result.
+3. Start a new chat; ask your question.
+4. Manage sessions in the sidebar (rename/delete from menu).
+5. View patient profile and create/edit via modals/pages.
 
-### Getting Started
-1. **Access the Application**: Navigate to the provided URL
-2. **Create User Profile**: Click on your profile to set name, role, and specialty
-3. **Start New Chat**: Click "New Chat" to begin a conversation
-4. **Ask Medical Questions**: Type your medical queries in natural language
-5. **Manage Sessions**: Use the sidebar to switch between different chat sessions
+## 🔌 Endpoints (selected)
+- `POST /chat` → `{ response, session_id, timestamp, medical_context? }`
+- `POST /sessions` → `{ session_id }`
+- `GET /patients/{patient_id}/sessions`
+- `GET /sessions/{session_id}/messages`
+- `DELETE /sessions/{session_id}` → deletes session (cache + Mongo) and its messages
+- `GET /patients/search?q=term&limit=8`
 
-### User Roles
-- **Physician**: Full medical context with clinical guidance
-- **Nurse**: Nursing-focused responses and care instructions
-- **Medical Student**: Educational content with learning objectives
-- **Healthcare Professional**: General medical information
-- **Patient**: Educational content with appropriate disclaimers
+## 🔒 Data & Privacy
+- MongoDB persistence keyed by `patient_id` with `doctor_id` attribution
+- UI localStorage for UX (doctor list, preferences, selected patient)
+- Avoid logging PHI; secure Mongo credentials
 
-### Features
-- **Real-time Chat**: Instant responses with typing indicators
-- **Session Export**: Download chat history as JSON files
-- **Context Memory**: System remembers previous conversations
-- **Medical Disclaimers**: Appropriate warnings for medical information
-- **Responsive Design**: Works on all device sizes
-
-## 🔒 Security & Privacy
-
-### Data Protection
-- **Local Storage**: User data stored locally in browser (no server persistence)
-- **Session Isolation**: Users can only access their own data
-- **No PII Storage**: Personal information not logged or stored
-- **Medical Disclaimers**: Clear warnings about information limitations
-
-### API Security
-- **Key Rotation**: Automatic API key rotation for security
-- **Rate Limiting**: Built-in protection against API abuse
-- **Error Handling**: Graceful degradation on API failures
-
-## 🧪 Development
-
-### Local Development
+## 🧪 Dev
 ```bash
-# Install development dependencies
 pip install -r requirements.txt
-
-# Run with auto-reload
-python app.py
-
-# Run tests
-pytest
-
-# Format code
-black .
-
-# Lint code
-flake8
+python -m src.main   # run
+pytest               # tests
+black . && flake8    # format + lint
 ```
 
 ### Project Structure
 ```
-medical_diagnosis_system/
-├── scripts/
-│   └── download_model.py        # Model downloading script
+MedAI/
 ├── src/
 │   ├── api/
-│   │   └── routes/              # API endpoint handlers
-│   │       ├── chat.py
-│   │       ├── session.py
-│   │       ├── static.py
-│   │       ├── system.py
-│   │       └── user.py
+│   │   └── routes/
+│   │       ├── chat.py          # Chat endpoint
+│   │       ├── session.py       # Session endpoints
+│   │       ├── user.py          # Patient APIs (get/create/update/search)
+│   │       ├── system.py        # Health/info
+│   │       └── static.py        # Serve index
 │   ├── core/
-│   │   ├── memory/              # Memory management
-│   │   │   ├── memory.py
-│   │   │   └── history.py
-│   │   └── state.py             # Application state management
-│   ├── domain/
-│   │   └── knowledge/           # Domain-specific knowledge
-│   │       └── medical_kb.py
-│   ├── models/                  # Data models
+│   │   ├── memory/
+│   │   │   ├── memory.py        # LRU short‑term memory + sessions
+│   │   │   └── history.py       # Context builder, persistence hooks
+│   │   └── state.py             # App state (rotators, embeddings, memory)
+│   ├── data/
+│   │   ├── __init__.py          # Barrel exports for data layer
+│   │   ├── connection.py        # Mongo connection + collection names
+│   │   ├── utils.py             # Indexing, backups
+│   │   ├── session/
+│   │   │   └── operations.py    # Sessions: ensure/list/delete
+│   │   ├── message/
+│   │   │   └── operations.py    # Messages: save/list
+│   │   ├── patient/
+│   │   │   └── operations.py    # Patients: get/create/update/search
+│   │   ├── user/
+│   │   │   └── operations.py    # Accounts/Doctors
+│   │   └── medical/
+│   │       └── operations.py    # Medical records + memory summaries
+│   ├── models/
 │   │   ├── chat.py
 │   │   └── user.py
-│   ├── services/                # Business logic services
-│   │   ├── medical_response.py
-│   │   └── summariser.py
-│   ├── utils/                   # Utility functions
-│   │   ├── __init__.py
+│   ├── services/
+│   │   ├── medical_response.py  # Calls model(s)
+│   │   └── summariser.py        # Title/QA summarisation
+│   ├── utils/
 │   │   ├── embeddings.py
 │   │   ├── logger.py
-│   │   ├── naming.py
 │   │   └── rotator.py
-│   └ main.py                    # Application entry point
-├── static/                      # Frontend assets
-│   ├── js/
-│   │   ├── app.js
-│   │   └── health.js
+│   └── main.py                  # FastAPI entrypoint
+├── static/
+│   ├── index.html
 │   ├── css/
-│   │   └── styles.css
-│   ├── health.html
-│   ├── icon.svg
-│   └── index.html
-├── .dockerignore
-├── .gitattributes
-├── .gitignore
-├── docker-compose.yml
+│   │   ├── styles.css
+│   │   └── patient.css
+│   ├── js/
+│   │   ├── app.js               # Submodules under /ui/* and /chat/*
+│   │   └── patient.js
+│   └── patient.html
+├── requirements.txt
+├── requirements-dev.txt
 ├── Dockerfile
-├── LICENSE                     # Project license
-├── README.md                   # Project documentation
-├── requirements.txt            # Production dependencies
-├── requirements-dev.txt        # Development dependencies
-├── SETUP_GUIDE.md              # Detailed setup instructions
-└── start.py                    # Application launcher
+├── docker-compose.yml
+├── LICENSE
+└── README.md
 ```
 
-### Adding New Features
-1. **Backend**: Add new endpoints in `app.py`
-2. **Memory**: Extend memory system in `memo/memory.py`
-3. **Frontend**: Update UI components in `static/` files
-4. **Testing**: Add tests for new functionality
-
-## 🚀 Deployment
-
-### Production Considerations
-- **Environment Variables**: Secure API key management
-- **HTTPS**: Enable SSL/TLS for production
-- **Rate Limiting**: Implement request rate limiting
-- **Monitoring**: Add health checks and logging
-- **Database**: Consider persistent storage for production
-
-### Docker Deployment
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["python", "app.py"]
-```
-
-### Cloud Deployment
-- **AWS**: Deploy on EC2 or Lambda
-- **Google Cloud**: Use Cloud Run or App Engine
-- **Azure**: Deploy on App Service
-- **Heroku**: Simple deployment with Procfile
-
-## 📊 Performance
-
-### Optimization Features
-- **Lazy Loading**: Embedding models loaded on demand
-- **LRU Caching**: Efficient memory management
-- **API Rotation**: Load balancing across multiple API keys
-- **Fallback Modes**: Graceful degradation on failures
-
-### Monitoring
-- **Health Checks**: `/health` endpoint for system status
-- **Resource Usage**: CPU and memory monitoring
-- **API Metrics**: Response times and success rates
-- **Error Tracking**: Comprehensive error logging
-
-## 🤝 Contributing
-
-### Development Guidelines
-1. **Code Style**: Follow PEP 8 and use Black formatter
-2. **Testing**: Add tests for new features
-3. **Documentation**: Update README and docstrings
-4. **Security**: Follow security best practices
-5. **Performance**: Consider performance implications
-
-### Pull Request Process
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests and documentation
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## ⚠️ Disclaimer
-
-**Medical Information Disclaimer**: This application provides educational medical information only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals for medical decisions.
-
-**AI Limitations**: While this system uses advanced AI technology, it has limitations and should not be relied upon for critical medical decisions.
-
-## 🆘 Support
-
-### Getting Help
-- **Issues**: Report bugs via GitHub Issues
-- **Documentation**: Check this README and code comments
-- **Community**: Join discussions in GitHub Discussions
-
-### Common Issues
-- **API Keys**: Ensure Gemini API keys are properly set
-- **Dependencies**: Verify all requirements are installed
-- **Port Conflicts**: Check if port 8000 is available
-- **Memory Issues**: Monitor system resources
-
----
-
-**Built with ❤️ for the medical community**
+## 🧾 License & Disclaimer
+- MIT License (see [LICENSE](https://huggingface.co/spaces/MedAI-COS30018/MedicalDiagnosisSystem/blob/main/LICENSE))
+- Educational information only; not a substitute for professional medical advice
+- Team D1 - COS30018, Swinburne University of Technology

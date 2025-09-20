@@ -30,6 +30,8 @@ class MedicalState:
 		"""Initializes all core application components."""
 		self.memory_system = MemoryLRU(max_sessions_per_user=20)
 		self.embedding_client = EmbeddingClient(model_name="all-MiniLM-L6-v2", dimension=384)
+		# Keep only 3 short-term summaries/messages in cache
+		#self.memory_system = MemoryLRU(capacity=3, max_sessions_per_user=20)
 		self.history_manager = MedicalHistoryManager(self.memory_system, self.embedding_client)
 		self.gemini_rotator = APIKeyRotator("GEMINI_API_", max_slots=5)
 		self.nvidia_rotator = APIKeyRotator("NVIDIA_API_", max_slots=5)

@@ -6,6 +6,7 @@
 - [ ] Accounts
 - [ ] Saving chats
 - [ ] MongoDB hosting
+
 ## Suggestions
 
 1. Dependency Injection: — Investigated
@@ -47,3 +48,22 @@
 10. State Management:
 - Global state in MedicalState could be improved
 - Session management could be more robust
+
+## PHASE 2:
+- [ ] EMR enhancement
+- [ ] Naive RAG integration
+- [ ] Chat history consistency
+- [ ] Summary history to EMR
+
+## PHASE 3:
+- [ ] Multimodal integration
+- [ ] Reasoning orchestrator
+- [ ] Dynamic/Tree/Graph RAG
+- [ ] Integrate specialist model
+
+## PHASE 4:
+- [ ] Multimodal validation
+- [ ] Orchestrator validation
+- [ ] RAG validation
+- [ ] UI Enhancement
+- [ ] Future suggestions

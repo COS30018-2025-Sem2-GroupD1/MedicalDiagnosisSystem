@@ -1,6 +1,7 @@
 # data/medical_kb.py
-# Medical Knowledge Base for the Medical AI Assistant
 
+# TODO: This should be replaced with a more robust knowledge base system that can be updated by the user.
+# Medical Knowledge Base for the Medical AI Assistant
 MEDICAL_KB = {
 	"symptoms": {
 		"fever": "Fever is a temporary increase in body temperature, often due to illness. Normal body temperature is around 98.6°F (37°C).",

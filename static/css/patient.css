@@ -1,0 +1,22 @@
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #0f172a; color: #e2e8f0; }
+.container { max-width: 900px; margin: 40px auto; padding: 24px; background: #111827; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+.back-link { display:inline-flex; align-items:center; gap:8px; color:#93c5fd; text-decoration:none; margin-bottom:12px; }
+.back-link:hover { text-decoration:underline; }
+h1 { margin-bottom: 16px; font-size: 1.6rem; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+label { display: grid; gap: 6px; font-size: 0.9rem; }
+input, select, textarea { padding: 10px; border-radius: 8px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; }
+textarea { min-height: 100px; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+.primary { background: #2563eb; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+.secondary { background: transparent; color: #e2e8f0; border: 1px solid #334155; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+.result { margin-top: 12px; color: #93c5fd; }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+.modal { position: fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.45); z-index: 3000; }
+.modal.show { display:flex; }
+.modal-content { background:#111827; color:#e2e8f0; width: 520px; max-width: 92vw; border-radius: 12px; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+.modal-header, .modal-footer { padding: 16px; border-bottom: 1px solid #334155; display:flex; align-items:center; justify-content: space-between; }
+.modal-footer { border-bottom: none; border-top: 1px solid #334155; justify-content: flex-end; gap: 8px; }
+.modal-body { padding: 16px; }
+.modal-close { background: transparent; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+.big-id { font-size: 28px; letter-spacing: 2px; font-weight: 700; color: #93c5fd; margin: 8px 0 4px; }

@@ -11,6 +11,8 @@ from src.services.medical_response import generate_medical_response
 from src.services.summariser import summarise_title_with_nvidia
 from src.utils.logger import logger
 
+from src.data import ensure_session
+
 router = APIRouter()
 
 @router.post("/chat", response_model=ChatResponse)
@@ -18,14 +20,16 @@ async def chat_endpoint(
 	request: ChatRequest,
 	state: MedicalState = Depends(get_state)
 ):
-	"""Handle chat messages and generate medical responses"""
+	"""
+	Process a chat message, generate response, and persist short-term cache + long-term Mongo.
+	"""
 	start_time = time.time()
 
 	try:
-		logger().info(f"Chat request from user {request.user_id} in session {request.session_id}")
+		logger().info(f"POST /chat user={request.user_id} session={request.session_id} patient={request.patient_id} doctor={request.doctor_id}")
 		logger().info(f"Message: {request.message[:100]}...")  # Log first 100 chars of message
 
-		# Get or create user profile
+		# Get or create user profile (doctor as current user profile)
 		user_profile = state.memory_system.get_user(request.user_id)
 		if not user_profile:
 			state.memory_system.create_user(request.user_id, request.user_role or "Anonymous")
@@ -35,7 +39,7 @@ async def chat_endpoint(
 					{"specialty": request.user_specialty}
 				)
 
-		# Get or create session
+		# Get or create session (cache)
 		session = state.memory_system.get_session(request.session_id)
 		if not session:
 			session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
@@ -43,11 +47,16 @@ async def chat_endpoint(
 			session = state.memory_system.get_session(session_id)
 			logger().info(f"Created new session: {session_id}")
 
-		# Get medical context from memory
-		medical_context = state.history_manager.get_conversation_context(
+		# Ensure session exists in Mongo with patient/doctor context
+		ensure_session(session_id=request.session_id, patient_id=request.patient_id, doctor_id=request.doctor_id, title=request.title or "New Chat", last_activity=datetime.now(timezone.utc))
+
+		# Get enhanced medical context with STM + LTM semantic search + NVIDIA reasoning
+		medical_context = await state.history_manager.get_enhanced_conversation_context(
 			request.user_id,
-			#request.session_id,
-			#request.message
+			request.session_id,
+			request.message,
+			state.nvidia_rotator,
+			patient_id=request.patient_id
 		)
 
 		# Generate response using Gemini AI
@@ -68,7 +77,10 @@ async def chat_endpoint(
 				request.message,
 				response,
 				state.gemini_rotator,
-				state.nvidia_rotator
+				state.nvidia_rotator,
+				patient_id=request.patient_id,
+				doctor_id=request.doctor_id,
+				session_title=request.title or "New Chat"
 			)
 		except Exception as e:
 			logger().warning(f"Failed to process medical exchange: {e}")
@@ -83,7 +95,7 @@ async def chat_endpoint(
 		return ChatResponse(
 			response=response,
 			session_id=request.session_id,
-			timestamp=datetime.now(timezone.utc).isoformat(),  # Use ISO format for consistency
+			timestamp=datetime.now(timezone.utc).isoformat(),
 			medical_context=medical_context if medical_context else None
 		)
 

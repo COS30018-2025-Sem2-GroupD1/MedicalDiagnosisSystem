@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Patient</title>
+    <link rel="stylesheet" href="/static/css/patient.css">
+    <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Assistant</a>
+        <h1>Create Patient</h1>
+        <form id="patientForm">
+            <div class="grid">
+                <label>Name<input type="text" id="name" required></label>
+                <label>Age<input type="number" id="age" min="0" max="130" required></label>
+                <label>Sex
+                    <select id="sex" required>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+                <label>Phone<input type="tel" id="phone"></label>
+                <label>Email<input type="email" id="email"></label>
+                <label>Address<input type="text" id="address"></label>
+                <label>Active Medications<textarea id="medications" placeholder="One per line"></textarea></label>
+                <label>Past Assessment Summary<textarea id="summary"></textarea></label>
+            </div>
+            <div class="actions">
+                <button type="button" id="cancelBtn" class="secondary">Cancel</button>
+                <button type="submit" class="primary">Create</button>
+            </div>
+        </form>
+        <div id="result" class="result"></div>
+    </div>
+    <!-- Success Modal -->
+    <div class="modal" id="patientSuccessModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Patient Created</h3>
+                <button class="modal-close" id="patientSuccessClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Your new Patient ID is:</p>
+                <div id="createdPatientId" class="big-id"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary" id="patientSuccessReturn">Return to main page</button>
+                <button class="primary" id="patientSuccessEdit">Edit patient profile</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/patient.js"></script>
+</body>
+</html>

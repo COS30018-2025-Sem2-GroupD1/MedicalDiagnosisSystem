@@ -36,10 +36,26 @@ def main():
 	else:
 		print(f"✅ Found {len(gemini_keys)} Gemini API keys")
 
+	# Check for MongoDB environment variables
+	mongo_user = os.getenv("MONGO_USER")
+	user_db = os.getenv("USER_DB")
+	
+	if not mongo_user:
+		print("❌ Error: MONGO_USER environment variable not found!")
+		print("Set MONGO_USER environment variable for database connectivity.")
+		sys.exit(1)
+	
+	if not user_db:
+		print("❌ Error: USER_DB environment variable not found!")
+		print("Set USER_DB environment variable for database connectivity.")
+		sys.exit(1)
+	
+	print("✅ MongoDB environment variables found")
+
 	print("\n📱 Starting Medical AI Assistant...")
-	print("🌐 Web UI will be available at: http://localhost:7860")
-	print("📚 API documentation at: http://localhost:7860/docs")
-	print("🔍 Health check at: http://localhost:7860/health")
+	print("🌐 Web UI will be available at: https://medai-cos30018-medicaldiagnosissystem.hf.space")
+	print("📚 API documentation at: https://medai-cos30018-medicaldiagnosissystem.hf.space/docs")
+	print("🔍 Health check at: https://medai-cos30018-medicaldiagnosissystem.hf.space/health")
 	print("\nPress Ctrl+C to stop the server")
 	print("=" * 50)
 
