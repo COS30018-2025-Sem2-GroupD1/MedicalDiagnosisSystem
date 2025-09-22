@@ -33,14 +33,14 @@ async def transcribe_audio(
         JSON response with transcribed text
     """
     try:
-        # Validate file type
-        if not file.content_type or not any(
-            file.content_type.startswith(f"audio/{fmt}") 
-            for fmt in ["wav", "opus", "flac", "webm"]
-        ):
-            # Also check file extension as fallback
-            file_extension = file.filename.split('.')[-1].lower() if file.filename else ""
-            if file_extension not in get_supported_formats():
+        # Validate file type by content-type or extension
+        valid_ctypes = {
+            "audio/wav", "audio/x-wav", "audio/webm", "audio/ogg", "audio/opus", "audio/flac"
+        }
+        content_type_ok = (file.content_type in valid_ctypes) if file.content_type else False
+        if not content_type_ok:
+            file_name = (file.filename or "").lower()
+            if not any(file_name.endswith(ext) for ext in get_supported_formats()):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Unsupported audio format. Supported formats: {', '.join(get_supported_formats())}"
@@ -56,7 +56,7 @@ async def transcribe_audio(
         if not validate_audio_format(audio_bytes):
             raise HTTPException(
                 status_code=400,
-                detail="Invalid audio format. Please ensure the file is a valid WAV, OPUS, or FLAC file."
+                detail="Invalid audio format. Please ensure the file is a valid WAV, OPUS, FLAC, or WebM file."
             )
         
         # Transcribe audio

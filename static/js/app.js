@@ -59,8 +59,16 @@ class MedicalChatbotApp {
         this.setTheme(prefs.theme || 'auto');
         this.setupTheme();
         
-        // Initialize audio recording
-        this.initializeAudioRecording();
+        // Initialize audio recording (guarded if module not present)
+        try {
+            if (typeof AudioRecordingUI !== 'undefined') {
+                this.initializeAudioRecording();
+            } else {
+                console.warn('[Audio] Recorder module not loaded; skipping initialization');
+            }
+        } catch (e) {
+            console.warn('[Audio] Failed to initialize recorder', e);
+        }
     }
 
     setupEventListeners() {

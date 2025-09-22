@@ -15,8 +15,8 @@ RIVA_FUNCTION_ID = "b702f636-f60c-4a3d-a6f4-f3568c13bd7d"
 
 async def transcribe_audio_file(
     audio_file_path: str,
-    rotator: APIKeyRotator,
-    language_code: str = "en"
+    language_code: str,
+    rotator: APIKeyRotator
 ) -> Optional[str]:
     """
     Transcribe audio file using NVIDIA Riva API.
@@ -45,7 +45,8 @@ async def transcribe_audio_file(
         url = f"https://{RIVA_SERVER}/v1/speech/transcribe"
         
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            # Provider docs show metadata key named "authorization" (lowercase) with Bearer token
+            "authorization": f"Bearer {api_key}",
             "Content-Type": "application/octet-stream"
         }
         
@@ -53,15 +54,9 @@ async def transcribe_audio_file(
         with open(audio_file_path, 'rb') as audio_file:
             audio_data = audio_file.read()
             
-        # Prepare metadata for NVIDIA API
-        metadata = {
-            "function-id": RIVA_FUNCTION_ID,
-            "language-code": language_code
-        }
-        
-        # Add metadata to headers
-        for key, value in metadata.items():
-            headers[f"x-{key}"] = value
+        # Prepare metadata for NVIDIA API (as headers per provider doc)
+        headers["function-id"] = RIVA_FUNCTION_ID
+        headers["language-code"] = language_code
             
         # Make the request
         logger.info(f"Transcribing audio file: {audio_file_path} (language: {language_code})")
@@ -83,7 +78,7 @@ async def transcribe_audio_file(
                     # Retry with new key
                     api_key = rotator.get_key()
                     if api_key:
-                        headers["Authorization"] = f"Bearer {api_key}"
+                        headers["authorization"] = f"Bearer {api_key}"
                         response = await client.post(url, headers=headers, content=audio_data)
                         
                 response.raise_for_status()
