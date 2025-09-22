@@ -17,7 +17,7 @@ except ImportError:
 except Exception as e:
 	print(f"⚠️ Error loading .env file: {e}")
 
-from src.api.routes import chat, session, static, system, user
+from src.api.routes import audio, chat, session, static, system, user
 from src.core.state import MedicalState
 from src.utils.logger import get_logger
 
@@ -107,3 +107,4 @@ app.include_router(user.router)
 app.include_router(session.router)
 app.include_router(system.router)
 app.include_router(static.router)
+app.include_router(audio.router)

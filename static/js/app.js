@@ -8,6 +8,9 @@
 // import { attachSettingsUI } from './ui/settings.js';
 // import { attachSessionsUI } from './chat/sessions.js';
 // import { attachMessagingUI } from './chat/messaging.js';
+// Audio recording functionality will be incorporated below
+
+// Audio recording functionality will be incorporated below
 
 class MedicalChatbotApp {
     constructor() {
@@ -18,6 +21,7 @@ class MedicalChatbotApp {
         this.memory = new Map();  // In-memory storage for STM/demo
         this.isLoading = false;
         this.doctors = this.loadDoctors();
+        this.audioRecorder = null; // Audio recording UI
 
         this.init();
     }
@@ -53,6 +57,9 @@ class MedicalChatbotApp {
         const prefs = JSON.parse(localStorage.getItem('medicalChatbotPreferences') || '{}');
         this.setTheme(prefs.theme || 'auto');
         this.setupTheme();
+        
+        // Initialize audio recording
+        this.initializeAudioRecording();
     }
 
     setupEventListeners() {
@@ -1623,6 +1630,24 @@ How can I assist you today?`;
         }
         
         if (createBtn) createBtn.addEventListener('click', () => modal.classList.remove('show'));
+    }
+
+    // ================================================================================
+    // AUDIO RECORDING FUNCTIONALITY
+    // ================================================================================
+    async initializeAudioRecording() {
+        try {
+            this.audioRecorder = new AudioRecordingUI(this);
+            const success = await this.audioRecorder.initialize();
+            
+            if (success) {
+                console.log('[Audio] Audio recording initialized successfully');
+            } else {
+                console.warn('[Audio] Audio recording initialization failed');
+            }
+        } catch (error) {
+            console.error('[Audio] Failed to initialize audio recording:', error);
+        }
     }
 
     // ================================================================================
