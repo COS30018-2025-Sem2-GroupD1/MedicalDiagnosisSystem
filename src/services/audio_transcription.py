@@ -10,7 +10,7 @@ from src.utils.rotator import APIKeyRotator, robust_post_json
 logger = get_logger("AUDIO_TRANSCRIPTION", __name__)
 
 # NVIDIA Riva configuration
-RIVA_SERVER = "grpc.nvcf.nvidia.com:443"
+RIVA_SERVER = "api.nvcf.nvidia.com"
 RIVA_FUNCTION_ID = "b702f636-f60c-4a3d-a6f4-f3568c13bd7d"
 
 async def transcribe_audio_file(
@@ -41,7 +41,7 @@ async def transcribe_audio_file(
             logger.error("No NVIDIA API key available for transcription")
             return None
             
-        # Prepare the request
+        # Prepare the request - using NVIDIA's API format
         url = f"https://{RIVA_SERVER}/v1/speech/transcribe"
         
         headers = {
@@ -53,7 +53,7 @@ async def transcribe_audio_file(
         with open(audio_file_path, 'rb') as audio_file:
             audio_data = audio_file.read()
             
-        # Prepare metadata
+        # Prepare metadata for NVIDIA API
         metadata = {
             "function-id": RIVA_FUNCTION_ID,
             "language-code": language_code
@@ -69,34 +69,41 @@ async def transcribe_audio_file(
         # Use httpx for binary data upload
         import httpx
         
-        async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(
-                url,
-                headers=headers,
-                content=audio_data
-            )
-            
-            if response.status_code in (401, 403, 429) or (500 <= response.status_code < 600):
-                logger.warning(f"HTTP {response.status_code} from Riva API. Rotating key and retrying...")
-                rotator.rotate()
-                # Retry with new key
-                api_key = rotator.get_key()
-                if api_key:
-                    headers["Authorization"] = f"Bearer {api_key}"
-                    response = await client.post(url, headers=headers, content=audio_data)
-                    
-            response.raise_for_status()
-            
-            # Parse response
-            result = response.json()
-            transcribed_text = result.get("transcript", "").strip()
-            
-            if transcribed_text:
-                logger.info(f"Successfully transcribed audio: {len(transcribed_text)} characters")
-                return transcribed_text
-            else:
-                logger.warning("Transcription returned empty result")
-                return None
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    content=audio_data
+                )
+                
+                if response.status_code in (401, 403, 429) or (500 <= response.status_code < 600):
+                    logger.warning(f"HTTP {response.status_code} from Riva API. Rotating key and retrying...")
+                    rotator.rotate()
+                    # Retry with new key
+                    api_key = rotator.get_key()
+                    if api_key:
+                        headers["Authorization"] = f"Bearer {api_key}"
+                        response = await client.post(url, headers=headers, content=audio_data)
+                        
+                response.raise_for_status()
+                
+                # Parse response
+                result = response.json()
+                transcribed_text = result.get("transcript", "").strip()
+                
+                if transcribed_text:
+                    logger.info(f"Successfully transcribed audio: {len(transcribed_text)} characters")
+                    return transcribed_text
+                else:
+                    logger.warning("Transcription returned empty result")
+                    return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Request failed: {e}")
+            return None
                 
     except Exception as e:
         logger.error(f"Audio transcription failed: {e}")
@@ -104,8 +111,8 @@ async def transcribe_audio_file(
 
 async def transcribe_audio_bytes(
     audio_bytes: bytes,
-    rotator: APIKeyRotator,
-    language_code: str = "en"
+    language_code: str,
+    rotator: APIKeyRotator
 ) -> Optional[str]:
     """
     Transcribe audio bytes using NVIDIA Riva API.
