@@ -25,7 +25,7 @@ async def transcribe_audio(
     Transcribe audio file to text using NVIDIA Riva API.
     
     Args:
-        file: Audio file (WAV, OPUS, or FLAC format)
+        file: Audio file (WAV, OPUS, FLAC, or WebM format)
         language_code: Language code for transcription (default: 'en')
         state: Application state
         
@@ -36,7 +36,7 @@ async def transcribe_audio(
         # Validate file type
         if not file.content_type or not any(
             file.content_type.startswith(f"audio/{fmt}") 
-            for fmt in ["wav", "opus", "flac"]
+            for fmt in ["wav", "opus", "flac", "webm"]
         ):
             # Also check file extension as fallback
             file_extension = file.filename.split('.')[-1].lower() if file.filename else ""

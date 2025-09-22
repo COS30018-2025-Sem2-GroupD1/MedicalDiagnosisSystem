@@ -165,6 +165,10 @@ def validate_audio_format(audio_bytes: bytes) -> bool:
     if audio_bytes[:4] == b'fLaC':
         return True
         
+    # WebM format check (EBML header)
+    if audio_bytes[:4] == b'\x1a\x45\xdf\xa3':
+        return True
+        
     return False
 
 def get_supported_formats() -> list[str]:
@@ -174,4 +178,4 @@ def get_supported_formats() -> list[str]:
     Returns:
         List of supported format extensions
     """
-    return ['.wav', '.opus', '.flac']
+    return ['.wav', '.opus', '.flac', '.webm']
