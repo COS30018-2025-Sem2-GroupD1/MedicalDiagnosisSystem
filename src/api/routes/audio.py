@@ -63,8 +63,8 @@ async def transcribe_audio(
         logger.info(f"Transcribing audio file: {file.filename} (language: {language_code})")
         transcribed_text = await transcribe_audio_bytes(
             audio_bytes, 
-            language_code, 
-            state.nvidia_rotator
+            state.nvidia_rotator,
+            language_code
         )
         
         if transcribed_text is None:

@@ -15,8 +15,8 @@ RIVA_FUNCTION_ID = "b702f636-f60c-4a3d-a6f4-f3568c13bd7d"
 
 async def transcribe_audio_file(
     audio_file_path: str,
-    language_code: str = "en",
-    rotator: APIKeyRotator
+    rotator: APIKeyRotator,
+    language_code: str = "en"
 ) -> Optional[str]:
     """
     Transcribe audio file using NVIDIA Riva API.
@@ -104,8 +104,8 @@ async def transcribe_audio_file(
 
 async def transcribe_audio_bytes(
     audio_bytes: bytes,
-    language_code: str = "en",
-    rotator: APIKeyRotator
+    rotator: APIKeyRotator,
+    language_code: str = "en"
 ) -> Optional[str]:
     """
     Transcribe audio bytes using NVIDIA Riva API.
