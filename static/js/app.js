@@ -1643,6 +1643,8 @@ How can I assist you today?`;
             
             if (success) {
                 console.log('[Audio] Audio recording initialized successfully');
+                // Make globally accessible for voice detection callback
+                window.audioRecordingUI = this.audioRecorder;
             } else {
                 console.warn('[Audio] Audio recording initialization failed');
             }
@@ -1904,6 +1906,10 @@ class AudioRecorder {
         this.isRecording = false;
         this.audioContext = null;
         this.audioStream = null;
+        this.analyser = null;
+        this.silenceTimer = null;
+        this.recordingStartTime = null;
+        this.timerInterval = null;
     }
 
     async initialize() {
@@ -1918,6 +1924,14 @@ class AudioRecorder {
                     autoGainControl: true
                 }
             });
+
+            // Create audio context for voice detection
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = this.audioContext.createMediaStreamSource(this.audioStream);
+            this.analyser = this.audioContext.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.analyser.smoothingTimeConstant = 0.8;
+            source.connect(this.analyser);
 
             // Create MediaRecorder
             this.mediaRecorder = new MediaRecorder(this.audioStream, {
@@ -1951,7 +1965,15 @@ class AudioRecorder {
             this.audioChunks = [];
             this.mediaRecorder.start();
             this.isRecording = true;
+            this.recordingStartTime = Date.now();
             console.log('Audio recording started');
+            
+            // Start timer
+            this.startTimer();
+            
+            // Start voice detection
+            this.startVoiceDetection();
+            
             return true;
         } catch (error) {
             console.error('Failed to start recording:', error);
@@ -1968,11 +1990,97 @@ class AudioRecorder {
             this.mediaRecorder.stop();
             this.isRecording = false;
             console.log('Audio recording stopped');
+            
+            // Stop timer and voice detection
+            this.stopTimer();
+            this.stopVoiceDetection();
+            
             return true;
         } catch (error) {
             console.error('Failed to stop recording:', error);
             return false;
         }
+    }
+
+    startTimer() {
+        this.timerInterval = setInterval(() => {
+            if (this.recordingStartTime) {
+                const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const timerElement = document.getElementById('recordingTimer');
+                if (timerElement) {
+                    timerElement.textContent = timeString;
+                }
+            }
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    startVoiceDetection() {
+        const checkVoice = () => {
+            if (!this.isRecording || !this.analyser) return;
+            
+            const bufferLength = this.analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            this.analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate average volume
+            const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
+            const threshold = 20; // Adjust this value to change sensitivity
+            
+            const container = document.querySelector('.recording-container');
+            const statusElement = document.getElementById('recordingStatus');
+            
+            if (average > threshold) {
+                // Voice detected
+                container.classList.remove('silent');
+                container.classList.add('listening');
+                if (statusElement) statusElement.textContent = 'Listening...';
+                
+                // Reset silence timer
+                this.resetSilenceTimer();
+            } else {
+                // Silence detected
+                container.classList.remove('listening');
+                container.classList.add('silent');
+                if (statusElement) statusElement.textContent = 'Silence detected...';
+            }
+            
+            requestAnimationFrame(checkVoice);
+        };
+        
+        checkVoice();
+    }
+
+    stopVoiceDetection() {
+        // Voice detection stops when recording stops
+    }
+
+    resetSilenceTimer() {
+        if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+        }
+        
+        // Auto-stop after 3 seconds of silence
+        this.silenceTimer = setTimeout(() => {
+            if (this.isRecording) {
+                console.log('Auto-stopping recording due to silence');
+                this.stopRecording();
+                // Trigger the modal close and processing
+                if (window.audioRecordingUI) {
+                    window.audioRecordingUI.handleRecordingComplete();
+                }
+            }
+        }, 3000);
     }
 
     async processRecording() {
@@ -1985,28 +2093,13 @@ class AudioRecorder {
             // Create audio blob
             const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
             
-            // Convert to WAV format for better compatibility
-            const wavBlob = await this.convertToWav(audioBlob);
-            
             // Transcribe audio
-            const transcribedText = await this.transcribeAudio(wavBlob);
+            const transcribedText = await this.transcribeAudio(audioBlob);
             
             return transcribedText;
         } catch (error) {
             console.error('Failed to process recording:', error);
             throw error;
-        }
-    }
-
-    async convertToWav(webmBlob) {
-        try {
-            // For now, we'll use the webm blob directly
-            // In a production environment, you might want to convert to WAV
-            // This requires additional libraries like lamejs or similar
-            return webmBlob;
-        } catch (error) {
-            console.error('Failed to convert to WAV:', error);
-            return webmBlob; // Fallback to original blob
         }
     }
 
@@ -2045,6 +2138,13 @@ class AudioRecorder {
             this.audioContext = null;
         }
         
+        if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+            this.silenceTimer = null;
+        }
+        
+        this.stopTimer();
+        
         this.mediaRecorder = null;
         this.audioChunks = [];
         this.isRecording = false;
@@ -2055,14 +2155,14 @@ class AudioRecorder {
     }
 }
 
-// Audio recording UI controller
+// Audio recording modal UI controller
 class AudioRecordingUI {
     constructor(app) {
         this.app = app;
         this.recorder = new AudioRecorder();
         this.microphoneBtn = null;
         this.isInitialized = false;
-        this.recordingTimeout = null;
+        this.modal = null;
     }
 
     async initialize() {
@@ -2085,27 +2185,38 @@ class AudioRecordingUI {
 
     setupUI() {
         this.microphoneBtn = document.getElementById('microphoneBtn');
+        this.modal = document.getElementById('audioRecordingModal');
+        
         if (!this.microphoneBtn) {
             console.error('Microphone button not found');
             return;
         }
 
-        // Add recording state classes
-        this.microphoneBtn.classList.add('recording-enabled');
-        
+        if (!this.modal) {
+            console.error('Audio recording modal not found');
+            return;
+        }
+
         // Set up event listeners
-        this.microphoneBtn.addEventListener('mousedown', (e) => this.startRecording(e));
-        this.microphoneBtn.addEventListener('mouseup', (e) => this.stopRecording(e));
-        this.microphoneBtn.addEventListener('mouseleave', (e) => this.stopRecording(e));
+        this.microphoneBtn.addEventListener('click', (e) => this.startRecording(e));
         
-        // Touch events for mobile
-        this.microphoneBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.startRecording(e);
-        });
-        this.microphoneBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.stopRecording(e);
+        // Modal close handlers
+        const closeBtn = document.getElementById('audioRecordingModalClose');
+        const stopBtn = document.getElementById('stopRecordingBtn');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeModal());
+        }
+        
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => this.stopRecording());
+        }
+
+        // Close modal when clicking outside
+        this.modal.addEventListener('click', (e) => {
+            if (e.target === this.modal) {
+                this.closeModal();
+            }
         });
 
         // Update button appearance
@@ -2120,56 +2231,110 @@ class AudioRecordingUI {
         event.preventDefault();
         
         try {
+            // Show modal
+            this.showModal();
+            
+            // Start recording
             const success = this.recorder.startRecording();
             if (success) {
-                this.updateButtonState('recording');
-                this.showRecordingIndicator();
-                
-                // Auto-stop after 30 seconds to prevent very long recordings
-                this.recordingTimeout = setTimeout(() => {
-                    this.stopRecording(event);
-                }, 30000);
+                this.updateModalState('listening');
+            } else {
+                this.showError('Failed to start recording. Please try again.');
+                this.closeModal();
             }
         } catch (error) {
             console.error('Failed to start recording:', error);
             this.showError('Failed to start recording. Please try again.');
+            this.closeModal();
         }
     }
 
-    async stopRecording(event) {
-        if (!this.isInitialized || !this.recorder.isRecording) {
+    async stopRecording() {
+        if (!this.recorder.isRecording) {
             return;
         }
 
-        event.preventDefault();
-        
         try {
             const success = this.recorder.stopRecording();
             if (success) {
-                this.updateButtonState('processing');
-                this.hideRecordingIndicator();
-                
-                if (this.recordingTimeout) {
-                    clearTimeout(this.recordingTimeout);
-                    this.recordingTimeout = null;
-                }
-
-                // Process the recording
-                const transcribedText = await this.recorder.processRecording();
-                
-                if (transcribedText) {
-                    this.insertTranscribedText(transcribedText);
-                    this.showSuccess('Audio transcribed successfully!');
-                } else {
-                    this.showError('No speech detected. Please try again.');
-                }
-                
-                this.updateButtonState('ready');
+                this.updateModalState('processing');
+                this.handleRecordingComplete();
             }
         } catch (error) {
             console.error('Failed to stop recording:', error);
+            this.showError('Failed to stop recording. Please try again.');
+            this.closeModal();
+        }
+    }
+
+    async handleRecordingComplete() {
+        try {
+            // Process the recording
+            const transcribedText = await this.recorder.processRecording();
+            
+            if (transcribedText) {
+                this.insertTranscribedText(transcribedText);
+                this.showSuccess('Audio transcribed successfully!');
+            } else {
+                this.showError('No speech detected. Please try again.');
+            }
+            
+            this.closeModal();
+        } catch (error) {
+            console.error('Failed to process recording:', error);
             this.showError('Transcription failed. Please try again.');
-            this.updateButtonState('ready');
+            this.closeModal();
+        }
+    }
+
+    showModal() {
+        if (this.modal) {
+            this.modal.classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+    }
+
+    closeModal() {
+        if (this.modal) {
+            this.modal.classList.remove('show');
+            document.body.style.overflow = ''; // Restore scrolling
+            
+            // Stop recording if still active
+            if (this.recorder.isRecording) {
+                this.recorder.stopRecording();
+            }
+            
+            // Reset modal state
+            this.updateModalState('ready');
+        }
+    }
+
+    updateModalState(state) {
+        const container = document.querySelector('.recording-container');
+        const statusElement = document.getElementById('recordingStatus');
+        const stopBtn = document.getElementById('stopRecordingBtn');
+        
+        if (!container) return;
+
+        // Remove all state classes
+        container.classList.remove('listening', 'silent', 'processing');
+        
+        switch (state) {
+            case 'ready':
+                container.classList.add('listening');
+                if (statusElement) statusElement.textContent = 'Ready to record...';
+                if (stopBtn) stopBtn.style.display = 'none';
+                break;
+            case 'listening':
+                container.classList.add('listening');
+                if (statusElement) statusElement.textContent = 'Listening...';
+                if (stopBtn) stopBtn.style.display = 'block';
+                break;
+            case 'processing':
+                container.classList.add('processing');
+                if (statusElement) statusElement.textContent = 'Processing audio...';
+                if (stopBtn) stopBtn.style.display = 'none';
+                break;
         }
     }
 
@@ -2216,41 +2381,16 @@ class AudioRecordingUI {
         switch (state) {
             case 'ready':
                 this.microphoneBtn.classList.add('recording-ready');
-                this.microphoneBtn.title = 'Hold to record voice input';
+                this.microphoneBtn.title = 'Click to record voice input';
                 break;
             case 'recording':
                 this.microphoneBtn.classList.add('recording-active');
-                this.microphoneBtn.title = 'Recording... Release to stop';
+                this.microphoneBtn.title = 'Recording... Click to stop';
                 break;
             case 'processing':
                 this.microphoneBtn.classList.add('recording-processing');
                 this.microphoneBtn.title = 'Processing audio...';
                 break;
-        }
-    }
-
-    showRecordingIndicator() {
-        // Create or update recording indicator
-        let indicator = document.getElementById('recordingIndicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'recordingIndicator';
-            indicator.className = 'recording-indicator';
-            indicator.innerHTML = '<i class="fas fa-microphone"></i> Recording...';
-            
-            const chatInputContainer = document.querySelector('.chat-input-container');
-            if (chatInputContainer) {
-                chatInputContainer.appendChild(indicator);
-            }
-        }
-        
-        indicator.style.display = 'block';
-    }
-
-    hideRecordingIndicator() {
-        const indicator = document.getElementById('recordingIndicator');
-        if (indicator) {
-            indicator.style.display = 'none';
         }
     }
 
@@ -2303,11 +2443,6 @@ class AudioRecordingUI {
     cleanup() {
         if (this.recorder) {
             this.recorder.cleanup();
-        }
-        
-        if (this.recordingTimeout) {
-            clearTimeout(this.recordingTimeout);
-            this.recordingTimeout = null;
         }
     }
 }
