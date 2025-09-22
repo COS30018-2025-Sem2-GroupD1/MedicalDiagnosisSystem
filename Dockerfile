@@ -21,7 +21,9 @@ WORKDIR /app
 COPY . .
 
 # Install Python dependencies
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir --upgrade nvidia-riva-client \
+    && git clone https://github.com/nvidia-riva/python-clients.git /app/vendor/python-clients || true
 
 # Hugging Face cache directories
 ENV HF_HOME="/home/user/.cache/huggingface"
