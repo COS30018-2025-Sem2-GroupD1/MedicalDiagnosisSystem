@@ -3,12 +3,15 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime
 
 from src.core.state import MedicalState, get_state
+from src.data.repositories.message import list_session_messages
+from src.data.repositories.session import (delete_session,
+                                           delete_session_messages,
+                                           ensure_session,
+                                           list_patient_sessions)
 from src.models.chat import SessionRequest
 from src.utils.logger import logger
-from src.data import list_patient_sessions, list_session_messages, ensure_session, delete_session, delete_session_messages
 
 router = APIRouter()
 

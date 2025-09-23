@@ -30,6 +30,9 @@ def get_account_frame(
 
 def create_account(
 	name: str,
+	role: str,
+	speciality: str | None,
+	roles: list[str] = [],
 	preferences: dict[str, Any] = {},
 	*,
 	user_id: str,
@@ -45,9 +48,13 @@ def create_account(
 	user_data: dict[str, Any] = {
 		"_id": user_id,
 		"name": name,
+		"role" : role,
+		"speciality": speciality,
+		"medical_roles": roles,
 		"created_at": now,
 		"updated_at": now
 	}
+
 	try:
 		result = collection.insert_one(user_data)
 		set_user_preferences(user_id, preferences)

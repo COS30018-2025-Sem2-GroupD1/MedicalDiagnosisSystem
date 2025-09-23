@@ -23,7 +23,7 @@ except Exception as e:
 	logger(tag="env").warning(f"Error loading .env file: {e}")
 
 # Import project modules after trying to load environment variables
-from src.api.routes import chat, session, static, system, user
+from src.api.routes import chat, session, static, system, user, patients, doctors
 from src.core.state import MedicalState, get_state
 
 
@@ -106,5 +106,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(chat.router)
 app.include_router(user.router)
 app.include_router(session.router)
+app.include_router(patients.router)
+app.include_router(doctors.router)
 app.include_router(system.router)
 app.include_router(static.router)
