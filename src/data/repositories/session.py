@@ -1,17 +1,23 @@
 # data/repositories/chat.py
+"""
+Chat session management operations for MongoDB.
+
+@TODO Review and revise.
+"""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pymongo import DESCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.repositories.base import ActionFailed, get_collection
+from src.data.connection import ActionFailed, get_collection
 from src.utils.logger import logger
 
 CHAT_SESSIONS_COLLECTION = "chat_sessions"
+CHAT_MESSAGES_COLLECTION = "chat_messages"
 
 def create_session(
 	user_id: str,
@@ -55,6 +61,44 @@ def get_user_sessions(
 		"updated_at", DESCENDING
 	).limit(limit)
 	return list(cursor)
+
+def ensure_session(
+	*,
+	session_id: str,
+	patient_id: str,
+	doctor_id: str,
+	title: str,
+	last_activity: datetime | None = None,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> None:
+	collection = get_collection(collection_name)
+	now = datetime.now(timezone.utc)
+	collection.update_one(
+		{"session_id": session_id},
+		{"$set": {
+			"session_id": session_id,
+			"patient_id": patient_id,
+			"doctor_id": doctor_id,
+			"title": title,
+			"last_activity": (last_activity or now),
+			"updated_at": now
+		}, "$setOnInsert": {"created_at": now}},
+		upsert=True
+	)
+
+def list_patient_sessions(
+	patient_id: str,
+	/,
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> list[dict[str, Any]]:
+	collection = get_collection(collection_name)
+	sessions = list(collection.find({"patient_id": patient_id}).sort("last_activity", DESCENDING))
+	# Convert ObjectId to string for JSON serialization
+	for session in sessions:
+		if "_id" in session:
+			session["_id"] = str(session["_id"])
+	return sessions
 
 def add_message(
 	session_id: str,
@@ -128,7 +172,7 @@ def update_session_title(
 	)
 	return result.modified_count > 0
 
-def delete_chat_session(
+def delete_session(
 	session_id: str,
 	/, *,
 	collection_name: str = CHAT_SESSIONS_COLLECTION
@@ -137,3 +181,29 @@ def delete_chat_session(
 	collection = get_collection(collection_name)
 	result = collection.delete_one({"_id": session_id})
 	return result.deleted_count > 0
+
+def delete_session_messages(
+	session_id: str,
+	/,
+	*,
+	collection_name: str = CHAT_MESSAGES_COLLECTION
+) -> int:
+	"""Delete all messages for a session from MongoDB"""
+	collection = get_collection(collection_name)
+	result = collection.delete_many({"session_id": session_id})
+	return result.deleted_count
+
+def delete_old_sessions(
+	days: int = 30,
+	*,
+	collection_name: str = CHAT_SESSIONS_COLLECTION
+) -> int:
+	"""Delete chat sessions older than specified days"""
+	collection = get_collection(collection_name)
+	cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+	result = collection.delete_many({
+		"updated_at": {"$lt": cutoff}
+	})
+	if result.deleted_count > 0:
+		logger().info(f"Deleted {result.deleted_count} old sessions (>{days} days)")
+	return result.deleted_count

@@ -1,6 +1,6 @@
 # data/medical_kb.py
 
-# TODO: This should be replaced with a more robust knowledge base system that can be updated by the user.
+# TODO This should be replaced with a more robust knowledge base system that can be updated by the user.
 # Medical Knowledge Base for the Medical AI Assistant
 MEDICAL_KB = {
 	"symptoms": {

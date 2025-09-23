@@ -7,11 +7,11 @@ import unittest
 
 from pymongo.errors import DuplicateKeyError
 
+from src.data import connection as db_conn
+from src.data import utils as db_utils
 from src.data.repositories import account as account_repo
-from src.data.repositories import base as db_base
 from src.data.repositories import medical as medical_repo
 from src.data.repositories import session as chat_repo
-from src.data.repositories import utils as db_utils
 from src.data.repositories.account import ACCOUNTS_COLLECTION
 from src.data.repositories.medical import (MEDICAL_CONTEXT_COLLECTION,
                                            MEDICAL_RECORDS_COLLECTION)
@@ -25,7 +25,7 @@ class TestMongoDBRepositories(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
 		"""Initializes a test database and collection mappings."""
-		cls.db = db_base.get_database()
+		cls.db = db_conn.get_database()
 		cls.test_collections = {
 			ACCOUNTS_COLLECTION: "test_accounts",
 			CHAT_SESSIONS_COLLECTION: "test_chat_sessions",
@@ -122,5 +122,5 @@ if __name__ == "__main__":
 		logger().info("Starting MongoDB repository integration tests...")
 		unittest.main(verbosity=2)
 	finally:
-		db_base.close_connection()
+		db_conn.close_connection()
 		logger().info("Tests completed and database connection closed.")

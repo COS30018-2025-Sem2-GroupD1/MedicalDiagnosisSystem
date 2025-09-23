@@ -1,48 +1,51 @@
-# data/utils.py
-"""
-Utility functions for MongoDB operations.
-"""
+# data/repositories/utils.py
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime, timedelta, timezone
 
 from pymongo import ASCENDING
+from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
+                            OperationFailure, PyMongoError)
 
-from .connection import get_collection, get_database
-from src.utils.logger import get_logger
-
-logger = get_logger("MONGO_UTILS")
+from src.data.connection import (ActionFailed, get_collection,
+                                        get_database)
+from src.utils.logger import logger
 
 
 def create_index(
-    collection_name: str,
-    field_name: str,
-    /,
-    unique: bool = False
+	collection_name: str,
+	field_name: str,
+	*,
+	unique: bool = False
 ) -> None:
-    """Create an index on a collection"""
-    collection = get_collection(collection_name)
-    collection.create_index([(field_name, ASCENDING)], unique=unique)
+	"""Creates an index on a specified collection."""
+	collection = get_collection(collection_name)
+	collection.create_index([(field_name, ASCENDING)], unique=unique)
 
+def delete_old_data(
+	collection_name: str,
+	*,
+	days: int = 30
+) -> int:
+	"""Deletes data older than a specified number of days."""
+	collection = get_collection(collection_name)
+	cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+	result = collection.delete_many({
+		"updated_at": {"$lt": cutoff}
+	})
+	return result.deleted_count
 
 def backup_collection(collection_name: str) -> str:
-    """Create a backup of a collection"""
-    collection = get_collection(collection_name)
-    backup_name = f"{collection_name}_backup_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
-    db = get_database()
+	"""Creates a timestamped backup of a collection using an aggregation pipeline."""
+	db = get_database()
+	backup_name = f"{collection_name}_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
-    # Drop existing backup if it exists
-    if backup_name in db.list_collection_names():
-        logger.info(f"Removing existing backup: {backup_name}")
-        db.drop_collection(backup_name)
+	if backup_name in db.list_collection_names():
+		db.drop_collection(backup_name)
 
-    db.create_collection(backup_name)
-    backup = db[backup_name]
+	source_collection = get_collection(collection_name)
+	pipeline = [{"$match": {}}, {"$out": backup_name}]
+	source_collection.aggregate(pipeline)
 
-    doc_count = 0
-    for doc in collection.find():
-        backup.insert_one(doc)
-        doc_count += 1
-
-    logger.info(f"Created backup {backup_name} with {doc_count} documents")
-    return backup_name
+	doc_count = db[backup_name].count_documents({})
+	logger().info(f"Created backup '{backup_name}' with {doc_count} documents.")
+	return backup_name

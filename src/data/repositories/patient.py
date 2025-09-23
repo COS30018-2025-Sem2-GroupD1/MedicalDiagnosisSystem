@@ -9,11 +9,10 @@ from typing import Any
 
 from pymongo import ASCENDING
 
-from ..connection import get_collection, PATIENTS_COLLECTION
-from src.utils.logger import get_logger
+from src.data.connection import get_collection
+from src.utils.logger import logger
 
-logger = get_logger("PATIENT_OPS")
-
+PATIENTS_COLLECTION = "patients"
 
 def _generate_patient_id() -> str:
     """Generate zero-padded 8-digit ID"""
@@ -77,12 +76,12 @@ def search_patients(query: str, limit: int = 10) -> list[dict[str, Any]]:
     collection = get_collection(PATIENTS_COLLECTION)
     if not query:
         return []
-    
-    logger.info(f"Searching patients with query: '{query}', limit: {limit}")
-    
+
+    logger().info(f"Searching patients with query: '{query}', limit: {limit}")
+
     # Build a regex for name search and patient_id partial match
     pattern = re.compile(re.escape(query), re.IGNORECASE)
-    
+
     try:
         cursor = collection.find({
             "$or": [
@@ -94,8 +93,8 @@ def search_patients(query: str, limit: int = 10) -> list[dict[str, Any]]:
         for p in cursor:
             p["_id"] = str(p.get("_id")) if p.get("_id") else None
             results.append(p)
-        logger.info(f"Found {len(results)} patients matching query")
+        logger().info(f"Found {len(results)} patients matching query")
         return results
     except Exception as e:
-        logger.error(f"Error in search_patients: {e}")
+        logger().error(f"Error in search_patients: {e}")
         return []

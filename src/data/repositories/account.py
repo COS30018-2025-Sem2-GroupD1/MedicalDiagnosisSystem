@@ -1,12 +1,18 @@
 # data/repositories/account.py
+"""
+User account management operations for MongoDB.
+"""
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
+from pandas import DataFrame
+from pymongo import ASCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.repositories.base import ActionFailed, get_collection
+from src.data.connection import ActionFailed, get_collection
 from src.utils.logger import logger
 
 ACCOUNTS_COLLECTION = "accounts"
@@ -14,6 +20,13 @@ ACCOUNTS_COLLECTION = "accounts"
 class UserNotFound(Exception):
 	"""Raised when a user is not found in the database."""
 	pass
+
+def get_account_frame(
+	*,
+	collection_name: str = ACCOUNTS_COLLECTION
+) -> DataFrame:
+	"""Get accounts as a pandas DataFrame"""
+	return DataFrame(get_collection(collection_name).find())
 
 def create_account(
 	name: str,
@@ -109,3 +122,88 @@ def set_user_preferences(
 	except UserNotFound as e:
 		logger().error(e)
 		return False
+
+# TODO Below methods are unverified
+
+def create_doctor(
+	*,
+	name: str,
+	role: str | None = None,
+	specialty: str | None = None,
+	medical_roles: list[str] | None = None
+) -> str:
+	"""Create a new doctor profile"""
+	collection = get_collection(ACCOUNTS_COLLECTION)
+	now = datetime.now(timezone.utc)
+	doctor_doc = {
+		"name": name,
+		"role": role,
+		"specialty": specialty,
+		"medical_roles": medical_roles or [],
+		"created_at": now,
+		"updated_at": now
+	}
+	try:
+		result = collection.insert_one(doctor_doc)
+		logger().info(f"Created new doctor: {name} with id {result.inserted_id}")
+		return str(result.inserted_id)
+	except Exception as e:
+		logger().error(f"Error creating doctor: {e}")
+		raise e
+
+
+def get_doctor_by_name(name: str) -> dict[str, Any] | None:
+	"""Get doctor by name from accounts collection"""
+	collection = get_collection(ACCOUNTS_COLLECTION)
+	doctor = collection.find_one({
+		"name": name,
+		"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+	})
+	if doctor:
+		doctor["_id"] = str(doctor.get("_id")) if doctor.get("_id") else None
+	return doctor
+
+
+def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
+	"""Search doctors by name (case-insensitive contains) from accounts collection"""
+	collection = get_collection(ACCOUNTS_COLLECTION)
+	if not query:
+		return []
+
+	logger().info(f"Searching doctors with query: '{query}', limit: {limit}")
+
+	# Build a regex for name search
+	pattern = re.compile(re.escape(query), re.IGNORECASE)
+
+	try:
+		cursor = collection.find({
+			"name": {"$regex": pattern},
+			"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+		}).sort("name", ASCENDING).limit(limit)
+		results = []
+		for d in cursor:
+			d["_id"] = str(d.get("_id")) if d.get("_id") else None
+			results.append(d)
+		logger().info(f"Found {len(results)} doctors matching query")
+		return results
+	except Exception as e:
+		logger().error(f"Error in search_doctors: {e}")
+		return []
+
+
+def get_all_doctors(limit: int = 50) -> list[dict[str, Any]]:
+	"""Get all doctors with optional limit from accounts collection"""
+	collection = get_collection(ACCOUNTS_COLLECTION)
+	try:
+		cursor = collection.find({
+			"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+		}).sort("name", ASCENDING).limit(limit)
+		results = []
+		for d in cursor:
+			d["_id"] = str(d.get("_id")) if d.get("_id") else None
+			results.append(d)
+		logger().info(f"Retrieved {len(results)} doctors")
+		return results
+	except Exception as e:
+		logger().error(f"Error getting all doctors: {e}")
+		return []
