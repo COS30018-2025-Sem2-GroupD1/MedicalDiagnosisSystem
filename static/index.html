@@ -263,6 +263,38 @@
         </div>
     </div>
 
+    <!-- Audio Recording Modal -->
+    <div class="modal" id="audioRecordingModal">
+        <div class="modal-content audio-recording-modal">
+            <div class="modal-header">
+                <h3>Voice Recording</h3>
+                <button class="modal-close" id="audioRecordingModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="recording-container">
+                    <div class="microphone-icon">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <div class="wave-animation" id="waveAnimation">
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                    </div>
+                    <div class="recording-status" id="recordingStatus">Listening...</div>
+                    <div class="recording-timer" id="recordingTimer">00:00</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="stopRecordingBtn">Stop Recording</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner">

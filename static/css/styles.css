@@ -497,6 +497,7 @@ body {
     border-radius: 12px;
     padding: var(--spacing-md);
     transition: border-color var(--transition-fast);
+    position: relative;
 }
 
 .input-wrapper:focus-within {
@@ -581,6 +582,215 @@ body {
 .attachment-btn:hover {
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
+}
+
+/* Audio recording states */
+.microphone-btn.recording-ready {
+    color: var(--text-primary);
+}
+
+.microphone-btn.recording-active {
+    background-color: var(--error-color);
+    color: white;
+    animation: pulse 1s infinite;
+}
+
+.microphone-btn.recording-processing {
+    background-color: var(--warning-color);
+    color: white;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Recording indicator */
+.recording-indicator {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--error-color);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: none;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+}
+
+.recording-indicator i {
+    margin-right: 6px;
+    animation: pulse 1s infinite;
+}
+
+/* Audio messages */
+.audio-error-message,
+.audio-success-message {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: none;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+}
+
+.audio-error-message {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.audio-success-message {
+    background-color: var(--success-color);
+    color: white;
+}
+
+/* Audio Recording Modal */
+.audio-recording-modal {
+    max-width: 400px;
+    text-align: center;
+}
+
+.recording-container {
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.microphone-icon {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.wave-animation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 60px;
+    margin: 1rem 0;
+}
+
+.wave-bar {
+    width: 4px;
+    height: 20px;
+    background-color: var(--primary-color);
+    border-radius: 2px;
+    animation: wave 1.2s ease-in-out infinite;
+}
+
+.wave-bar:nth-child(1) { animation-delay: 0s; }
+.wave-bar:nth-child(2) { animation-delay: 0.1s; }
+.wave-bar:nth-child(3) { animation-delay: 0.2s; }
+.wave-bar:nth-child(4) { animation-delay: 0.3s; }
+.wave-bar:nth-child(5) { animation-delay: 0.4s; }
+.wave-bar:nth-child(6) { animation-delay: 0.5s; }
+.wave-bar:nth-child(7) { animation-delay: 0.6s; }
+.wave-bar:nth-child(8) { animation-delay: 0.7s; }
+
+@keyframes wave {
+    0%, 100% { 
+        height: 20px; 
+        background-color: var(--primary-color);
+    }
+    50% { 
+        height: 40px; 
+        background-color: var(--accent-color);
+    }
+}
+
+.recording-status {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.recording-timer {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    font-family: 'Courier New', monospace;
+}
+
+/* Voice detection states */
+.recording-container.listening .wave-bar {
+    animation-play-state: running;
+}
+
+.recording-container.silent .wave-bar {
+    animation-play-state: paused;
+    height: 10px;
+    background-color: var(--text-muted);
+}
+
+.recording-container.processing .wave-bar {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.recording-container.processing .microphone-icon {
+    animation: spin 1s linear infinite;
+}
+
+/* Modal animations */
+.modal.show .audio-recording-modal {
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Transcribed text highlighting */
+.chat-input.transcribed {
+    border-color: var(--success-color);
+    background-color: rgba(34, 197, 94, 0.05);
+}
+
+.chat-input.transcribed::placeholder {
+    color: var(--success-color);
+}
+
+/* Audio recording button enhancements */
+.microphone-btn.recording-enabled {
+    position: relative;
+}
+
+.microphone-btn.recording-enabled::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--success-color);
+    border-radius: 50%;
+    border: 2px solid var(--bg-primary);
 }
 
 /* Modals */

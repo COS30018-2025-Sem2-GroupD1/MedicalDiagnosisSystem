@@ -45,6 +45,9 @@ pytest-asyncio==0.21.1
 black==23.11.0
 flake8==6.1.0
 
+# NVIDIA Riva client for speech-to-text
+nvidia-riva-client
+
 # Optional: GPU support for embeddings (uncomment if using CUDA)
 # torch==2.1.1+cu118 --index-url https://download.pytorch.org/whl/cu118
 # faiss-gpu==1.7.4

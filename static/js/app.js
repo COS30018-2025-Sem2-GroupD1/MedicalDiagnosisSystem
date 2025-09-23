@@ -8,7 +8,11 @@
 // import { attachSettingsUI } from './ui/settings.js';
 // import { attachSessionsUI } from './chat/sessions.js';
 // import { attachMessagingUI } from './chat/messaging.js';
+// import { AudioRecordingUI } from './audio/recorder.js';
 
+// ================================================================================
+// MAIN APPLICATION CLASS
+// ================================================================================
 class MedicalChatbotApp {
     constructor() {
         this.currentUser = null; // doctor
@@ -18,6 +22,7 @@ class MedicalChatbotApp {
         this.memory = new Map();  // In-memory storage for STM/demo
         this.isLoading = false;
         this.doctors = this.loadDoctors();
+        this.audioRecorder = null; // Audio recording UI
 
         this.init();
     }
@@ -53,6 +58,17 @@ class MedicalChatbotApp {
         const prefs = JSON.parse(localStorage.getItem('medicalChatbotPreferences') || '{}');
         this.setTheme(prefs.theme || 'auto');
         this.setupTheme();
+        
+        // Initialize audio recording (guarded if module not present)
+        try {
+            if (typeof AudioRecordingUI !== 'undefined') {
+                this.initializeAudioRecording();
+            } else {
+                console.warn('[Audio] Recorder module not loaded; skipping initialization');
+            }
+        } catch (e) {
+            console.warn('[Audio] Failed to initialize recorder', e);
+        }
     }
 
     setupEventListeners() {
@@ -1626,6 +1642,26 @@ How can I assist you today?`;
     }
 
     // ================================================================================
+    // AUDIO RECORDING FUNCTIONALITY
+    // ================================================================================
+    async initializeAudioRecording() {
+        try {
+            this.audioRecorder = new AudioRecordingUI(this);
+            const success = await this.audioRecorder.initialize();
+            
+            if (success) {
+                console.log('[Audio] Audio recording initialized successfully');
+                // Make globally accessible for voice detection callback
+                window.audioRecordingUI = this.audioRecorder;
+            } else {
+                console.warn('[Audio] Audio recording initialization failed');
+            }
+        } catch (error) {
+            console.error('[Audio] Failed to initialize audio recording:', error);
+        }
+    }
+
+    // ================================================================================
     // MESSAGING.JS FUNCTIONALITY
     // ================================================================================
     // Cache invalidation methods
@@ -1865,6 +1901,560 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
         }
     });
 })();
+
+
+// ================================================================================
+// RECORDER.JS FUNCTIONALITY
+// ================================================================================
+
+class AudioRecorder {
+    constructor() {
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.isRecording = false;
+        this.audioContext = null;
+        this.audioStream = null;
+        this.analyser = null;
+        this.silenceTimer = null;
+        this.recordingStartTime = null;
+        this.timerInterval = null;
+    }
+
+    async initialize() {
+        try {
+            // Request microphone access
+            this.audioStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: 16000, // 16kHz for better speech recognition
+                    channelCount: 1,   // Mono
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+
+            // Create audio context for voice detection
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = this.audioContext.createMediaStreamSource(this.audioStream);
+            this.analyser = this.audioContext.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.analyser.smoothingTimeConstant = 0.8;
+            source.connect(this.analyser);
+
+            // Create MediaRecorder
+            this.mediaRecorder = new MediaRecorder(this.audioStream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
+
+            // Set up event handlers
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                }
+            };
+
+            this.mediaRecorder.onstop = () => {
+                this.processRecording();
+            };
+
+            return true;
+        } catch (error) {
+            console.error('Failed to initialize audio recorder:', error);
+            throw new Error('Microphone access denied or not available');
+        }
+    }
+
+    startRecording() {
+        if (!this.mediaRecorder || this.isRecording) {
+            return false;
+        }
+
+        try {
+            this.audioChunks = [];
+            this.mediaRecorder.start();
+            this.isRecording = true;
+            this.recordingStartTime = Date.now();
+            console.log('Audio recording started');
+            
+            // Start timer
+            this.startTimer();
+            
+            // Start voice detection
+            this.startVoiceDetection();
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+            return false;
+        }
+    }
+
+    stopRecording() {
+        if (!this.mediaRecorder || !this.isRecording) {
+            return false;
+        }
+
+        try {
+            this.mediaRecorder.stop();
+            this.isRecording = false;
+            console.log('Audio recording stopped');
+            
+            // Stop timer and voice detection
+            this.stopTimer();
+            this.stopVoiceDetection();
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to stop recording:', error);
+            return false;
+        }
+    }
+
+    startTimer() {
+        this.timerInterval = setInterval(() => {
+            if (this.recordingStartTime) {
+                const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const timerElement = document.getElementById('recordingTimer');
+                if (timerElement) {
+                    timerElement.textContent = timeString;
+                }
+            }
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    startVoiceDetection() {
+        const checkVoice = () => {
+            if (!this.isRecording || !this.analyser) return;
+            
+            const bufferLength = this.analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            this.analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate average volume
+            const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
+            const threshold = 20; // Adjust this value to change sensitivity
+            
+            const container = document.querySelector('.recording-container');
+            const statusElement = document.getElementById('recordingStatus');
+            
+            if (average > threshold) {
+                // Voice detected
+                container.classList.remove('silent');
+                container.classList.add('listening');
+                if (statusElement) statusElement.textContent = 'Listening...';
+                
+                // Reset silence timer
+                this.resetSilenceTimer();
+            } else {
+                // Silence detected
+                container.classList.remove('listening');
+                container.classList.add('silent');
+                if (statusElement) statusElement.textContent = 'Silence detected...';
+            }
+            
+            requestAnimationFrame(checkVoice);
+        };
+        
+        checkVoice();
+    }
+
+    stopVoiceDetection() {
+        // Voice detection stops when recording stops
+    }
+
+    resetSilenceTimer() {
+        if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+        }
+        
+        // Auto-stop after 3 seconds of silence
+        this.silenceTimer = setTimeout(() => {
+            if (this.isRecording) {
+                console.log('Auto-stopping recording due to silence');
+                this.stopRecording();
+                // Trigger the modal close and processing
+                if (window.audioRecordingUI) {
+                    window.audioRecordingUI.handleRecordingComplete();
+                }
+            }
+        }, 3000);
+    }
+
+    async processRecording() {
+        if (this.audioChunks.length === 0) {
+            console.warn('No audio data recorded');
+            return null;
+        }
+
+        try {
+            // Create audio blob
+            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+            
+            // Transcribe audio
+            const transcribedText = await this.transcribeAudio(audioBlob);
+            
+            return transcribedText;
+        } catch (error) {
+            console.error('Failed to process recording:', error);
+            throw error;
+        }
+    }
+
+    async transcribeAudio(audioBlob) {
+        try {
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'recording.webm');
+            formData.append('language_code', 'en');
+
+            const response = await fetch('/audio/transcribe', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Transcription failed');
+            }
+
+            const result = await response.json();
+            return result.transcribed_text;
+        } catch (error) {
+            console.error('Transcription failed:', error);
+            throw error;
+        }
+    }
+
+    cleanup() {
+        if (this.audioStream) {
+            this.audioStream.getTracks().forEach(track => track.stop());
+            this.audioStream = null;
+        }
+        
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+        
+        if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+            this.silenceTimer = null;
+        }
+        
+        this.stopTimer();
+        
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.isRecording = false;
+    }
+
+    isAvailable() {
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    }
+}
+
+// Audio recording modal UI controller
+class AudioRecordingUI {
+    constructor(app) {
+        this.app = app;
+        this.recorder = new AudioRecorder();
+        this.microphoneBtn = null;
+        this.isInitialized = false;
+        this.modal = null;
+    }
+
+    async initialize() {
+        if (!this.recorder.isAvailable()) {
+            console.warn('Audio recording not supported in this browser');
+            return false;
+        }
+
+        try {
+            await this.recorder.initialize();
+            this.setupUI();
+            this.isInitialized = true;
+            return true;
+        } catch (error) {
+            console.error('Failed to initialize audio recording UI:', error);
+            this.showError('Microphone access denied. Please allow microphone access to use voice input.');
+            return false;
+        }
+    }
+
+    setupUI() {
+        this.microphoneBtn = document.getElementById('microphoneBtn');
+        this.modal = document.getElementById('audioRecordingModal');
+        
+        if (!this.microphoneBtn) {
+            console.error('Microphone button not found');
+            return;
+        }
+
+        if (!this.modal) {
+            console.error('Audio recording modal not found');
+            return;
+        }
+
+        // Set up event listeners
+        this.microphoneBtn.addEventListener('click', (e) => this.startRecording(e));
+        
+        // Modal close handlers
+        const closeBtn = document.getElementById('audioRecordingModalClose');
+        const stopBtn = document.getElementById('stopRecordingBtn');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeModal());
+        }
+        
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => this.stopRecording());
+        }
+
+        // Close modal when clicking outside
+        this.modal.addEventListener('click', (e) => {
+            if (e.target === this.modal) {
+                this.closeModal();
+            }
+        });
+
+        // Update button appearance
+        this.updateButtonState('ready');
+    }
+
+    async startRecording(event) {
+        if (!this.isInitialized || this.recorder.isRecording) {
+            return;
+        }
+
+        event.preventDefault();
+        
+        try {
+            // Show modal
+            this.showModal();
+            
+            // Start recording
+            const success = this.recorder.startRecording();
+            if (success) {
+                this.updateModalState('listening');
+            } else {
+                this.showError('Failed to start recording. Please try again.');
+                this.closeModal();
+            }
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+            this.showError('Failed to start recording. Please try again.');
+            this.closeModal();
+        }
+    }
+
+    async stopRecording() {
+        if (!this.recorder.isRecording) {
+            return;
+        }
+
+        try {
+            const success = this.recorder.stopRecording();
+            if (success) {
+                this.updateModalState('processing');
+                this.handleRecordingComplete();
+            }
+        } catch (error) {
+            console.error('Failed to stop recording:', error);
+            this.showError('Failed to stop recording. Please try again.');
+            this.closeModal();
+        }
+    }
+
+    async handleRecordingComplete() {
+        try {
+            // Process the recording
+            const transcribedText = await this.recorder.processRecording();
+            
+            if (transcribedText) {
+                this.insertTranscribedText(transcribedText);
+                this.showSuccess('Audio transcribed successfully!');
+            } else {
+                this.showError('No speech detected. Please try again.');
+            }
+            
+            this.closeModal();
+        } catch (error) {
+            console.error('Failed to process recording:', error);
+            this.showError('Transcription failed. Please try again.');
+            this.closeModal();
+        }
+    }
+
+    showModal() {
+        if (this.modal) {
+            this.modal.classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+    }
+
+    closeModal() {
+        if (this.modal) {
+            this.modal.classList.remove('show');
+            document.body.style.overflow = ''; // Restore scrolling
+            
+            // Stop recording if still active
+            if (this.recorder.isRecording) {
+                this.recorder.stopRecording();
+            }
+            
+            // Reset modal state
+            this.updateModalState('ready');
+        }
+    }
+
+    updateModalState(state) {
+        const container = document.querySelector('.recording-container');
+        const statusElement = document.getElementById('recordingStatus');
+        const stopBtn = document.getElementById('stopRecordingBtn');
+        
+        if (!container) return;
+
+        // Remove all state classes
+        container.classList.remove('listening', 'silent', 'processing');
+        
+        switch (state) {
+            case 'ready':
+                container.classList.add('listening');
+                if (statusElement) statusElement.textContent = 'Ready to record...';
+                if (stopBtn) stopBtn.style.display = 'none';
+                break;
+            case 'listening':
+                container.classList.add('listening');
+                if (statusElement) statusElement.textContent = 'Listening...';
+                if (stopBtn) stopBtn.style.display = 'block';
+                break;
+            case 'processing':
+                container.classList.add('processing');
+                if (statusElement) statusElement.textContent = 'Processing audio...';
+                if (stopBtn) stopBtn.style.display = 'none';
+                break;
+        }
+    }
+
+    insertTranscribedText(text) {
+        const chatInput = document.getElementById('chatInput');
+        if (!chatInput) {
+            console.error('Chat input not found');
+            return;
+        }
+
+        // Append transcribed text to existing content
+        const currentText = chatInput.value.trim();
+        const newText = currentText ? `${currentText} ${text}` : text;
+        
+        chatInput.value = newText;
+        
+        // Add visual feedback for transcribed text
+        chatInput.classList.add('transcribed');
+        
+        // Remove the highlighting after a few seconds
+        setTimeout(() => {
+            chatInput.classList.remove('transcribed');
+        }, 3000);
+        
+        // Trigger input event to update UI
+        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Focus the input
+        chatInput.focus();
+        
+        // Auto-resize if needed
+        if (this.app && this.app.autoResizeTextarea) {
+            this.app.autoResizeTextarea(chatInput);
+        }
+    }
+
+    updateButtonState(state) {
+        if (!this.microphoneBtn) return;
+
+        // Remove all state classes
+        this.microphoneBtn.classList.remove('recording-ready', 'recording-active', 'recording-processing');
+        
+        // Add appropriate state class
+        switch (state) {
+            case 'ready':
+                this.microphoneBtn.classList.add('recording-ready');
+                this.microphoneBtn.title = 'Click to record voice input';
+                break;
+            case 'recording':
+                this.microphoneBtn.classList.add('recording-active');
+                this.microphoneBtn.title = 'Recording... Click to stop';
+                break;
+            case 'processing':
+                this.microphoneBtn.classList.add('recording-processing');
+                this.microphoneBtn.title = 'Processing audio...';
+                break;
+        }
+    }
+
+    showError(message) {
+        // Create or update error message
+        let errorMsg = document.getElementById('audioError');
+        if (!errorMsg) {
+            errorMsg = document.createElement('div');
+            errorMsg.id = 'audioError';
+            errorMsg.className = 'audio-error-message';
+            
+            const chatInputContainer = document.querySelector('.chat-input-container');
+            if (chatInputContainer) {
+                chatInputContainer.appendChild(errorMsg);
+            }
+        }
+        
+        errorMsg.textContent = message;
+        errorMsg.style.display = 'block';
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+            errorMsg.style.display = 'none';
+        }, 5000);
+    }
+
+    showSuccess(message) {
+        // Create or update success message
+        let successMsg = document.getElementById('audioSuccess');
+        if (!successMsg) {
+            successMsg = document.createElement('div');
+            successMsg.id = 'audioSuccess';
+            successMsg.className = 'audio-success-message';
+            
+            const chatInputContainer = document.querySelector('.chat-input-container');
+            if (chatInputContainer) {
+                chatInputContainer.appendChild(successMsg);
+            }
+        }
+        
+        successMsg.textContent = message;
+        successMsg.style.display = 'block';
+        
+        // Hide after 3 seconds
+        setTimeout(() => {
+            successMsg.style.display = 'none';
+        }, 3000);
+    }
+
+    cleanup() {
+        if (this.recorder) {
+            this.recorder.cleanup();
+        }
+    }
+}
+
 
 // Settings modal open/close wiring (from settings.js)
 document.addEventListener('DOMContentLoaded', () => {
