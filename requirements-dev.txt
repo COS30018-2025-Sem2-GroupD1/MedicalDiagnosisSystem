@@ -9,3 +9,4 @@ psutil
 python-dotenv
 pymongo
 pandas
+python-multipart
