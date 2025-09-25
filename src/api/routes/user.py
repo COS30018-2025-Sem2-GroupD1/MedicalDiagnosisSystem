@@ -9,7 +9,7 @@ from src.utils.logger import logger
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
-@router.post("/")
+@router.post("")
 async def create_user_profile(
 	request: UserProfileRequest,
 	state: MedicalState = Depends(get_state)

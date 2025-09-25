@@ -14,7 +14,7 @@ from src.utils.logger import logger
 
 router = APIRouter(prefix="/sessions", tags=["Session"])
 
-@router.post("/")
+@router.post("")
 async def create_chat_session(
 	request: SessionRequest,
 	state: MedicalState = Depends(get_state)

@@ -11,7 +11,7 @@ from src.utils.logger import logger
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
-@router.post("/")
+@router.post("")
 async def create_patient_profile(req: PatientCreateRequest):
 	try:
 		logger().info(f"POST /patients name={req.name}")

@@ -9,7 +9,7 @@ from src.utils.logger import logger
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
 
-@router.get("/")
+@router.get("")
 async def get_all_doctors_route(limit: int = 50):
 	try:
 		logger().info(f"GET /doctors limit={limit}")
@@ -20,7 +20,7 @@ async def get_all_doctors_route(limit: int = 50):
 		logger().error(f"Error getting all doctors: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/")
+@router.post("")
 async def create_doctor_profile(req: DoctorCreateRequest):
 	try:
 		logger().info(f"POST /doctors name={req.name}")
