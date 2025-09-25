@@ -313,6 +313,29 @@ class MedicalChatbotApp {
             });
             }
         }
+
+        // System access button handler
+        const systemBtn = document.getElementById('systemAccessBtn');
+        const systemInput = document.getElementById('systemAccessInput');
+
+        if (systemBtn && systemInput) {
+            systemBtn.addEventListener('click', () => {
+                systemInput.style.display = systemInput.style.display === 'none' ? 'inline' : 'none';
+                if (systemInput.style.display === 'inline') {
+                    systemInput.focus();
+                }
+            });
+
+            systemInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (systemInput.value === 'system-status') {
+                        window.location.href = '/system-status';
+                    }
+                    systemInput.value = '';
+                    systemInput.style.display = 'none';
+                }
+            });
+        }
     }
 
     initializeUser() {
