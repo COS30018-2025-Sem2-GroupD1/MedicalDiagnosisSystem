@@ -49,7 +49,7 @@ class MedicalChatbotApp {
         // Ensure a session exists and is displayed immediately if nothing to show
         this.ensureStartupSession();
         this.loadChatSessions();
-        
+
         // Bind patient handlers
         console.log('[DEBUG] Binding patient handlers');
         this.bindPatientHandlers();
@@ -58,7 +58,7 @@ class MedicalChatbotApp {
         const prefs = JSON.parse(localStorage.getItem('medicalChatbotPreferences') || '{}');
         this.setTheme(prefs.theme || 'auto');
         this.setupTheme();
-        
+
         // Initialize audio recording (guarded if module not present)
         try {
             if (typeof AudioRecordingUI !== 'undefined') {
@@ -79,7 +79,7 @@ class MedicalChatbotApp {
             this.toggleSidebar();
         });
         }
-        
+
         // Click outside sidebar to close (mobile/overlay behavior)
         const overlay = document.getElementById('appOverlay');
         console.log('[DEBUG] Overlay element found:', !!overlay);
@@ -97,27 +97,27 @@ class MedicalChatbotApp {
                 }
             }
         };
-        
+
         // Keep overlay synced when toggling
         const origToggle = this.toggleSidebar.bind(this);
-        this.toggleSidebar = () => { 
+        this.toggleSidebar = () => {
             console.log('[DEBUG] Wrapped toggleSidebar called');
-            origToggle(); 
-            updateOverlay(); 
+            origToggle();
+            updateOverlay();
         };
-        
+
         // Initialize overlay state - ensure it's hidden on startup
         if (overlay) {
             overlay.classList.remove('show');
         }
         updateOverlay();
-        
+
         // Handle window resize for responsive behavior
         window.addEventListener('resize', () => {
             console.log('[DEBUG] Window resized, updating overlay');
             updateOverlay();
         });
-        
+
         // Click outside to close sidebar
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
@@ -127,9 +127,9 @@ class MedicalChatbotApp {
             const isOpen = sidebar.classList.contains('show');
             const clickInside = sidebar.contains(e.target) || (toggleBtn && toggleBtn.contains(e.target));
             const clickOnOverlay = overlay && overlay.contains(e.target);
-            
+
             console.log('[DEBUG] Click event - sidebar open:', isOpen, 'click inside:', clickInside, 'click on overlay:', clickOnOverlay);
-            
+
             if (isOpen && !clickInside) {
                 if (clickOnOverlay) {
                     console.log('[DEBUG] Clicked on overlay, closing sidebar');
@@ -145,7 +145,7 @@ class MedicalChatbotApp {
             }
             updateOverlay();
         }, true);
-        
+
         if (overlay) {
             overlay.addEventListener('click', () => {
                 console.log('[DEBUG] Overlay clicked directly');
@@ -239,7 +239,7 @@ class MedicalChatbotApp {
         const userModalClose = document.getElementById('userModalClose');
         const userModalCancel = document.getElementById('userModalCancel');
         const userModalSave = document.getElementById('userModalSave');
-        
+
         if (userModalClose) {
             userModalClose.addEventListener('click', () => {
             this.hideModal('userModal');
@@ -262,7 +262,7 @@ class MedicalChatbotApp {
         const settingsModalClose = document.getElementById('settingsModalClose');
         const settingsModalCancel = document.getElementById('settingsModalCancel');
         const settingsModalSave = document.getElementById('settingsModalSave');
-        
+
         if (settingsModalClose) {
             settingsModalClose.addEventListener('click', () => {
             this.hideModal('settingsModal');
@@ -297,7 +297,7 @@ class MedicalChatbotApp {
             const editTitleModalClose = document.getElementById('editTitleModalClose');
             const editTitleModalCancel = document.getElementById('editTitleModalCancel');
             const editTitleModalSave = document.getElementById('editTitleModalSave');
-            
+
             if (editTitleModalClose) editTitleModalClose.addEventListener('click', closeEdit);
             if (editTitleModalCancel) editTitleModalCancel.addEventListener('click', closeEdit);
             if (editTitleModalSave) {
@@ -485,7 +485,7 @@ How can I assist you today?`;
 // Our submodules aren't lodaed on app.js, so we need to add them here
 // Perhaps this is FastAPI limitation, remove this when proper deploy this
 // On UI specific hosting site.
-// ----------------------------------------------------------  
+// ----------------------------------------------------------
 
 
     // ================================================================================
@@ -564,16 +564,16 @@ How can I assist you today?`;
             sel.appendChild(createOpt);
         }
         if (sel && !sel.value) sel.value = this.currentUser?.name || '__create__';
-        
+
         // Safely set role and specialty with null checks
         const roleEl = document.getElementById('profileRole');
         const specialtyEl = document.getElementById('profileSpecialty');
         if (roleEl) roleEl.value = (this.currentUser && this.currentUser.role) ? this.currentUser.role : 'Medical Professional';
         if (specialtyEl) specialtyEl.value = (this.currentUser && this.currentUser.specialty) ? this.currentUser.specialty : '';
-        
+
         // Add event listener for doctor selection changes
         this.setupDoctorSelectionHandler();
-        
+
         this.showModal('userModal');
     }
 
@@ -581,24 +581,24 @@ How can I assist you today?`;
         const sel = document.getElementById('profileNameSelect');
         const roleEl = document.getElementById('profileRole');
         const specialtyEl = document.getElementById('profileSpecialty');
-        
+
         if (!sel || !roleEl || !specialtyEl) return;
-        
+
         // Remove existing listeners to avoid duplicates
         sel.removeEventListener('change', this.handleDoctorSelection);
-        
+
         // Add new listener
         this.handleDoctorSelection = async (event) => {
             const selectedName = event.target.value;
             console.log('[DEBUG] Doctor selected:', selectedName);
-            
+
             if (selectedName === '__create__') {
                 // Reset to default values for new doctor
                 roleEl.value = 'Medical Professional';
                 specialtyEl.value = '';
                 return;
             }
-            
+
             // Find the selected doctor in our doctors list
             const selectedDoctor = this.doctors.find(d => d.name === selectedName);
             if (selectedDoctor) {
@@ -632,7 +632,7 @@ How can I assist you today?`;
                 }
             }
         };
-        
+
         sel.addEventListener('change', this.handleDoctorSelection);
     }
 
@@ -640,7 +640,7 @@ How can I assist you today?`;
         console.log('[DEBUG] showSettingsModal called');
         this.showModal('settingsModal');
     }
-    
+
 
     // ================================================================================
     // SETTINGS.JS FUNCTIONALITY
@@ -791,14 +791,14 @@ How can I assist you today?`;
 
     async switchToSession(session) {
         console.log('[DEBUG] Switching to session:', session.id, session.source);
-        
+
         // Clear current session and messages first
         this.currentSession = null;
         this.clearChatMessages();
-        
+
         // Set new session
         this.currentSession = { ...session };
-        
+
         if (session.source === 'backend') {
             // For backend sessions, always fetch fresh messages
             console.log('[DEBUG] Fetching messages for backend session:', session.id);
@@ -823,7 +823,7 @@ How can I assist you today?`;
                 console.log('[DEBUG] No messages found for local session:', session.id);
             }
         }
-        
+
         this.updateChatTitle();
         this.loadChatSessions(); // Re-render to update active state
     }
@@ -851,28 +851,28 @@ How can I assist you today?`;
     async deleteChatSession(sessionId) {
         const confirmDelete = confirm('Delete this chat session? This cannot be undone.');
         if (!confirmDelete) return;
-        
+
         try {
             // Check if it's a backend session
             const isBackendSession = this.backendSessions && this.backendSessions.some(s => s.id === sessionId);
-            
+
             if (isBackendSession) {
                 // Delete from backend (MongoDB + memory system)
                 const resp = await fetch(`/sessions/${sessionId}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' }
                 });
-                
+
                 if (!resp.ok) {
                     throw new Error(`HTTP ${resp.status}`);
                 }
-                
+
                 const result = await resp.json();
                 console.log('[DEBUG] Backend deletion result:', result);
-                
+
                 // Remove from backend sessions
                 this.backendSessions = this.backendSessions.filter(s => s.id !== sessionId);
-                
+
                 // Invalidate caches
                 this.invalidateSessionCache(this.currentPatientId);
                 this.invalidateMessageCache(this.currentPatientId, sessionId);
@@ -881,11 +881,11 @@ How can I assist you today?`;
                 const sessions = this.getChatSessions();
                 const index = sessions.findIndex(s => s.id === sessionId);
                 if (index === -1) return;
-                
+
                 sessions.splice(index, 1);
                 localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
             }
-            
+
             // Handle current session cleanup
             if (this.currentSession && this.currentSession.id === sessionId) {
                 if (isBackendSession) {
@@ -911,9 +911,9 @@ How can I assist you today?`;
                 }
                 this.updateChatTitle();
             }
-            
+
             this.loadChatSessions();
-            
+
         } catch (error) {
             console.error('Error deleting session:', error);
             alert('Failed to delete session. Please try again.');
@@ -1057,10 +1057,10 @@ How can I assist you today?`;
         const sel = document.getElementById('profileNameSelect');
         const newSec = document.getElementById('newDoctorSection');
         if (!sel) return;
-        
+
         // Load doctors from MongoDB
         await this.loadDoctors();
-        
+
         sel.innerHTML = '';
         const createOpt = document.createElement('option');
         createOpt.value = '__create__';
@@ -1103,23 +1103,23 @@ How can I assist you today?`;
                 // Get current role and specialty from the form
                 const role = document.getElementById('profileRole').value || 'Medical Professional';
                 const specialty = document.getElementById('profileSpecialty').value.trim() || '';
-                
+
                 // Create doctor in MongoDB
-                const result = await this.createDoctor({ 
-                    name, 
-                    role, 
+                const result = await this.createDoctor({
+                    name,
+                    role,
                     specialty,
                     medical_roles: [role]
                 });
                 if (result) {
-                    this.doctors.unshift({ 
-                        name, 
-                        role, 
-                        specialty, 
-                        _id: result.doctor_id 
+                    this.doctors.unshift({
+                        name,
+                        role,
+                        specialty,
+                        _id: result.doctor_id
                     });
                     this.saveDoctors();
-                    
+
                     // Update current user profile
                     this.currentUser.name = name;
                     this.currentUser.role = role;
@@ -1165,10 +1165,10 @@ How can I assist you today?`;
         const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
         if (existingDoctorIndex === -1) {
             // Add new doctor to local list
-            this.doctors.unshift({ 
-                name, 
-                role, 
-                specialty 
+            this.doctors.unshift({
+                name,
+                role,
+                specialty
             });
         } else {
             // Update existing doctor in local list
@@ -1188,18 +1188,18 @@ How can I assist you today?`;
                 specialty: specialty || null,
                 medical_roles: [role]
             };
-            
+
             try {
                 const resp = await fetch('/doctors', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(doctorPayload)
                 });
-                
+
                 if (!resp.ok) throw new Error('Failed to create doctor in backend');
                 const data = await resp.json();
                 console.log('[Doctor] Created new doctor in backend:', data);
-                
+
                 // Update local doctor with the ID from backend
                 const localDoctor = this.doctors.find(d => d.name === name);
                 if (localDoctor) {
@@ -1219,7 +1219,7 @@ How can I assist you today?`;
     // ================================================================================
     // PATIENT.JS FUNCTIONALITY
     // ================================================================================
-    
+
     async getLocalStorageSuggestions(query) {
         try {
             const storedPatients = JSON.parse(localStorage.getItem('medicalChatbotPatients') || '[]');
@@ -1243,19 +1243,19 @@ How can I assist you today?`;
     combinePatientResults(mongoResults, localResults) {
         // Create a map to deduplicate by patient_id, with MongoDB results taking priority
         const resultMap = new Map();
-        
+
         // Add MongoDB results first (they take priority)
         mongoResults.forEach(patient => {
             resultMap.set(patient.patient_id, patient);
         });
-        
+
         // Add localStorage results only if not already present
         localResults.forEach(patient => {
             if (!resultMap.has(patient.patient_id)) {
                 resultMap.set(patient.patient_id, patient);
             }
         });
-        
+
         return Array.from(resultMap.values());
     }
 
@@ -1282,7 +1282,7 @@ How can I assist you today?`;
             const status = document.getElementById('patientStatus');
             const actions = document.getElementById('patientActions');
             const emrLink = document.getElementById('emrLink');
-            
+
             if (status) {
                 // Try to fetch patient name
                 try {
@@ -1298,11 +1298,11 @@ How can I assist you today?`;
                 }
                 status.style.color = 'var(--text-secondary)';
             }
-            
+
             // Show EMR link
             if (actions) actions.style.display = 'block';
             if (emrLink) emrLink.href = `/static/emr.html?patient_id=${pid}`;
-            
+
             const input = document.getElementById('patientIdInput');
             if (input) input.value = pid;
         }
@@ -1317,7 +1317,7 @@ How can I assist you today?`;
         const status = document.getElementById('patientStatus');
         const actions = document.getElementById('patientActions');
         const emrLink = document.getElementById('emrLink');
-        
+
         if (status) {
             if (patientName) {
                 status.textContent = `Patient: ${patientName} (${patientId})`;
@@ -1326,7 +1326,7 @@ How can I assist you today?`;
             }
             status.style.color = 'var(--text-secondary)';
         }
-        
+
         // Show EMR link
         if (actions) actions.style.display = 'block';
         if (emrLink) emrLink.href = `/static/emr.html?patient_id=${patientId}`;
@@ -1338,13 +1338,13 @@ How can I assist you today?`;
         const status = document.getElementById('patientStatus');
         const value = (input?.value || '').trim();
         console.log('[DEBUG] Patient input value:', value);
-        
+
         if (!value) {
             console.log('[DEBUG] No input provided');
             if (status) { status.textContent = 'Please enter patient ID or name.'; status.style.color = 'var(--warning-color)'; }
             return;
         }
-        
+
         // If it's a complete 8-digit ID, use it directly
         if (/^\d{8}$/.test(value)) {
             console.log('[DEBUG] Valid 8-digit ID provided');
@@ -1365,7 +1365,7 @@ How can I assist you today?`;
             await this.fetchAndRenderPatientSessions();
             return;
         }
-        
+
         // Otherwise, search for patient by name or partial ID
         console.log('[DEBUG] Searching for patient by name/partial ID');
         try {
@@ -1388,7 +1388,7 @@ How can I assist you today?`;
         } catch (e) {
             console.error('[DEBUG] Search error:', e);
         }
-        
+
         // No patient found
         console.log('[DEBUG] No patient found');
         if (status) { status.textContent = 'No patient found. Try a different search.'; status.style.color = 'var(--warning-color)'; }
@@ -1396,12 +1396,12 @@ How can I assist you today?`;
 
     fetchAndRenderPatientSessions = async function () {
         if (!this.currentPatientId) return;
-        
+
         // Check localStorage cache first
         const cacheKey = `sessions_${this.currentPatientId}`;
         const cached = localStorage.getItem(cacheKey);
         let sessions = [];
-        
+
         if (cached) {
             try {
                 const cachedData = JSON.parse(cached);
@@ -1416,7 +1416,7 @@ How can I assist you today?`;
                 console.warn('Failed to parse cached sessions:', e);
             }
         }
-        
+
         // If no cache or cache is stale, fetch from backend
         if (sessions.length === 0) {
             try {
@@ -1424,7 +1424,7 @@ How can I assist you today?`;
                 if (resp.ok) {
                     const data = await resp.json();
                     sessions = Array.isArray(data.sessions) ? data.sessions : [];
-                    
+
                     // Cache the sessions
                     localStorage.setItem(cacheKey, JSON.stringify({
                         sessions: sessions,
@@ -1438,7 +1438,7 @@ How can I assist you today?`;
                 console.error('Failed to load patient sessions', e);
             }
         }
-        
+
         // Process sessions
         this.backendSessions = sessions.map(s => ({
             id: s.session_id,
@@ -1448,12 +1448,12 @@ How can I assist you today?`;
             lastActivity: s.last_activity || new Date().toISOString(),
             source: 'backend'
         }));
-        
+
         if (this.backendSessions.length > 0) {
             this.currentSession = this.backendSessions[0];
             await this.hydrateMessagesForSession(this.currentSession.id);
         }
-        
+
         this.loadChatSessions();
     }
 
@@ -1463,7 +1463,7 @@ How can I assist you today?`;
             const cacheKey = `messages_${this.currentPatientId}_${sessionId}`;
             const cached = localStorage.getItem(cacheKey);
             let messages = [];
-            
+
             if (cached) {
                 try {
                     const cachedData = JSON.parse(cached);
@@ -1478,7 +1478,7 @@ How can I assist you today?`;
                     console.warn('Failed to parse cached messages:', e);
                 }
             }
-            
+
             // If no cache or cache is stale, fetch from backend
             if (messages.length === 0) {
                 const resp = await fetch(`/sessions/${sessionId}/messages?patient_id=${this.currentPatientId}&limit=1000`);
@@ -1494,7 +1494,7 @@ How can I assist you today?`;
                     content: m.content,
                     timestamp: m.timestamp
                 }));
-                
+
                 // Cache the messages
                 localStorage.setItem(cacheKey, JSON.stringify({
                     messages: messages,
@@ -1502,14 +1502,14 @@ How can I assist you today?`;
                 }));
                 console.log('[DEBUG] Cached messages for session:', sessionId, 'count:', messages.length);
             }
-            
+
             // Sort messages by timestamp (ascending order for display)
             const sortedMessages = messages.sort((a, b) => {
                 const timeA = new Date(a.timestamp || 0).getTime();
                 const timeB = new Date(b.timestamp || 0).getTime();
                 return timeA - timeB;
             });
-            
+
             if (this.currentSession && this.currentSession.id === sessionId) {
                 this.currentSession.messages = sortedMessages;
                 this.clearChatMessages();
@@ -1570,7 +1570,7 @@ How can I assist you today?`;
                     console.log('[DEBUG] Search URL:', url);
                     const resp = await fetch(url);
                     console.log('[DEBUG] Search response status:', resp.status);
-                    
+
                     let mongoResults = [];
                     if (resp.ok) {
                         const data = await resp.json();
@@ -1579,16 +1579,16 @@ How can I assist you today?`;
                     } else {
                         console.warn('MongoDB search request failed', resp.status);
                     }
-                    
+
                     // Get localStorage suggestions as fallback/additional results
                     const localResults = await this.getLocalStorageSuggestions(q);
-                    
+
                     // Combine and deduplicate results (MongoDB results take priority)
                     const combinedResults = this.combinePatientResults(mongoResults, localResults);
                     console.log('[DEBUG] Combined search results:', combinedResults);
                     renderSuggestions(combinedResults);
-                    
-                } catch (e) { 
+
+                } catch (e) {
                     console.error('[DEBUG] Search error:', e);
                     // Fallback for network errors
                     console.log('[DEBUG] Trying fallback search after error');
@@ -1617,7 +1617,7 @@ How can I assist you today?`;
         const closeBtn = document.getElementById('patientModalClose');
         const logoutBtn = document.getElementById('patientLogoutBtn');
         const createBtn = document.getElementById('patientCreateBtn');
-        
+
         if (profileBtn && modal) {
             profileBtn.addEventListener('click', async () => {
                 const pid = this?.currentPatientId;
@@ -1641,12 +1641,12 @@ How can I assist you today?`;
                 modal.classList.add('show');
             });
         }
-        
+
         if (closeBtn && modal) {
             closeBtn.addEventListener('click', () => modal.classList.remove('show'));
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('show'); });
         }
-        
+
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
                 if (confirm('Log out current patient?')) {
@@ -1660,7 +1660,7 @@ How can I assist you today?`;
                 }
             });
         }
-        
+
         if (createBtn) createBtn.addEventListener('click', () => modal.classList.remove('show'));
     }
 
@@ -1671,7 +1671,7 @@ How can I assist you today?`;
         try {
             this.audioRecorder = new AudioRecordingUI(this);
             const success = await this.audioRecorder.initialize();
-            
+
             if (success) {
                 console.log('[Audio] Audio recording initialized successfully');
                 // Make globally accessible for voice detection callback
@@ -1729,7 +1729,7 @@ How can I assist you today?`;
             const response = await this.callMedicalAPI(message);
             this.addMessage('assistant', response);
             this.updateCurrentSession();
-            
+
             // Invalidate caches after successful message exchange
             if (this.currentSession && this.currentSession.id) {
                 this.invalidateMessageCache(this.currentPatientId, this.currentSession.id);
@@ -1802,10 +1802,10 @@ How can I assist you today?`;
     // Check if session needs title generation after messages are loaded
     checkAndGenerateSessionTitle() {
         if (!this.currentSession || !this.currentSession.messages) return;
-        
+
         // Check if this is a new session that needs a title (exactly 2 messages: user + assistant)
-        if (this.currentSession.messages.length === 2 && 
-            this.currentSession.title === 'New Chat' && 
+        if (this.currentSession.messages.length === 2 &&
+            this.currentSession.title === 'New Chat' &&
             this.currentSession.messages[0].role === 'user') {
             const firstMessage = this.currentSession.messages[0].content;
             this.summariseAndSetTitle(firstMessage);
@@ -1889,7 +1889,7 @@ How can I assist you today?`;
 }
 // ----------------------------------------------------------
 // Additional UI setup END
-// ----------------------------------------------------------  
+// ----------------------------------------------------------
 
 
 // Initialize the app when DOM is loaded
@@ -1998,13 +1998,13 @@ class AudioRecorder {
             this.isRecording = true;
             this.recordingStartTime = Date.now();
             console.log('Audio recording started');
-            
+
             // Start timer
             this.startTimer();
-            
+
             // Start voice detection
             this.startVoiceDetection();
-            
+
             return true;
         } catch (error) {
             console.error('Failed to start recording:', error);
@@ -2021,11 +2021,11 @@ class AudioRecorder {
             this.mediaRecorder.stop();
             this.isRecording = false;
             console.log('Audio recording stopped');
-            
+
             // Stop timer and voice detection
             this.stopTimer();
             this.stopVoiceDetection();
-            
+
             return true;
         } catch (error) {
             console.error('Failed to stop recording:', error);
@@ -2040,7 +2040,7 @@ class AudioRecorder {
                 const minutes = Math.floor(elapsed / 60);
                 const seconds = elapsed % 60;
                 const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
+
                 const timerElement = document.getElementById('recordingTimer');
                 if (timerElement) {
                     timerElement.textContent = timeString;
@@ -2059,24 +2059,24 @@ class AudioRecorder {
     startVoiceDetection() {
         const checkVoice = () => {
             if (!this.isRecording || !this.analyser) return;
-            
+
             const bufferLength = this.analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             this.analyser.getByteFrequencyData(dataArray);
-            
+
             // Calculate average volume
             const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
             const threshold = 20; // Adjust this value to change sensitivity
-            
+
             const container = document.querySelector('.recording-container');
             const statusElement = document.getElementById('recordingStatus');
-            
+
             if (average > threshold) {
                 // Voice detected
                 container.classList.remove('silent');
                 container.classList.add('listening');
                 if (statusElement) statusElement.textContent = 'Listening...';
-                
+
                 // Reset silence timer
                 this.resetSilenceTimer();
             } else {
@@ -2085,10 +2085,10 @@ class AudioRecorder {
                 container.classList.add('silent');
                 if (statusElement) statusElement.textContent = 'Silence detected...';
             }
-            
+
             requestAnimationFrame(checkVoice);
         };
-        
+
         checkVoice();
     }
 
@@ -2100,7 +2100,7 @@ class AudioRecorder {
         if (this.silenceTimer) {
             clearTimeout(this.silenceTimer);
         }
-        
+
         // Auto-stop after 3 seconds of silence
         this.silenceTimer = setTimeout(() => {
             if (this.isRecording) {
@@ -2123,10 +2123,10 @@ class AudioRecorder {
         try {
             // Create audio blob
             const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-            
+
             // Transcribe audio
             const transcribedText = await this.transcribeAudio(audioBlob);
-            
+
             return transcribedText;
         } catch (error) {
             console.error('Failed to process recording:', error);
@@ -2163,19 +2163,19 @@ class AudioRecorder {
             this.audioStream.getTracks().forEach(track => track.stop());
             this.audioStream = null;
         }
-        
+
         if (this.audioContext) {
             this.audioContext.close();
             this.audioContext = null;
         }
-        
+
         if (this.silenceTimer) {
             clearTimeout(this.silenceTimer);
             this.silenceTimer = null;
         }
-        
+
         this.stopTimer();
-        
+
         this.mediaRecorder = null;
         this.audioChunks = [];
         this.isRecording = false;
@@ -2217,7 +2217,7 @@ class AudioRecordingUI {
     setupUI() {
         this.microphoneBtn = document.getElementById('microphoneBtn');
         this.modal = document.getElementById('audioRecordingModal');
-        
+
         if (!this.microphoneBtn) {
             console.error('Microphone button not found');
             return;
@@ -2230,15 +2230,15 @@ class AudioRecordingUI {
 
         // Set up event listeners
         this.microphoneBtn.addEventListener('click', (e) => this.startRecording(e));
-        
+
         // Modal close handlers
         const closeBtn = document.getElementById('audioRecordingModalClose');
         const stopBtn = document.getElementById('stopRecordingBtn');
-        
+
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.closeModal());
         }
-        
+
         if (stopBtn) {
             stopBtn.addEventListener('click', () => this.stopRecording());
         }
@@ -2260,11 +2260,11 @@ class AudioRecordingUI {
         }
 
         event.preventDefault();
-        
+
         try {
             // Show modal
             this.showModal();
-            
+
             // Start recording
             const success = this.recorder.startRecording();
             if (success) {
@@ -2302,14 +2302,14 @@ class AudioRecordingUI {
         try {
             // Process the recording
             const transcribedText = await this.recorder.processRecording();
-            
+
             if (transcribedText) {
                 this.insertTranscribedText(transcribedText);
                 this.showSuccess('Audio transcribed successfully!');
             } else {
                 this.showError('No speech detected. Please try again.');
             }
-            
+
             this.closeModal();
         } catch (error) {
             console.error('Failed to process recording:', error);
@@ -2329,12 +2329,12 @@ class AudioRecordingUI {
         if (this.modal) {
             this.modal.classList.remove('show');
             document.body.style.overflow = ''; // Restore scrolling
-            
+
             // Stop recording if still active
             if (this.recorder.isRecording) {
                 this.recorder.stopRecording();
             }
-            
+
             // Reset modal state
             this.updateModalState('ready');
         }
@@ -2344,12 +2344,12 @@ class AudioRecordingUI {
         const container = document.querySelector('.recording-container');
         const statusElement = document.getElementById('recordingStatus');
         const stopBtn = document.getElementById('stopRecordingBtn');
-        
+
         if (!container) return;
 
         // Remove all state classes
         container.classList.remove('listening', 'silent', 'processing');
-        
+
         switch (state) {
             case 'ready':
                 container.classList.add('listening');
@@ -2379,23 +2379,23 @@ class AudioRecordingUI {
         // Append transcribed text to existing content
         const currentText = chatInput.value.trim();
         const newText = currentText ? `${currentText} ${text}` : text;
-        
+
         chatInput.value = newText;
-        
+
         // Add visual feedback for transcribed text
         chatInput.classList.add('transcribed');
-        
+
         // Remove the highlighting after a few seconds
         setTimeout(() => {
             chatInput.classList.remove('transcribed');
         }, 3000);
-        
+
         // Trigger input event to update UI
         chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-        
+
         // Focus the input
         chatInput.focus();
-        
+
         // Auto-resize if needed
         if (this.app && this.app.autoResizeTextarea) {
             this.app.autoResizeTextarea(chatInput);
@@ -2407,7 +2407,7 @@ class AudioRecordingUI {
 
         // Remove all state classes
         this.microphoneBtn.classList.remove('recording-ready', 'recording-active', 'recording-processing');
-        
+
         // Add appropriate state class
         switch (state) {
             case 'ready':
@@ -2432,16 +2432,16 @@ class AudioRecordingUI {
             errorMsg = document.createElement('div');
             errorMsg.id = 'audioError';
             errorMsg.className = 'audio-error-message';
-            
+
             const chatInputContainer = document.querySelector('.chat-input-container');
             if (chatInputContainer) {
                 chatInputContainer.appendChild(errorMsg);
             }
         }
-        
+
         errorMsg.textContent = message;
         errorMsg.style.display = 'block';
-        
+
         // Hide after 5 seconds
         setTimeout(() => {
             errorMsg.style.display = 'none';
@@ -2455,16 +2455,16 @@ class AudioRecordingUI {
             successMsg = document.createElement('div');
             successMsg.id = 'audioSuccess';
             successMsg.className = 'audio-success-message';
-            
+
             const chatInputContainer = document.querySelector('.chat-input-container');
             if (chatInputContainer) {
                 chatInputContainer.appendChild(successMsg);
             }
         }
-        
+
         successMsg.textContent = message;
         successMsg.style.display = 'block';
-        
+
         // Hide after 3 seconds
         setTimeout(() => {
             successMsg.style.display = 'none';

@@ -707,12 +707,12 @@ body {
 .wave-bar:nth-child(8) { animation-delay: 0.7s; }
 
 @keyframes wave {
-    0%, 100% { 
-        height: 20px; 
+    0%, 100% {
+        height: 20px;
         background-color: var(--primary-color);
     }
-    50% { 
-        height: 40px; 
+    50% {
+        height: 40px;
         background-color: var(--accent-color);
     }
 }
@@ -1184,12 +1184,12 @@ body {
 .patient-load-btn:hover {
     background: var(--primary-hover);
 }
-.patient-create-link { 
-    display:inline-flex; align-items:center; 
-    justify-content:center; padding:8px 10px; 
-    border: 1px solid var(--border-color); 
-    border-radius:6px; color: var(--text-secondary); 
-    text-decoration:none; 
+.patient-create-link {
+    display:inline-flex; align-items:center;
+    justify-content:center; padding:8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius:6px; color: var(--text-secondary);
+    text-decoration:none;
 }
 .patient-create-link:hover { background: var(--bg-tertiary); }
 
