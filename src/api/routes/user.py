@@ -17,7 +17,7 @@ async def create_user_profile(
 	"""Create or update user profile"""
 	try:
 		# Persist to in-memory profile (existing behavior)
-		user = state.memory_system.create_user(request.user_id, request.name)
+		user = state.memory_system.create_user(user_id=request.user_id, name=request.name)
 		user.set_preference("role", request.role)
 		if request.specialty:
 			user.set_preference("specialty", request.specialty)
