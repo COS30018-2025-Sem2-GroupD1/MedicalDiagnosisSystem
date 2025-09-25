@@ -1,85 +1,201 @@
 body {
-	font-family: Arial, sans-serif;
-	padding: 20px;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+	background-color: var(--bg-primary);
+	color: var(--text-primary);
+	margin: 0;
+	min-height: 100vh;
+}
+
+.system-page {
+	padding: var(--spacing-xl);
+	max-width: 1200px;
+	margin: 0 auto;
+}
+
+.system-header {
+	margin-bottom: var(--spacing-xl);
+}
+
+.system-header h1 {
+	font-size: 1.8rem;
+	color: var(--text-primary);
+	margin-top: var(--spacing-md);
+}
+
+.back-link {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+	color: var(--primary-color);
+	text-decoration: none;
+	font-size: 0.9rem;
+}
+
+.back-link:hover {
+	text-decoration: underline;
+}
+
+.tab-container {
+	background: var(--bg-secondary);
+	border-radius: 12px;
+	border: 1px solid var(--border-color);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	height: calc(100vh - 160px); /* Account for header space */
 }
 
 .tab-bar {
-	margin-bottom: 20px;
+	display: flex;
+	gap: 2px;
+	padding: var(--spacing-md);
+	background: var(--bg-tertiary);
+	border-bottom: 1px solid var(--border-color);
+	flex-shrink: 0;
 }
 
 .tab-button {
-	padding: 10px 20px;
-	border: none;
-	background: #f0f0f0;
+	padding: var(--spacing-md) var(--spacing-lg);
+	background: var(--bg-primary);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	color: var(--text-secondary);
+	font-size: 0.9rem;
 	cursor: pointer;
-	margin-right: 5px;
-	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+	transition: all var(--transition-fast);
+}
+
+.tab-button:hover {
+	background: var(--bg-secondary);
 }
 
 .tab-button.active {
-	background: #007bff;
+	background: var(--primary-color);
 	color: white;
+	border-color: var(--primary-color);
 }
 
 .tab-content {
 	display: none;
+	padding: var(--spacing-lg);
+	overflow-y: auto;
+	flex: 1;
 }
 
 .tab-content.active {
 	display: block;
 }
 
-/* Health status styles */
-.status-ok {
-	color: green;
+.status-card {
+	background: var(--bg-primary);
+	border-radius: 8px;
+	padding: var(--spacing-lg);
 }
 
-.status-error {
-	color: red;
+.status-content {
+	display: grid;
+	gap: var(--spacing-md);
 }
 
 .component {
-	margin: 10px 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing-md);
+	background: var(--bg-secondary);
+	border-radius: 6px;
+	border: 1px solid var(--border-color);
 }
 
-/* Database status styles */
+.collections-grid {
+	display: grid;
+	gap: var(--spacing-lg);
+	margin-bottom: var(--spacing-lg);
+}
+
 .collection {
-	margin: 20px 0;
-	padding: 15px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
+	background: var(--bg-secondary);
+	border-radius: 8px;
+	padding: var(--spacing-lg);
+	border: 1px solid var(--border-color);
 }
 
 .collection h2 {
-	margin-top: 0;
-	color: #333;
+	color: var(--text-primary);
+	font-size: 1.2rem;
+	margin-bottom: var(--spacing-md);
 }
 
-.stats {
-	color: #666;
+.collection .stats {
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+	margin-bottom: var(--spacing-md);
 }
 
-.timestamp {
-	color: #888;
-	font-style: italic;
+.collection .fields {
+	background: var(--bg-tertiary);
+	border-radius: 6px;
+	padding: var(--spacing-md);
 }
 
-.fields {
-	margin-top: 15px;
+.collection .fields h3 {
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+	margin-bottom: var(--spacing-sm);
 }
 
-.fields h3 {
-	color: #444;
-	margin-bottom: 10px;
+.collection .fields ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: grid;
+	gap: 4px;
 }
 
-.fields ul {
-	list-style-type: none;
-	padding-left: 20px;
-}
-
-.fields li {
-	color: #555;
-	margin: 3px 0;
+.collection .fields li {
+	color: var(--text-primary);
+	font-size: 0.85rem;
 	font-family: monospace;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+}
+
+@media (max-width: 768px) {
+	.system-page {
+		padding: var(--spacing-md);
+	}
+
+	.tab-container {
+		height: calc(100vh - 140px);
+	}
+
+	.tab-bar {
+		flex-direction: column;
+	}
+
+	.collection {
+		padding: var(--spacing-md);
+	}
+}
+
+/* Scrollbar styling to match main theme */
+.tab-content::-webkit-scrollbar {
+	width: 6px;
+}
+
+.tab-content::-webkit-scrollbar-track {
+	background: var(--bg-secondary);
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+	background: var(--border-color);
+	border-radius: 3px;
+}
+
+.tab-content::-webkit-scrollbar-thumb:hover {
+	background: var(--border-hover);
 }

@@ -50,19 +50,19 @@ async function updateDatabase() {
 }
 
 function displayDatabaseStatus(data) {
-	document.getElementById('db-timestamp').textContent = `Last updated: ${data.timestamp}`;
+	document.getElementById('db-timestamp').textContent = `Last updated: ${new Date(data.timestamp).toLocaleString()}`;
 
 	const collectionsDiv = document.getElementById('collections');
 	collectionsDiv.innerHTML = '';
 
 	Object.entries(data.collections).forEach(([name, info]) => {
 		const collectionDiv = document.createElement('div');
-		collectionDiv.className = 'collection';
+		collectionDiv.className = 'collection fade-in';
 
 		const html = `
 			<h2>${name}</h2>
 			<div class="stats">
-				<p>Document count: ${info.document_count}</p>
+				<p><i class="fas fa-file-alt"></i> Document count: ${info.document_count}</p>
 			</div>
 			<div class="fields">
 				<h3>Document Fields:</h3>
@@ -71,10 +71,10 @@ function displayDatabaseStatus(data) {
 						const indexInfo = info.indexes.find(idx =>
 							idx.keys.some(([key]) => key === field)
 						);
-						const indexDetails = indexInfo ?
-							` (Index: ${indexInfo.keys.map(([key, direction]) =>
-								`${direction === 1 ? '↑' : '↓'}`).join('')})` : '';
-						return `<li>${field}${indexDetails}</li>`;
+						const indexIcon = indexInfo ?
+							`<i class="fas fa-bolt" title="Indexed"></i>` :
+							`<i class="fas fa-minus" title="Not indexed"></i>`;
+						return `<li>${indexIcon} ${field}</li>`;
 					}).join('')}
 				</ul>
 			</div>

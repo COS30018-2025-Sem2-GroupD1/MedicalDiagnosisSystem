@@ -1,23 +1,48 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>System Status</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>System Status - Medical AI Assistant</title>
+	<link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+	<link rel="stylesheet" href="/static/css/styles.css">
 	<link rel="stylesheet" href="/static/css/system.css">
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-	<h1>System Status</h1>
-	<div class="tab-bar">
-		<button class="tab-button active" data-tab="health">Health Status</button>
-		<button class="tab-button" data-tab="database">Database Status</button>
-	</div>
+	<div class="app-container">
+		<div class="main-content system-page">
+			<div class="system-header">
+				<a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Chat</a>
+				<h1>System Status</h1>
+			</div>
 
-	<div id="health" class="tab-content active">
-		<div id="health-status"></div>
-	</div>
+			<div class="tab-container">
+				<div class="tab-bar">
+					<button class="tab-button active" data-tab="health">
+						<i class="fas fa-heartbeat"></i>
+						Health Status
+					</button>
+					<button class="tab-button" data-tab="database">
+						<i class="fas fa-database"></i>
+						Database Status
+					</button>
+				</div>
 
-	<div id="database" class="tab-content">
-		<div id="db-timestamp" class="timestamp"></div>
-		<div id="collections"></div>
+				<div id="health" class="tab-content active">
+					<div class="status-card">
+						<div id="health-status" class="status-content"></div>
+					</div>
+				</div>
+
+				<div id="database" class="tab-content">
+					<div class="status-card">
+						<div id="db-timestamp" class="timestamp"></div>
+						<div id="collections" class="collections-grid"></div>
+					</div>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<script src="/static/js/system.js"></script>
