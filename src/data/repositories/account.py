@@ -30,8 +30,8 @@ def get_account_frame(
 
 def create_account(
 	name: str,
-	role: str,
-	speciality: str | None,
+	role: str | None = None,
+	speciality: str | None = None,
 	roles: list[str] = [],
 	preferences: dict[str, Any] = {},
 	*,
