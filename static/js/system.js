@@ -91,6 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	updateHealth();
 	updateDatabase();
 	// Refresh data every 30 seconds
-	setInterval(updateHealth, 30000);
-	setInterval(updateDatabase, 30000);
+	//setInterval(updateHealth, 30000);
+	//setInterval(updateDatabase, 30000);
 });
