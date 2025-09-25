@@ -71,14 +71,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			past_assessment_summary: document.getElementById('summary').value.trim() || null
 		};
 		try {
-			console.log("Start");
 			if (isEditMode && currentPatientId) {
 				const resp = await fetch(`/patients/${currentPatientId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
 				});
-				console.log("A");
 				if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 				result.textContent = 'Patient updated successfully.';
 				result.style.color = 'green';
@@ -88,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
 				});
-				console.log("B");
 				if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 				const data = await resp.json();
 				const pid = data.patient_id;
