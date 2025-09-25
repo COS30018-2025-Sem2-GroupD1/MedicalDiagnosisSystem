@@ -15,22 +15,12 @@ async def get_medical_chatbot():
 	except FileNotFoundError:
 		raise HTTPException(status_code=404, detail="Medical chatbot UI not found")
 
-@router.get("/health-status", response_class=HTMLResponse)
-async def get_health_status():
-	"""Serve the health status UI"""
+@router.get("/system-status", response_class=HTMLResponse)
+async def get_system_status():
+	"""Serve the unified system status UI"""
 	try:
-		with open("static/health.html", "r", encoding="utf-8") as f:
+		with open("static/system.html", "r", encoding="utf-8") as f:
 			html_content = f.read()
 		return HTMLResponse(content=html_content)
 	except FileNotFoundError:
-		raise HTTPException(status_code=404, detail="Health status UI not found")
-
-@router.get("/database-status", response_class=HTMLResponse)
-async def get_database_status():
-	"""Serve the database status UI"""
-	try:
-		with open("static/database.html", "r", encoding="utf-8") as f:
-			html_content = f.read()
-		return HTMLResponse(content=html_content)
-	except FileNotFoundError:
-		raise HTTPException(status_code=404, detail="Database status UI not found")
+		raise HTTPException(status_code=404, detail="System status UI not found")

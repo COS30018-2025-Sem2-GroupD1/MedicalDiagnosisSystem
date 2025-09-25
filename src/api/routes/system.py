@@ -12,7 +12,7 @@ from src.data.repositories.message import CHAT_MESSAGES_COLLECTION
 from src.data.repositories.patient import PATIENTS_COLLECTION
 from src.data.repositories.session import CHAT_SESSIONS_COLLECTION
 
-router = APIRouter()
+router = APIRouter(prefix="/system", tags=["System"])
 
 @router.get("/health")
 async def health_check(state: MedicalState = Depends(get_state)):

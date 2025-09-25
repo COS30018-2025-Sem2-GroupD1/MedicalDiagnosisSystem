@@ -1,0 +1,85 @@
+body {
+	font-family: Arial, sans-serif;
+	padding: 20px;
+}
+
+.tab-bar {
+	margin-bottom: 20px;
+}
+
+.tab-button {
+	padding: 10px 20px;
+	border: none;
+	background: #f0f0f0;
+	cursor: pointer;
+	margin-right: 5px;
+	border-radius: 4px;
+}
+
+.tab-button.active {
+	background: #007bff;
+	color: white;
+}
+
+.tab-content {
+	display: none;
+}
+
+.tab-content.active {
+	display: block;
+}
+
+/* Health status styles */
+.status-ok {
+	color: green;
+}
+
+.status-error {
+	color: red;
+}
+
+.component {
+	margin: 10px 0;
+}
+
+/* Database status styles */
+.collection {
+	margin: 20px 0;
+	padding: 15px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.collection h2 {
+	margin-top: 0;
+	color: #333;
+}
+
+.stats {
+	color: #666;
+}
+
+.timestamp {
+	color: #888;
+	font-style: italic;
+}
+
+.fields {
+	margin-top: 15px;
+}
+
+.fields h3 {
+	color: #444;
+	margin-bottom: 10px;
+}
+
+.fields ul {
+	list-style-type: none;
+	padding-left: 20px;
+}
+
+.fields li {
+	color: #555;
+	margin: 3px 0;
+	font-family: monospace;
+}
