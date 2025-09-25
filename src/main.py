@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 
 from src.utils.logger import logger, setup_logging
@@ -112,3 +113,21 @@ app.include_router(doctors.router)
 app.include_router(system.router)
 app.include_router(static.router)
 app.include_router(audio.router)
+
+@app.get("/api/info")
+async def get_api_info():
+	"""Get API information and capabilities, lists all paths available in the api."""
+	return {
+		"name": "Medical Diagnosis System",
+		"version": "1.0.0",
+		"description": "AI-powered medical chatbot with memory and context awareness",
+		"features": [
+			"Multi-user support with profiles",
+			"Chat session management",
+			"Medical context memory",
+			"API key rotation",
+			"Embedding-based similarity search",
+			"Medical knowledge base integration"
+		],
+		"endpoints": [route.path for route in app.routes if isinstance(route, APIRoute)]
+	}
