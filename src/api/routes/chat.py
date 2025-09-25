@@ -36,12 +36,11 @@ async def chat_endpoint(
 		# Get or create user profile (doctor as current user profile)
 		user_profile = state.memory_system.get_user(request.user_id)
 		if not user_profile:
-			state.memory_system.create_user(request.user_id, request.user_role or "Anonymous")
-			if request.user_specialty:
-				state.memory_system.set_user_preferences(
-					request.user_id,
-					{"specialty": request.user_specialty}
-				)
+			state.memory_system.create_user(
+				role=request.user_role or "Anonymous",
+				user_id=request.user_id,
+				speciality=request.user_specialty or None
+			)
 	except Exception as e:
 		logger().error(f"Error retrieving or creating user profile: {e}")
 		logger().error(f"Request data: {request.model_dump()}")
@@ -141,7 +140,11 @@ async def summarise_endpoint(
 ):
 	"""Summarise a text into a short 3-5 word title using NVIDIA if available."""
 	try:
-		title = await summarise_title_with_nvidia(req.text, state.nvidia_rotator, max_words=min(max(req.max_words or 5, 3), 7))
+		title = await summarise_title_with_nvidia(
+			req.text,
+			state.nvidia_rotator,
+			max_words=min(max(req.max_words or 5, 3), 7)
+		)
 		return {"title": title}
 	except Exception as e:
 		logger().error(f"Error summarising title: {e}")

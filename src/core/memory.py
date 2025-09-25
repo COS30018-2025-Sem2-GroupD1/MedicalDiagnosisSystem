@@ -19,9 +19,24 @@ class MemoryLRU:
 	def __init__(self, max_sessions_per_user: int = 10):
 		self.max_sessions_per_user = max_sessions_per_user
 
-	def create_user(self, user_id: str, name: str = "Anonymous") -> UserProfile:
+	def create_user(self,
+		name: str = "Anonymous",
+		role: str | None = None,
+		speciality: str | None = None,
+		roles: list[str] = [],
+		preferences: dict[str, Any] = {},
+		*,
+		user_id: str,
+	) -> UserProfile:
 		"""Creates a new user profile."""
-		account.create_account(name=name, user_id=user_id)
+		account.create_account(
+			name=name,
+			role=role,
+			speciality=speciality,
+			roles=roles,
+			preferences=preferences,
+			user_id=user_id
+		)
 		return UserProfile(user_id, name)
 
 	def get_user(self, user_id: str) -> UserProfile | None:
