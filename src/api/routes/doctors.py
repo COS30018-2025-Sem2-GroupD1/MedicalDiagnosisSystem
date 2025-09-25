@@ -7,9 +7,20 @@ from src.data.repositories.account import (create_doctor, get_all_doctors,
 from src.models.user import DoctorCreateRequest
 from src.utils.logger import logger
 
-router = APIRouter()
+router = APIRouter(prefix="/doctors", tags=["Doctors"])
 
-@router.post("/doctors")
+@router.get("/")
+async def get_all_doctors_route(limit: int = 50):
+	try:
+		logger().info(f"GET /doctors limit={limit}")
+		results = get_all_doctors(limit=limit)
+		logger().info(f"Retrieved {len(results)} doctors")
+		return {"results": results}
+	except Exception as e:
+		logger().error(f"Error getting all doctors: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/")
 async def create_doctor_profile(req: DoctorCreateRequest):
 	try:
 		logger().info(f"POST /doctors name={req.name}")
@@ -25,7 +36,7 @@ async def create_doctor_profile(req: DoctorCreateRequest):
 		logger().error(f"Error creating doctor: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/doctors/{doctor_name}")
+@router.get("/{doctor_name}")
 async def get_doctor(doctor_name: str):
 	try:
 		logger().info(f"GET /doctors/{doctor_name}")
@@ -39,7 +50,7 @@ async def get_doctor(doctor_name: str):
 		logger().error(f"Error getting doctor: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/doctors/search")
+@router.get("/search")
 async def search_doctors_route(q: str, limit: int = 10):
 	try:
 		logger().info(f"GET /doctors/search q='{q}' limit={limit}")
@@ -48,15 +59,4 @@ async def search_doctors_route(q: str, limit: int = 10):
 		return {"results": results}
 	except Exception as e:
 		logger().error(f"Error searching doctors: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/doctors")
-async def get_all_doctors_route(limit: int = 50):
-	try:
-		logger().info(f"GET /doctors limit={limit}")
-		results = get_all_doctors(limit=limit)
-		logger().info(f"Retrieved {len(results)} doctors")
-		return {"results": results}
-	except Exception as e:
-		logger().error(f"Error getting all doctors: {e}")
 		raise HTTPException(status_code=500, detail=str(e))

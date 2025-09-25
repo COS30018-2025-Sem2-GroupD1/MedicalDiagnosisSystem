@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
-router = APIRouter()
+router = APIRouter(tags=["Static"])
 
 @router.get("/", response_class=HTMLResponse)
 async def get_medical_chatbot():

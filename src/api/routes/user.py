@@ -7,9 +7,9 @@ from src.data.repositories.account import create_account
 from src.models.user import UserProfileRequest
 from src.utils.logger import logger
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["Users"])
 
-@router.post("/users")
+@router.post("/")
 async def create_user_profile(
 	request: UserProfileRequest,
 	state: MedicalState = Depends(get_state)
@@ -38,7 +38,7 @@ async def create_user_profile(
 		logger().error(f"Error creating user profile: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/users/{user_id}")
+@router.get("/{user_id}")
 async def get_user_profile(
 	user_id: str,
 	state: MedicalState = Depends(get_state)

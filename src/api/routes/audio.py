@@ -9,7 +9,7 @@ from src.services.audio_transcription import (get_supported_formats,
 											  validate_audio_format)
 from src.utils.logger import logger
 
-router = APIRouter(prefix="/audio", tags=["audio"])
+router = APIRouter(prefix="/audio", tags=["Audio"])
 
 @router.post("/transcribe")
 async def transcribe_audio(

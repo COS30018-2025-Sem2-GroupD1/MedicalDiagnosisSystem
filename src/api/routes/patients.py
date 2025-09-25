@@ -5,38 +5,13 @@ from fastapi import APIRouter, HTTPException
 from src.data.repositories.patient import (create_patient, get_patient_by_id,
                                            search_patients,
                                            update_patient_profile)
+from src.data.repositories.session import list_patient_sessions
 from src.models.user import PatientCreateRequest, PatientUpdateRequest
 from src.utils.logger import logger
 
-router = APIRouter()
+router = APIRouter(prefix="/patients", tags=["Patients"])
 
-@router.get("/patients/search")
-async def search_patients_route(q: str, limit: int = 20):
-	try:
-		logger().info(f"GET /patients/search q='{q}' limit={limit}")
-		results = search_patients(q, limit=limit)
-		logger().info(f"Search returned {len(results)} results")
-		return {"results": results}
-	except Exception as e:
-		logger().error(f"Error searching patients: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/patients/{patient_id}")
-async def get_patient(patient_id: str):
-	try:
-		logger().info(f"GET /patients/{patient_id}")
-		patient = get_patient_by_id(patient_id)
-		if not patient:
-			raise HTTPException(status_code=404, detail="Patient not found")
-		patient["_id"] = str(patient.get("_id")) if patient.get("_id") else None
-		return patient
-	except HTTPException:
-		raise
-	except Exception as e:
-		logger().error(f"Error getting patient: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/patients")
+@router.post("/")
 async def create_patient_profile(req: PatientCreateRequest):
 	try:
 		logger().info(f"POST /patients name={req.name}")
@@ -58,7 +33,33 @@ async def create_patient_profile(req: PatientCreateRequest):
 		logger().error(f"Error creating patient: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.patch("/patients/{patient_id}")
+@router.get("/search")
+async def search_patients_route(q: str, limit: int = 20):
+	try:
+		logger().info(f"GET /patients/search q='{q}' limit={limit}")
+		results = search_patients(q, limit=limit)
+		logger().info(f"Search returned {len(results)} results")
+		return {"results": results}
+	except Exception as e:
+		logger().error(f"Error searching patients: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{patient_id}")
+async def get_patient(patient_id: str):
+	try:
+		logger().info(f"GET /patients/{patient_id}")
+		patient = get_patient_by_id(patient_id)
+		if not patient:
+			raise HTTPException(status_code=404, detail="Patient not found")
+		patient["_id"] = str(patient.get("_id")) if patient.get("_id") else None
+		return patient
+	except HTTPException:
+		raise
+	except Exception as e:
+		logger().error(f"Error getting patient: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/{patient_id}")
 async def update_patient(patient_id: str, req: PatientUpdateRequest):
 	try:
 		payload = {k: v for k, v in req.model_dump().items() if v is not None}
@@ -69,4 +70,14 @@ async def update_patient(patient_id: str, req: PatientUpdateRequest):
 		return {"message": "Updated"}
 	except Exception as e:
 		logger().error(f"Error updating patient: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{patient_id}/sessions")
+async def list_sessions_for_patient(patient_id: str):
+	"""List sessions for a patient from Mongo"""
+	try:
+		logger().info(f"GET /patients/{patient_id}/sessions")
+		return {"sessions": list_patient_sessions(patient_id)}
+	except Exception as e:
+		logger().error(f"Error listing sessions: {e}")
 		raise HTTPException(status_code=500, detail=str(e))

@@ -8,14 +8,13 @@ from src.core.state import MedicalState, get_state
 from src.data.repositories.message import list_session_messages
 from src.data.repositories.session import (delete_session,
                                            delete_session_messages,
-                                           ensure_session,
-                                           list_patient_sessions)
+                                           ensure_session)
 from src.models.chat import SessionRequest
 from src.utils.logger import logger
 
-router = APIRouter()
+router = APIRouter(prefix="/sessions", tags=["Session"])
 
-@router.post("/sessions")
+@router.post("/")
 async def create_chat_session(
 	request: SessionRequest,
 	state: MedicalState = Depends(get_state)
@@ -31,7 +30,7 @@ async def create_chat_session(
 		logger().error(f"Error creating session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/sessions/{session_id}")
+@router.get("/{session_id}")
 async def get_chat_session(
 	session_id: str,
 	state: MedicalState = Depends(get_state)
@@ -60,17 +59,7 @@ async def get_chat_session(
 		logger().error(f"Error getting session: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/patients/{patient_id}/sessions")
-async def list_sessions_for_patient(patient_id: str):
-	"""List sessions for a patient from Mongo"""
-	try:
-		logger().info(f"GET /patients/{patient_id}/sessions")
-		return {"sessions": list_patient_sessions(patient_id)}
-	except Exception as e:
-		logger().error(f"Error listing sessions: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/sessions/{session_id}/messages")
+@router.get("/{session_id}/messages")
 async def list_messages_for_session(session_id: str, patient_id: str, limit: int | None = None):
 	"""List messages for a session from Mongo, verified to belong to the patient"""
 	try:
@@ -86,7 +75,7 @@ async def list_messages_for_session(session_id: str, patient_id: str, limit: int
 		logger().error(f"Error listing messages: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/sessions/{session_id}")
+@router.delete("/{session_id}")
 async def delete_chat_session(
 	session_id: str,
 	state: MedicalState = Depends(get_state)

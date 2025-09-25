@@ -12,7 +12,7 @@ from src.services.medical_response import generate_medical_response
 from src.services.summariser import summarise_title_with_nvidia
 from src.utils.logger import logger
 
-router = APIRouter()
+router = APIRouter(tags=["Chat"])
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
