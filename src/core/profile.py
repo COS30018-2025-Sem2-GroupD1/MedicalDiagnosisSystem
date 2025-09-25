@@ -33,5 +33,5 @@ class UserProfile:
 		instance = cls(data["_id"], data["name"])
 		instance.created_at = data["created_at"]
 		instance.last_seen = data["last_seen"]
-		instance.preferences = data["preferences"]
+		#instance.preferences = data["preferences"]
 		return instance

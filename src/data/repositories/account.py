@@ -164,7 +164,17 @@ def get_doctor_by_name(name: str) -> dict[str, Any] | None:
 	collection = get_collection(ACCOUNTS_COLLECTION)
 	doctor = collection.find_one({
 		"name": name,
-		"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+		"role": {
+			"$in": [
+				"Doctor",
+				"Healthcare Prof",
+				"General Practitioner",
+				"Cardiologist",
+				"Pediatrician",
+				"Neurologist",
+				"Dermatologist"
+			]
+		}
 	})
 	if doctor:
 		doctor["_id"] = str(doctor.get("_id")) if doctor.get("_id") else None
@@ -185,7 +195,17 @@ def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
 	try:
 		cursor = collection.find({
 			"name": {"$regex": pattern},
-			"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+			"role": {
+				"$in": [
+					"Doctor",
+					"Healthcare Prof",
+					"General Practitioner",
+					"Cardiologist",
+					"Pediatrician",
+					"Neurologist",
+					"Dermatologist"
+				]
+			}
 		}).sort("name", ASCENDING).limit(limit)
 		results = []
 		for d in cursor:
@@ -203,7 +223,17 @@ def get_all_doctors(limit: int = 50) -> list[dict[str, Any]]:
 	collection = get_collection(ACCOUNTS_COLLECTION)
 	try:
 		cursor = collection.find({
-			"role": {"$in": ["Doctor", "Healthcare Prof", "General Practitioner", "Cardiologist", "Pediatrician", "Neurologist", "Dermatologist"]}
+			"role": {
+				"$in": [
+					"Doctor",
+					"Healthcare Prof",
+					"General Practitioner",
+					"Cardiologist",
+					"Pediatrician",
+					"Neurologist",
+					"Dermatologist"
+				]
+			}
 		}).sort("name", ASCENDING).limit(limit)
 		results = []
 		for d in cursor:
