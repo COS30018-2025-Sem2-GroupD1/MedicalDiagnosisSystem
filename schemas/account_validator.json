@@ -1,0 +1,42 @@
+{
+	"$jsonSchema": {
+		"bsonType": "object",
+		"title": "Account validator",
+		"required": [
+			"name",
+			"role",
+			"created_at",
+			"updated_at"
+		],
+		"properties": {
+			"name": {
+				"bsonType": "string",
+				"description": "'name' must be a string is required."
+			},
+			"role": {
+				"enum": [
+					"Doctor",
+					"Healthcare Prof",
+					"Nurse",
+					"Caregiver",
+					"Physicion",
+					"Medical Student",
+					"Other"
+				],
+				"description": "'role' must be one of: [Doctor, Healthcare Prof, Nurse, Caregiver, Physicion, Medical Student, Other] and is required."
+			},
+			"specialty": {
+				"bsonType": "string",
+				"description": "'speciality' must be a string and is optional."
+			},
+			"created_at": {
+				"bsonType": "date",
+				"description": "'created_at' must be a date and is required."
+			},
+			"updated_at": {
+				"bsonType": "date",
+				"description": "'updated_at' must be a date and is required."
+			}
+		}
+	}
+}

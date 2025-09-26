@@ -1,5 +1,6 @@
 # data/repositories/base.py
 
+import json
 import os
 
 from pymongo import MongoClient
@@ -14,7 +15,9 @@ from src.utils.logger import logger
 
 class ActionFailed(Exception):
 	"""Raised when a database action fails."""
-	pass
+
+class EntryNotFound(Exception):
+	"""Raised when an entry cannot be found in the database."""
 
 _mongo_client: MongoClient | None = None
 
@@ -41,6 +44,23 @@ def close_connection():
 		_mongo_client = None
 
 def get_collection(name: str) -> Collection:
-	"""Retrieves a MongoDB collection by name."""
-	db = get_database()
-	return db.get_collection(name)
+	"""Retrieves a MongoDB collection by name. Create it if it does not exist."""
+	return get_database().get_collection(name)
+
+def does_collection_exist(name: str) -> bool:
+	return True if name in get_database().list_collection_names() else False
+
+def create_collection(collection_name: str, validator_path: str):
+	#get_collection(collection_name).drop()
+	if does_collection_exist(collection_name):
+		raise ActionFailed("Collection already exists")
+
+	with open(validator_path, "r", encoding="utf-8") as f:
+		validator = json.load(f)
+	get_database().create_collection(
+		collection_name,
+		validator=validator,
+		validationLevel="moderate"
+	)
+	#logger().info(validator)
+	logger().info(collection_name + " database initialised")

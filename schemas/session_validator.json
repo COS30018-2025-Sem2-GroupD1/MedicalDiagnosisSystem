@@ -1,0 +1,35 @@
+{
+	"$jsonSchema": {
+		"bsonType": "object",
+		"title": "Session validator",
+		"required": [
+			"user_id",
+			"title",
+			"created_at",
+			"updated_at"
+		],
+		"properties": {
+			"user_id": {
+				"bsonType": "string",
+				"description": "'user_id' must be a string is required."
+			},
+			"title": {
+				"bsonType": "string",
+				"description": "'title' must be a string and is optional."
+			},
+			"created_at": {
+				"bsonType": "date",
+				"description": "'created_at' must be a date and is required."
+			},
+			"updated_at": {
+				"bsonType": "date",
+				"description": "'updated_at' must be a date and is required."
+			},
+			"messages": {
+				"bsonType": "array",
+				"items": {"bsonType": "string"},
+				"description": "'messages' must be a string and is optional."
+			}
+		}
+	}
+}

@@ -1,8 +1,17 @@
 # data/message/operations.py
 """
 Message management operations for MongoDB.
+A message is owned by a session, and is sent by either the user or the ai.
 
-@TODO Review and revise.
+## Fields
+	_id: index
+	session_id:
+	patient_id:
+	doctor_id:
+	role:
+	content:
+	timestamp:
+	created_at:
 """
 
 from datetime import datetime, timezone
@@ -10,12 +19,18 @@ from typing import Any
 
 from bson import ObjectId
 from pymongo import ASCENDING
+from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
+                            OperationFailure, PyMongoError)
 
-from src.data.connection import get_collection
+from src.data.connection import ActionFailed, create_collection, get_collection
 from src.utils.logger import logger
 
 CHAT_SESSIONS_COLLECTION = "chat_sessions"
 CHAT_MESSAGES_COLLECTION = "chat_messages"
+
+def create():
+	#get_collection(CHAT_MESSAGES_COLLECTION).drop()
+	create_collection(CHAT_MESSAGES_COLLECTION, "schemas/message_validator.json")
 
 def add_message(
 	session_id: str,

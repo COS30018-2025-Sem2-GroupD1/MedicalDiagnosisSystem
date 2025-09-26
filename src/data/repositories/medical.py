@@ -1,6 +1,8 @@
 # data/repositories/medical.py
 """
 Medical records and memory management operations for MongoDB.
+
+@Note Could this be split into two? One for records and one for memory.
 """
 
 from datetime import datetime, timezone

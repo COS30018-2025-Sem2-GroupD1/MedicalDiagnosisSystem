@@ -1,6 +1,16 @@
 # data/repositories/account.py
 """
 User account management operations for MongoDB.
+Each account represents a doctor.
+
+## Fields
+	_id: index
+	name: the name attached to the account
+	role:
+	specialty:
+	medical_roles:
+	created_at: the timestamp when the account was created
+	updated_at: the timestamp when the account data was last modified
 """
 
 import re
@@ -12,14 +22,15 @@ from pymongo import ASCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import ActionFailed, get_collection
+from src.data.connection import (ActionFailed, EntryNotFound,
+                                 create_collection, get_collection)
 from src.utils.logger import logger
 
 ACCOUNTS_COLLECTION = "accounts"
 
-class UserNotFound(Exception):
-	"""Raised when a user is not found in the database."""
-	pass
+def create():
+	#get_collection(ACCOUNTS_COLLECTION).drop()
+	create_collection(ACCOUNTS_COLLECTION, "schemas/account_validator.json")
 
 def get_account_frame(
 	*,
@@ -120,13 +131,13 @@ def set_user_preferences(
 			}
 		)
 		if result.matched_count == 0:
-			raise UserNotFound(f"User with ID '{user_id}' not found.")
+			raise EntryNotFound(f"User with ID '{user_id}' not found.")
 
 		return result.modified_count > 0
 	except PyMongoError as e:
 		logger().error(f"An error occurred with the database operation: {e}")
 		return False
-	except UserNotFound as e:
+	except EntryNotFound as e:
 		logger().error(e)
 		return False
 

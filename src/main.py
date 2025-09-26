@@ -24,9 +24,20 @@ except Exception as e:
 	logger(tag="env").warning(f"Error loading .env file: {e}")
 
 # Import project modules after trying to load environment variables
-from src.api.routes import (audio, chat, doctors, patients, session, static,
-                            system, user)
+from src.api.routes import audio as audio_route
+from src.api.routes import chat as chat_route
+from src.api.routes import doctors as doctors_route
+from src.api.routes import patients as patients_route
+from src.api.routes import session as session_route
+from src.api.routes import static as static_route
+from src.api.routes import system as system_route
+from src.api.routes import user as user_route
 from src.core.state import MedicalState, get_state
+from src.data.repositories import account as account_repo
+from src.data.repositories import medical as medical_repo
+from src.data.repositories import message as message_repo
+from src.data.repositories import patient as patient_repo
+from src.data.repositories import session as session_repo
 
 
 def startup_event(state: MedicalState):
@@ -68,6 +79,13 @@ def startup_event(state: MedicalState):
 
 	logger(tag="startup").info("Medical AI Assistant startup complete")
 
+	# TODO On first startup, create all repositories if they don't exist
+	#account_repo.create()
+	#patient_repo.create()
+	#session_repo.create()
+	#message_repo.create()
+	#medical_repo.create()
+
 def shutdown_event():
 	"""Cleanup on shutdown"""
 	logger(tag="shutdown").info("Shutting down Medical AI Assistant...")
@@ -105,14 +123,14 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
-app.include_router(chat.router)
-app.include_router(user.router)
-app.include_router(session.router)
-app.include_router(patients.router)
-app.include_router(doctors.router)
-app.include_router(system.router)
-app.include_router(static.router)
-app.include_router(audio.router)
+app.include_router(chat_route.router)
+app.include_router(user_route.router)
+app.include_router(session_route.router)
+app.include_router(patients_route.router)
+app.include_router(doctors_route.router)
+app.include_router(system_route.router)
+app.include_router(static_route.router)
+app.include_router(audio_route.router)
 
 @app.get("/api/info")
 async def get_api_info():

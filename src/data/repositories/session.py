@@ -1,8 +1,16 @@
-# data/repositories/chat.py
+# data/repositories/session.py
 """
 Chat session management operations for MongoDB.
+A session is owned by an account and is related to a patient.
+A session contains many messages.
 
-@TODO Review and revise.
+## Fields
+	_id: index
+	user_id:
+	title:
+	created_at:
+	updated_at:
+	messages:
 """
 
 import uuid
@@ -13,11 +21,15 @@ from pymongo import DESCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import ActionFailed, get_collection
+from src.data.connection import ActionFailed, create_collection, get_collection
 from src.utils.logger import logger
 
 CHAT_SESSIONS_COLLECTION = "chat_sessions"
 CHAT_MESSAGES_COLLECTION = "chat_messages"
+
+def create():
+	#get_collection(CHAT_SESSIONS_COLLECTION).drop()
+	create_collection(CHAT_SESSIONS_COLLECTION, "schemas/session_validator.json")
 
 def create_session(
 	user_id: str,

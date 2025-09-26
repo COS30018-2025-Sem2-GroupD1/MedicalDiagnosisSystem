@@ -1,0 +1,59 @@
+{
+	"$jsonSchema": {
+		"bsonType": "object",
+		"title": "Patient validator",
+		"required": [
+			"name",
+			"age",
+			"sex",
+			"assigned_doctor_id",
+			"created_at",
+			"updated_at"
+		],
+		"properties": {
+			"assigned_doctor_id": {
+				"bsonType": ""
+			},
+			"name": {
+				"bsonType": "string",
+				"description": "'name' must be a string is required."
+			},
+			"age": {
+				"bsonType": "uint",
+				"description": "'description' must be an unsigned int and is required."
+			},
+			"sex": {
+				"bsonType": "string",
+				"description": "sex must be string and is required."
+			},
+			"address": {
+				"bsonType": "string",
+				"description": "'address' must be string and is optional."
+			},
+			"phone": {
+				"bsonType": "string",
+				"description": "'phone' must be a string and is optional."
+			},
+			"email": {
+				"bsonType": "string",
+				"description": "'email' must be a string and is optional."
+			},
+			"medications": {
+				"bsonType": "string",
+				"description": "'medication' must be a  and is optional."
+			},
+			"past_assessment_summary": {
+				"bsonType": "string",
+				"description": "'past_assessment_summary' must be a string and is optional."
+			},
+			"created_at": {
+				"bsonType": "date",
+				"description": "'created_at' must be a date and is required."
+			},
+			"updated_at": {
+				"bsonType": "date",
+				"description": "'updated_at' must be a date and is required."
+			}
+		}
+	}
+}
