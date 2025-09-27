@@ -5,12 +5,11 @@ Each account represents a doctor.
 
 ## Fields
 	_id: index
-	name: the name attached to the account
-	role:
-	specialty:
-	medical_roles:
-	created_at: the timestamp when the account was created
-	updated_at: the timestamp when the account data was last modified
+	name: The name attached to the account
+	role: What type of account this is
+	specialty: Any extra information about the account
+	created_at: The timestamp when the account was created
+	updated_at: The timestamp when the account data was last modified
 """
 
 import re
