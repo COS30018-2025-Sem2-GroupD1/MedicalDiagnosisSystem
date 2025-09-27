@@ -5,14 +5,14 @@ class PatientEMR {
         this.patientData = null;
         this.medications = [];
         this.sessions = [];
-        
+
         this.init();
     }
 
     async init() {
         // Get patient ID from URL or localStorage
         this.patientId = this.getPatientIdFromURL() || localStorage.getItem('medicalChatbotPatientId');
-        
+
         if (!this.patientId) {
             this.showError('No patient selected. Please go back to the main page and select a patient.');
             return;
@@ -58,20 +58,20 @@ class PatientEMR {
 
     async loadPatientData() {
         this.showLoading(true);
-        
+
         try {
             // Load patient data
-            const patientResp = await fetch(`/patients/${this.patientId}`);
+            const patientResp = await fetch(`/patient/${this.patientId}`);
             if (!patientResp.ok) {
                 throw new Error('Failed to load patient data');
             }
-            
+
             this.patientData = await patientResp.json();
             this.populatePatientForm();
-            
+
             // Load patient sessions
             await this.loadPatientSessions();
-            
+
         } catch (error) {
             console.error('Error loading patient data:', error);
             this.showError('Failed to load patient data. Please try again.');
@@ -134,9 +134,9 @@ class PatientEMR {
     addMedication() {
         const input = document.getElementById('newMedicationInput');
         const medication = input.value.trim();
-        
+
         if (!medication) return;
-        
+
         this.medications.push(medication);
         this.renderMedications();
         input.value = '';
@@ -149,7 +149,7 @@ class PatientEMR {
 
     async loadPatientSessions() {
         try {
-            const resp = await fetch(`/patients/${this.patientId}/sessions`);
+            const resp = await fetch(`/patient/${this.patientId}/sessions`);
             if (resp.ok) {
                 const data = await resp.json();
                 this.sessions = data.sessions || [];
@@ -162,14 +162,14 @@ class PatientEMR {
 
     renderSessions() {
         const container = document.getElementById('sessionsContainer');
-        
+
         if (this.sessions.length === 0) {
             container.innerHTML = '<div style="color: var(--text-secondary); font-style: italic;">No chat sessions found</div>';
             return;
         }
 
         container.innerHTML = '';
-        
+
         this.sessions.forEach(session => {
             const sessionEl = document.createElement('div');
             sessionEl.className = 'session-item';
@@ -180,19 +180,19 @@ class PatientEMR {
                     <span class="session-messages">${session.message_count || 0} messages</span>
                 </div>
             `;
-            
+
             sessionEl.addEventListener('click', () => {
                 // Could open session details or redirect to main page with session
                 window.location.href = `/?session_id=${session.session_id}`;
             });
-            
+
             container.appendChild(sessionEl);
         });
     }
 
     async savePatientData() {
         this.showLoading(true);
-        
+
         try {
             const updateData = {
                 name: document.getElementById('patientNameInput').value.trim(),
@@ -205,7 +205,7 @@ class PatientEMR {
                 past_assessment_summary: document.getElementById('pastAssessmentInput').value.trim() || null
             };
 
-            const resp = await fetch(`/patients/${this.patientId}`, {
+            const resp = await fetch(`/patient/${this.patientId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json'

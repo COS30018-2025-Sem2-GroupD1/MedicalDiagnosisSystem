@@ -1,4 +1,4 @@
-# api/routes/patients.py
+# api/routes/patient.py
 
 from fastapi import APIRouter, HTTPException
 
@@ -9,12 +9,12 @@ from src.data.repositories.session import list_patient_sessions
 from src.models.user import PatientCreateRequest, PatientUpdateRequest
 from src.utils.logger import logger
 
-router = APIRouter(prefix="/patients", tags=["Patients"])
+router = APIRouter(prefix="/patient", tags=["Patients"])
 
 @router.post("")
 async def create_patient_profile(req: PatientCreateRequest):
 	try:
-		logger().info(f"POST /patients name={req.name}")
+		logger().info(f"POST /patient name={req.name}")
 		patient = create_patient(
 			name=req.name,
 			age=req.age,
@@ -36,7 +36,7 @@ async def create_patient_profile(req: PatientCreateRequest):
 @router.get("/search")
 async def search_patients_route(q: str, limit: int = 20):
 	try:
-		logger().info(f"GET /patients/search q='{q}' limit={limit}")
+		logger().info(f"GET /patient/search q='{q}' limit={limit}")
 		results = search_patients(q, limit=limit)
 		logger().info(f"Search returned {len(results)} results")
 		return {"results": results}
@@ -47,7 +47,7 @@ async def search_patients_route(q: str, limit: int = 20):
 @router.get("/{patient_id}")
 async def get_patient(patient_id: str):
 	try:
-		logger().info(f"GET /patients/{patient_id}")
+		logger().info(f"GET /patient/{patient_id}")
 		patient = get_patient_by_id(patient_id)
 		if not patient:
 			raise HTTPException(status_code=404, detail="Patient not found")
@@ -63,7 +63,7 @@ async def get_patient(patient_id: str):
 async def update_patient(patient_id: str, req: PatientUpdateRequest):
 	try:
 		payload = {k: v for k, v in req.model_dump().items() if v is not None}
-		logger().info(f"PATCH /patients/{patient_id} fields={list(payload.keys())}")
+		logger().info(f"PATCH /patient/{patient_id} fields={list(payload.keys())}")
 		modified = update_patient_profile(patient_id, payload)
 		if modified == 0:
 			return {"message": "No changes"}
@@ -76,7 +76,7 @@ async def update_patient(patient_id: str, req: PatientUpdateRequest):
 async def list_sessions_for_patient(patient_id: str):
 	"""List sessions for a patient from Mongo"""
 	try:
-		logger().info(f"GET /patients/{patient_id}/sessions")
+		logger().info(f"GET /patient/{patient_id}/sessions")
 		return {"sessions": list_patient_sessions(patient_id)}
 	except Exception as e:
 		logger().error(f"Error listing sessions: {e}")

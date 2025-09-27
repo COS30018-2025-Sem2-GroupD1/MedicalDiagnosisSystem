@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	async function loadPatientIntoForm(patientId) {
 		try {
-			const resp = await fetch(`/patients/${patientId}`);
+			const resp = await fetch(`/patient/${patientId}`);
 			if (!resp.ok) return;
 			const data = await resp.json();
 			document.getElementById('name').value = data.name || '';
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 		try {
 			if (isEditMode && currentPatientId) {
-				const resp = await fetch(`/patients/${currentPatientId}`, {
+				const resp = await fetch(`/patient/${currentPatientId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				result.textContent = 'Patient updated successfully.';
 				result.style.color = 'green';
 			} else {
-				const resp = await fetch('/patients', {
+				const resp = await fetch('/patient', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)

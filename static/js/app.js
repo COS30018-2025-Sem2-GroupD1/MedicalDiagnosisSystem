@@ -1272,7 +1272,7 @@ How can I assist you today?`;
             if (status) {
                 // Try to fetch patient name
                 try {
-                    const resp = await fetch(`/patients/${pid}`);
+                    const resp = await fetch(`/patient/${pid}`);
                     if (resp.ok) {
                         const patient = await resp.json();
                         status.textContent = `Patient: ${patient.name || 'Unknown'} (${pid})`;
@@ -1338,7 +1338,7 @@ How can I assist you today?`;
             this.savePatientId();
             // Try to get patient name for display
             try {
-                const resp = await fetch(`/patients/${value}`);
+                const resp = await fetch(`/patient/${value}`);
                 if (resp.ok) {
                     const patient = await resp.json();
                     this.updatePatientDisplay(value, patient.name || 'Unknown');
@@ -1355,7 +1355,7 @@ How can I assist you today?`;
         // Otherwise, search for patient by name or partial ID
         console.log('[DEBUG] Searching for patient by name/partial ID');
         try {
-            const resp = await fetch(`/patients/search?q=${encodeURIComponent(value)}&limit=1`);
+            const resp = await fetch(`/patient/search?q=${encodeURIComponent(value)}&limit=1`);
             console.log('[DEBUG] Search response status:', resp.status);
             if (resp.ok) {
                 const data = await resp.json();
@@ -1406,7 +1406,7 @@ How can I assist you today?`;
         // If no cache or cache is stale, fetch from backend
         if (sessions.length === 0) {
             try {
-                const resp = await fetch(`/patients/${this.currentPatientId}/sessions`);
+                const resp = await fetch(`/patient/${this.currentPatientId}/sessions`);
                 if (resp.ok) {
                     const data = await resp.json();
                     sessions = Array.isArray(data.sessions) ? data.sessions : [];
@@ -1552,7 +1552,7 @@ How can I assist you today?`;
             debounceTimer = setTimeout(async () => {
                 try {
                     console.log('[DEBUG] Searching patients with query:', q);
-                    const url = `/patients/search?q=${encodeURIComponent(q)}&limit=8`;
+                    const url = `/patient/search?q=${encodeURIComponent(q)}&limit=8`;
                     console.log('[DEBUG] Search URL:', url);
                     const resp = await fetch(url);
                     console.log('[DEBUG] Search response status:', resp.status);
@@ -1609,7 +1609,7 @@ How can I assist you today?`;
                 const pid = this?.currentPatientId;
                 if (pid) {
                     try {
-                        const resp = await fetch(`/patients/${pid}`);
+                        const resp = await fetch(`/patient/${pid}`);
                         if (resp.ok) {
                             const p = await resp.json();
                             const name = p.name || 'Unknown';
@@ -2489,7 +2489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pid = window.medicalChatbot?.currentPatientId;
             if (pid) {
                 try {
-                    const resp = await fetch(`/patients/${pid}`);
+                    const resp = await fetch(`/patient/${pid}`);
                     if (resp.ok) {
                         const p = await resp.json();
                         const name = p.name || 'Unknown';

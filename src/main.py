@@ -27,7 +27,7 @@ except Exception as e:
 from src.api.routes import account as account_route
 from src.api.routes import audio as audio_route
 from src.api.routes import chat as chat_route
-from src.api.routes import patients as patients_route
+from src.api.routes import patient as patients_route
 from src.api.routes import session as session_route
 from src.api.routes import static as static_route
 from src.api.routes import system as system_route
