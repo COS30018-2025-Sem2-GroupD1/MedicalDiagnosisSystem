@@ -14,7 +14,12 @@ class TaggedFormatter(logging.Formatter):
 	in the LogRecord. This prevents errors if a log is generated without the
 	TaggedAdapter, making the logging system more robust.
 	"""
-	def __init__(self, fmt=_DEFAULT_FORMAT, datefmt=_DEFAULT_DATE_FORMAT, **kwargs):
+	def __init__(
+		self,
+		fmt=_DEFAULT_FORMAT,
+		datefmt=_DEFAULT_DATE_FORMAT,
+		**kwargs
+	):
 		super().__init__(fmt, datefmt, **kwargs)
 
 	def format(self, record: logging.LogRecord) -> str:
@@ -25,7 +30,10 @@ class TaggedFormatter(logging.Formatter):
 			record.tag = ""
 		return super().format(record)
 
-def setup_logging(level: int = logging.INFO, stream=sys.stdout) -> None:
+def setup_logging(
+	level: int = logging.INFO,
+	stream=sys.stdout
+) -> None:
 	"""
 	Configures the root logger for the application.
 
@@ -50,7 +58,11 @@ def setup_logging(level: int = logging.INFO, stream=sys.stdout) -> None:
 	root_logger.setLevel(level)
 	root_logger.info("Logger set up")
 
-def logger(*, name: str | None = None, tag: str | None = None) -> logging.LoggerAdapter:
+def logger(
+	tag: str | None = None,
+	*,
+	name: str | None = None
+) -> logging.LoggerAdapter:
 	"""
 	Returns a logger that injects a tag into the LogRecord's context.
 
@@ -61,10 +73,10 @@ def logger(*, name: str | None = None, tag: str | None = None) -> logging.Logger
 	```
 		# In a file named 'my_app/database.py'
 		setup_logging()
-		logger = logger("DATABASE") # Name will be 'my_app.database'
+		logger = logger(tag="DATABASE") # Name will be 'my_app.database'
 		logger.info("Connection established.")
 		# Expected Output:
-		# 2025-09-07 22:15:30 — INFO  	[__main__:DATABASE]  	Connection established.
+		# 2025-09-07 22:15:30 — INFO  	[my_app.database:DATABASE]  	Connection established.
 	```
 
 	Args:
@@ -90,4 +102,7 @@ def logger(*, name: str | None = None, tag: str | None = None) -> logging.Logger
 
 	# A LoggerAdapter is the standard way to pass contextual information to loggers.
 	# It wraps the logger and adds the dictionary provided to the 'extra' attribute of each LogRecord.
-	return logging.LoggerAdapter(base_logger, {"tag": f":{tag}" if tag is not None else ""})
+	return logging.LoggerAdapter(
+		base_logger,
+		{"tag": f":{tag}" if tag is not None else ""}
+	)

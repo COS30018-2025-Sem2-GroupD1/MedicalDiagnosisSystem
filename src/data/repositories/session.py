@@ -28,7 +28,6 @@ CHAT_SESSIONS_COLLECTION = "chat_sessions"
 CHAT_MESSAGES_COLLECTION = "chat_messages"
 
 def create():
-	#get_collection(CHAT_SESSIONS_COLLECTION).drop()
 	create_collection(CHAT_SESSIONS_COLLECTION, "schemas/session_validator.json")
 
 def create_session(

@@ -32,7 +32,6 @@ from src.utils.logger import logger
 PATIENTS_COLLECTION = "patients"
 
 def create():
-	#get_collection(PATIENTS_COLLECTION).drop()
 	create_collection(PATIENTS_COLLECTION, "schemas/patient_validator.json")
 
 def _generate_patient_id() -> str:

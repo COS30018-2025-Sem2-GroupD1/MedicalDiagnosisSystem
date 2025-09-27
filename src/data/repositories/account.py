@@ -29,7 +29,6 @@ from src.utils.logger import logger
 ACCOUNTS_COLLECTION = "accounts"
 
 def create():
-	#get_collection(ACCOUNTS_COLLECTION).drop()
 	create_collection(ACCOUNTS_COLLECTION, "schemas/account_validator.json")
 
 def get_account_frame(
