@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter, HTTPException
 
-from src.data.repositories.account import (create_doctor, get_all_doctors,
-                                           get_doctor_by_name, search_doctors)
+from src.data.repositories.account import (create_account, get_all_accounts,
+                                           get_account_by_name, search_accounts)
 from src.models.user import DoctorCreateRequest
 from src.utils.logger import logger
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/doctors", tags=["Doctors"])
 async def get_all_doctors_route(limit: int = 50):
 	try:
 		logger().info(f"GET /doctors limit={limit}")
-		results = get_all_doctors(limit=limit)
+		results = get_all_accounts(limit=limit)
 		logger().info(f"Retrieved {len(results)} doctors")
 		return {"results": results}
 	except Exception as e:
@@ -24,11 +24,10 @@ async def get_all_doctors_route(limit: int = 50):
 async def create_doctor_profile(req: DoctorCreateRequest):
 	try:
 		logger().info(f"POST /doctors name={req.name}")
-		doctor_id = create_doctor(
+		doctor_id = create_account(
 			name=req.name,
 			role=req.role,
-			specialty=req.specialty,
-			medical_roles=req.medical_roles
+			specialty=req.specialty
 		)
 		logger().info(f"Created doctor {req.name} id={doctor_id}")
 		return {"doctor_id": doctor_id, "name": req.name}
@@ -40,7 +39,7 @@ async def create_doctor_profile(req: DoctorCreateRequest):
 async def get_doctor(doctor_name: str):
 	try:
 		logger().info(f"GET /doctors/{doctor_name}")
-		doctor = get_doctor_by_name(doctor_name)
+		doctor = get_account_by_name(doctor_name)
 		if not doctor:
 			raise HTTPException(status_code=404, detail="Doctor not found")
 		return doctor
@@ -54,7 +53,7 @@ async def get_doctor(doctor_name: str):
 async def search_doctors_route(q: str, limit: int = 10):
 	try:
 		logger().info(f"GET /doctors/search q='{q}' limit={limit}")
-		results = search_doctors(q, limit=limit)
+		results = search_accounts(q, limit=limit)
 		logger().info(f"Doctor search returned {len(results)} results")
 		return {"results": results}
 	except Exception as e:

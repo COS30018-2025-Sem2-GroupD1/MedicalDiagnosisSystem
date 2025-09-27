@@ -17,23 +17,16 @@ async def create_user_profile(
 	"""Create or update user profile"""
 	try:
 		# Persist to in-memory profile (existing behavior)
-		user = state.memory_system.create_user(user_id=request.user_id, name=request.name)
-		user.set_preference("role", request.role)
-		if request.specialty:
-			user.set_preference("specialty", request.specialty)
-		if request.medical_roles:
-			user.set_preference("medical_roles", request.medical_roles)
+		#state.memory_system.create_user(name=request.name, role=request.role, speciality=request.specialty)
 
 		# Persist to MongoDB accounts collection
 		account_id = create_account(
 			request.name,
 			request.role,
-			request.specialty or None,
-			request.medical_roles or [request.role] if request.role else [],
-			user_id=request.user_id
+			request.specialty
 		)
 
-		return {"message": "User profile created successfully", "user_id": request.user_id, "account_id": account_id}
+		return {"message": "User profile created successfully", "account_id": account_id}
 	except Exception as e:
 		logger().error(f"Error creating user profile: {e}")
 		raise HTTPException(status_code=500, detail=str(e))

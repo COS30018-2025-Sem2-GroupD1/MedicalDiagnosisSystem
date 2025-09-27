@@ -51,7 +51,7 @@ class TestMongoDBRepositories(unittest.TestCase):
 		success = account_repo.update_account(user_id, {"name": "Updated Name"}, collection_name=test_coll)
 		self.assertTrue(success)
 
-		profile = account_repo.get_user_profile(user_id, collection_name=test_coll)
+		profile = account_repo.get_account(user_id, collection_name=test_coll)
 		self.assertIsNotNone(profile)
 		self.assertEqual(profile["name"], "Updated Name") # type: ignore
 

@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from src.core.profile import UserProfile
 from src.core.session import ChatSession
@@ -21,27 +20,20 @@ class MemoryLRU:
 
 	def create_user(self,
 		name: str = "Anonymous",
-		role: str | None = None,
-		speciality: str | None = None,
-		roles: list[str] = [],
-		preferences: dict[str, Any] = {},
-		*,
-		user_id: str,
+		role: str = "Other",
+		speciality: str | None = None
 	) -> UserProfile:
 		"""Creates a new user profile."""
-		account.create_account(
+		user_id = account.create_account(
 			name=name,
 			role=role,
-			speciality=speciality,
-			roles=roles,
-			preferences=preferences,
-			user_id=user_id
+			specialty=speciality
 		)
 		return UserProfile(user_id, name)
 
 	def get_user(self, user_id: str) -> UserProfile | None:
 		"""Retrieves a user profile by its ID."""
-		data = account.get_user_profile(user_id)
+		data = account.get_account(user_id)
 		return UserProfile.from_dict(data) if data else None
 
 	def create_session(self, user_id: str, title: str = "New Chat") -> str:
@@ -90,14 +82,6 @@ class MemoryLRU:
 	def delete_session(self, session_id: str):
 		"""Deletes a chat session."""
 		session.delete_session(session_id)
-
-	def set_user_preferences(
-		self,
-		user_id: str,
-		update_data: dict[str, Any]
-	):
-		"""Sets a preference for a user."""
-		account.set_user_preferences(user_id, update_data)
 
 	def add(self, user_id: str, summary: str):
 		"""Adds a medical context summary for a user."""

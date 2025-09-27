@@ -28,8 +28,21 @@ from src.utils.logger import logger
 
 ACCOUNTS_COLLECTION = "accounts"
 
+VALID_ROLES = [
+	"Doctor",
+	"Healthcare Prof",
+	"Nurse",
+	"Caregiver",
+	"Physicion",
+	"Medical Student",
+	"Other"
+]
+
 def create():
-	create_collection(ACCOUNTS_COLLECTION, "schemas/account_validator.json")
+	create_collection(
+		ACCOUNTS_COLLECTION,
+		"schemas/account_validator.json"
+	)
 
 def get_account_frame(
 	*,
@@ -40,12 +53,9 @@ def get_account_frame(
 
 def create_account(
 	name: str,
-	role: str | None = None,
-	speciality: str | None = None,
-	roles: list[str] = [],
-	preferences: dict[str, Any] = {},
+	role: str,
+	specialty: str | None = None,
 	*,
-	user_id: str,
 	collection_name: str = ACCOUNTS_COLLECTION
 ) -> str:
 	"""
@@ -56,18 +66,15 @@ def create_account(
 	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
 	user_data: dict[str, Any] = {
-		"_id": user_id,
 		"name": name,
 		"role" : role,
-		"speciality": speciality,
-		"medical_roles": roles,
+		"specialty": specialty,
 		"created_at": now,
 		"updated_at": now
 	}
 
 	try:
 		result = collection.insert_one(user_data)
-		set_user_preferences(user_id, preferences)
 		logger().info(f"Created new account: {result.inserted_id}")
 		return str(result.inserted_id)
 	except DuplicateKeyError as e:
@@ -93,12 +100,12 @@ def update_account(
 	)
 	return result.modified_count > 0
 
-def get_user_profile(
+def get_account(
 	user_id: str,
 	/, *,
 	collection_name: str = ACCOUNTS_COLLECTION
 ) -> dict[str, Any] | None:
-	"""Retrieves a user profile by ID and updates their last_seen timestamp."""
+	"""Retrieves an account by ID and updates their last_seen timestamp."""
 	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
 	return collection.find_one_and_update(
@@ -111,93 +118,21 @@ def get_user_profile(
 		return_document=True
 	)
 
-def set_user_preferences(
-	user_id: str,
-	/,
-	preferences: dict[str, Any],
-	*,
-	collection_name: str = ACCOUNTS_COLLECTION
-) -> bool:
-	"""Sets a preference for a user."""
-	try:
-		collection = get_collection(collection_name)
-		preferences = {f"preferences.{key}": value for key, value in preferences}
-		preferences["updated_at"] = datetime.now(timezone.utc)
-		result = collection.update_one(
-			{"_id": user_id},
-			{
-				"$set": preferences
-			}
-		)
-		if result.matched_count == 0:
-			raise EntryNotFound(f"User with ID '{user_id}' not found.")
-
-		return result.modified_count > 0
-	except PyMongoError as e:
-		logger().error(f"An error occurred with the database operation: {e}")
-		return False
-	except EntryNotFound as e:
-		logger().error(e)
-		return False
-
-# TODO Below methods are unverified
-
-def create_doctor(
-	*,
-	name: str,
-	role: str | None = None,
-	specialty: str | None = None,
-	medical_roles: list[str] | None = None
-) -> str:
-	"""Create a new doctor profile"""
+def get_account_by_name(name: str) -> dict[str, Any] | None:
+	"""Get account by name from accounts collection"""
 	collection = get_collection(ACCOUNTS_COLLECTION)
-	now = datetime.now(timezone.utc)
-	doctor_doc = {
-		"name": name,
-		"role": role,
-		"specialty": specialty,
-		"medical_roles": medical_roles or [],
-		"created_at": now,
-		"updated_at": now
-	}
-	try:
-		result = collection.insert_one(doctor_doc)
-		logger().info(f"Created new doctor: {name} with id {result.inserted_id}")
-		return str(result.inserted_id)
-	except Exception as e:
-		logger().error(f"Error creating doctor: {e}")
-		raise e
+	account = collection.find_one({"name": name})
+	#if account:
+	#	account["_id"] = str(account.get("_id")) if account.get("_id") else None
+	return account
 
-
-def get_doctor_by_name(name: str) -> dict[str, Any] | None:
-	"""Get doctor by name from accounts collection"""
-	collection = get_collection(ACCOUNTS_COLLECTION)
-	doctor = collection.find_one({
-		"name": name,
-		"role": {
-			"$in": [
-				"Doctor",
-				"Healthcare Prof",
-				"General Practitioner",
-				"Cardiologist",
-				"Pediatrician",
-				"Neurologist",
-				"Dermatologist"
-			]
-		}
-	})
-	if doctor:
-		doctor["_id"] = str(doctor.get("_id")) if doctor.get("_id") else None
-	return doctor
-
-
-def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
-	"""Search doctors by name (case-insensitive contains) from accounts collection"""
+def search_accounts(query: str, limit: int = 10) -> list[dict[str, Any]]:
+	"""Search accounts by name (case-insensitive contains) from accounts collection"""
 	collection = get_collection(ACCOUNTS_COLLECTION)
 	if not query:
 		return []
 
-	logger().info(f"Searching doctors with query: '{query}', limit: {limit}")
+	logger().info(f"Searching accounts with query: '{query}', limit: {limit}")
 
 	# Build a regex for name search
 	pattern = re.compile(re.escape(query), re.IGNORECASE)
@@ -221,30 +156,18 @@ def search_doctors(query: str, limit: int = 10) -> list[dict[str, Any]]:
 		for d in cursor:
 			d["_id"] = str(d.get("_id")) if d.get("_id") else None
 			results.append(d)
-		logger().info(f"Found {len(results)} doctors matching query")
+		logger().info(f"Found {len(results)} accounts matching query")
 		return results
 	except Exception as e:
-		logger().error(f"Error in search_doctors: {e}")
+		logger().error(f"Error in search_account: {e}")
 		return []
 
 
-def get_all_doctors(limit: int = 50) -> list[dict[str, Any]]:
+def get_all_accounts(limit: int = 50) -> list[dict[str, Any]]:
 	"""Get all doctors with optional limit from accounts collection"""
 	collection = get_collection(ACCOUNTS_COLLECTION)
 	try:
-		cursor = collection.find({
-			"role": {
-				"$in": [
-					"Doctor",
-					"Healthcare Prof",
-					"General Practitioner",
-					"Cardiologist",
-					"Pediatrician",
-					"Neurologist",
-					"Dermatologist"
-				]
-			}
-		}).sort("name", ASCENDING).limit(limit)
+		cursor = collection.find().sort("name", ASCENDING).limit(limit)
 		results = []
 		for d in cursor:
 			d["_id"] = str(d.get("_id")) if d.get("_id") else None

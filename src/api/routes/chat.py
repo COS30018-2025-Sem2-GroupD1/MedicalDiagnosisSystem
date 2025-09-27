@@ -36,11 +36,7 @@ async def chat_endpoint(
 		# Get or create user profile (doctor as current user profile)
 		user_profile = state.memory_system.get_user(request.user_id)
 		if not user_profile:
-			state.memory_system.create_user(
-				role=request.user_role or "Anonymous",
-				user_id=request.user_id,
-				speciality=request.user_specialty or None
-			)
+			state.memory_system.create_user()
 	except Exception as e:
 		logger().error(f"Error retrieving or creating user profile: {e}")
 		logger().error(f"Request data: {request.model_dump()}")
