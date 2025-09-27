@@ -39,6 +39,7 @@ VALID_ROLES = [
 ]
 
 def create():
+	#get_collection(ACCOUNTS_COLLECTION).drop()
 	create_collection(
 		ACCOUNTS_COLLECTION,
 		"schemas/account_validator.json"
@@ -68,7 +69,7 @@ def create_account(
 	user_data: dict[str, Any] = {
 		"name": name,
 		"role" : role,
-		"specialty": specialty,
+		"specialty": specialty or "",
 		"created_at": now,
 		"updated_at": now
 	}
@@ -120,10 +121,12 @@ def get_account(
 
 def get_account_by_name(name: str) -> dict[str, Any] | None:
 	"""Get account by name from accounts collection"""
+	logger().info("Trying to retrieve account: " + name)
 	collection = get_collection(ACCOUNTS_COLLECTION)
 	account = collection.find_one({"name": name})
-	#if account:
-	#	account["_id"] = str(account.get("_id")) if account.get("_id") else None
+	# HACK This somehow stops some unusual bug with creating a new account.
+	if account:
+		account["_id"] = str(account.get("_id")) if account.get("_id") else None
 	return account
 
 def search_accounts(query: str, limit: int = 10) -> list[dict[str, Any]]:

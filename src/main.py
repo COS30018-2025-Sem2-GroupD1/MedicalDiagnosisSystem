@@ -24,14 +24,13 @@ except Exception as e:
 	logger(tag="env").warning(f"Error loading .env file: {e}")
 
 # Import project modules after trying to load environment variables
+from src.api.routes import account as account_route
 from src.api.routes import audio as audio_route
 from src.api.routes import chat as chat_route
-from src.api.routes import doctors as doctors_route
 from src.api.routes import patients as patients_route
 from src.api.routes import session as session_route
 from src.api.routes import static as static_route
 from src.api.routes import system as system_route
-from src.api.routes import user as user_route
 from src.core.state import MedicalState, get_state
 from src.data.repositories import account as account_repo
 from src.data.repositories import medical as medical_repo
@@ -124,10 +123,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
 app.include_router(chat_route.router)
-app.include_router(user_route.router)
 app.include_router(session_route.router)
 app.include_router(patients_route.router)
-app.include_router(doctors_route.router)
+app.include_router(account_route.router)
 app.include_router(system_route.router)
 app.include_router(static_route.router)
 app.include_router(audio_route.router)

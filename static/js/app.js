@@ -599,7 +599,7 @@ How can I assist you today?`;
             } else {
                 // If doctor not found in local list, try to fetch from backend
                 try {
-                    const resp = await fetch(`/doctors/search?q=${encodeURIComponent(selectedName)}&limit=1`);
+                    const resp = await fetch(`/account/search?q=${encodeURIComponent(selectedName)}&limit=1`);
                     if (resp.ok) {
                         const data = await resp.json();
                         const doctor = data.results && data.results[0];
@@ -968,7 +968,7 @@ How can I assist you today?`;
     async loadDoctors() {
         try {
             // Fetch doctors from MongoDB
-            const resp = await fetch('/doctors');
+            const resp = await fetch('/account');
             if (resp.ok) {
                 const data = await resp.json();
                 this.doctors = data.results || [];
@@ -1004,7 +1004,7 @@ How can I assist you today?`;
 
     async searchDoctors(query) {
         try {
-            const resp = await fetch(`/doctors/search?q=${encodeURIComponent(query)}&limit=10`);
+            const resp = await fetch(`/account/search?q=${encodeURIComponent(query)}&limit=10`);
             if (resp.ok) {
                 const data = await resp.json();
                 return data.results || [];
@@ -1017,7 +1017,7 @@ How can I assist you today?`;
 
     async createDoctor(doctorData) {
         try {
-            const resp = await fetch('/doctors', {
+            const resp = await fetch('/account', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(doctorData)
@@ -1134,7 +1134,7 @@ How can I assist you today?`;
         // Check if doctor exists in MongoDB first
         let doctorExists = false;
         try {
-            const resp = await fetch(`/doctors/${encodeURIComponent(name)}`);
+            const resp = await fetch(`/account/${encodeURIComponent(name)}`);
             doctorExists = resp.ok;
         } catch (e) {
             console.warn('Failed to check doctor existence:', e);
@@ -1176,7 +1176,7 @@ How can I assist you today?`;
             };
 
             try {
-                const resp = await fetch('/doctors', {
+                const resp = await fetch('/account', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(doctorPayload)

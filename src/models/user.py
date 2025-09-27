@@ -3,12 +3,7 @@
 from pydantic import BaseModel
 
 
-class UserProfileRequest(BaseModel):
-	name: str
-	role: str
-	specialty: str | None = None
-
-class DoctorCreateRequest(BaseModel):
+class AccountCreateRequest(BaseModel):
 	name: str
 	role: str
 	specialty: str | None = None
