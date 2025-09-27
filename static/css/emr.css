@@ -95,19 +95,27 @@
 }
 
 .emr-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.emr-grid .row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
+    gap: 16px;
+}
+
+.emr-grid .row:not(.contact-info) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.emr-grid .row.contact-info {
+    grid-template-columns: repeat(3, 1fr);
 }
 
 .emr-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.emr-field.full-width {
-    grid-column: 1 / -1;
+    display: grid;
+    gap: 6px;
 }
 
 .emr-field label {
@@ -300,27 +308,34 @@
         align-items: stretch;
         text-align: center;
     }
-    
+
     .patient-info-header {
         align-items: center;
         text-align: center;
     }
-    
+
     .emr-main {
         padding: 1rem;
     }
-    
+
     .emr-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .emr-actions {
         flex-direction: column;
     }
-    
+
     .add-medication {
         flex-direction: column;
         align-items: stretch;
+    }
+}
+
+@media (max-width: 720px) {
+    .emr-grid .row,
+    .emr-grid .row.contact-info {
+        grid-template-columns: 1fr;
     }
 }
 

@@ -14,20 +14,33 @@
         <h1>Create Patient</h1>
         <form id="patientForm">
             <div class="grid">
-                <label>Name<input type="text" id="name" required></label>
-                <label>Age<input type="number" id="age" min="0" max="130" required></label>
-                <label>Sex
-                    <select id="sex" required>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </label>
-                <label>Phone<input type="tel" id="phone"></label>
-                <label>Email<input type="email" id="email"></label>
-                <label>Address<input type="text" id="address"></label>
-                <label>Active Medications<textarea id="medications" placeholder="One per line"></textarea></label>
-                <label>Past Assessment Summary<textarea id="summary"></textarea></label>
+                <!-- Row 1: Name and Age -->
+                <div class="row">
+                    <label>Name<input type="text" id="name" required></label>
+                    <label>Age<input type="number" id="age" min="0" max="130" required></label>
+                </div>
+                <!-- Row 2: Sex and Ethnicity -->
+                <div class="row">
+                    <label>Sex
+                        <select id="sex" required>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Intersex">Intersex</option>
+                        </select>
+                    </label>
+                    <label>Ethnicity<input type="ethnicity" id="ethnicity"></label>
+                </div>
+                <!-- Row 3: Contact Information -->
+                <div class="row contact-info">
+                    <label>Phone<input type="tel" id="phone"></label>
+                    <label>Email<input type="email" id="email"></label>
+                    <label>Address<input type="text" id="address"></label>
+                </div>
+                <!-- Row 4: Medical Information -->
+                <div class="row">
+                    <label>Active Medications<textarea id="medications" placeholder="One per line"></textarea></label>
+                    <label>Past Assessment Summary<textarea id="summary"></textarea></label>
+                </div>
             </div>
             <div class="actions">
                 <button type="button" id="cancelBtn" class="secondary">Cancel</button>

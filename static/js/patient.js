@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			document.getElementById('name').value = data.name || '';
 			document.getElementById('age').value = data.age ?? '';
 			document.getElementById('sex').value = data.sex || 'Other';
+			document.getElementById('ethnicity').value = data.ethnicity || '';
 			document.getElementById('address').value = data.address || '';
 			document.getElementById('phone').value = data.phone || '';
 			document.getElementById('email').value = data.email || '';
@@ -64,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			name: document.getElementById('name').value.trim(),
 			age: parseInt(document.getElementById('age').value, 10),
 			sex: document.getElementById('sex').value,
+			ethnicity: document.getElementById('ethnicity').value,
 			address: document.getElementById('address').value.trim() || null,
 			phone: document.getElementById('phone').value.trim() || null,
 			email: document.getElementById('email').value.trim() || null,

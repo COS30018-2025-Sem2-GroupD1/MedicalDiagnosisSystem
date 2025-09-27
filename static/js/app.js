@@ -1212,12 +1212,14 @@ How can I assist you today?`;
             return storedPatients.filter(p => {
                 // Check name match (case-insensitive contains)
                 const nameMatch = p.name.toLowerCase().includes(query.toLowerCase());
-                // Check patient_id match
-                let idMatch = p.patient_id.includes(query);
-                // Special handling for numeric queries - check if patient_id starts with the query
-                if (/^\d+$/.test(query)) {
-                    idMatch = p.patient_id.startsWith(query) || p.patient_id.includes(query);
-                }
+                // Check _id match
+                let idMatch = p._id.includes(query);
+                //// Check patient_id match
+                //let idMatch = p.patient_id.includes(query);
+                //// Special handling for numeric queries - check if patient_id starts with the query
+                //if (/^\d+$/.test(query)) {
+                //    idMatch = p.patient_id.startsWith(query) || p.patient_id.includes(query);
+                //}
                 return nameMatch || idMatch;
             });
         } catch (e) {
@@ -1263,7 +1265,7 @@ How can I assist you today?`;
     }
     async loadSavedPatientId() {
         const pid = localStorage.getItem('medicalChatbotPatientId');
-        if (pid && /^\d{8}$/.test(pid)) {
+        if (pid) {
             this.currentPatientId = pid;
             const status = document.getElementById('patientStatus');
             const actions = document.getElementById('patientActions');
@@ -1275,7 +1277,7 @@ How can I assist you today?`;
                     const resp = await fetch(`/patient/${pid}`);
                     if (resp.ok) {
                         const patient = await resp.json();
-                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${pid})`;
+                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${patient._id})`;
                     } else {
                         status.textContent = `Patient: ${pid}`;
                     }
@@ -1331,29 +1333,8 @@ How can I assist you today?`;
             return;
         }
 
-        // If it's a complete 8-digit ID, use it directly
-        if (/^\d{8}$/.test(value)) {
-            console.log('[DEBUG] Valid 8-digit ID provided');
-            this.currentPatientId = value;
-            this.savePatientId();
-            // Try to get patient name for display
-            try {
-                const resp = await fetch(`/patient/${value}`);
-                if (resp.ok) {
-                    const patient = await resp.json();
-                    this.updatePatientDisplay(value, patient.name || 'Unknown');
-            } else {
-                    this.updatePatientDisplay(value);
-                }
-            } catch (e) {
-                this.updatePatientDisplay(value);
-            }
-            await this.fetchAndRenderPatientSessions();
-            return;
-        }
-
-        // Otherwise, search for patient by name or partial ID
-        console.log('[DEBUG] Searching for patient by name/partial ID');
+        // Search for patient by name or ID
+        console.log('[DEBUG] Searching for patient');
         try {
             const resp = await fetch(`/patient/search?q=${encodeURIComponent(value)}&limit=1`);
             console.log('[DEBUG] Search response status:', resp.status);
@@ -1363,10 +1344,10 @@ How can I assist you today?`;
                 const first = (data.results || [])[0];
                 if (first) {
                     console.log('[DEBUG] Found patient, setting as current:', first);
-                    this.currentPatientId = first.patient_id;
+                    this.currentPatientId = first._id;
                     this.savePatientId();
-                    input.value = first.patient_id;
-                    this.updatePatientDisplay(first.patient_id, first.name || 'Unknown');
+                    input.value = first._id;
+                    this.updatePatientDisplay(first._id, first.name || 'Unknown');
                     await this.fetchAndRenderPatientSessions();
                     return;
                 }

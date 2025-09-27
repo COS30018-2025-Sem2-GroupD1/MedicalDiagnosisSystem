@@ -6,25 +6,32 @@
 			"name",
 			"age",
 			"sex",
-			"assigned_doctor_id",
+			"ethnicity",
 			"created_at",
 			"updated_at"
 		],
 		"properties": {
-			"assigned_doctor_id": {
-				"bsonType": ""
-			},
 			"name": {
 				"bsonType": "string",
 				"description": "'name' must be a string is required."
 			},
 			"age": {
-				"bsonType": "uint",
+				"bsonType": "int",
+				"minimum": 0,
+				"maximum": 200,
 				"description": "'description' must be an unsigned int and is required."
 			},
 			"sex": {
+				"enum": [
+					"Male",
+					"Female",
+					"Intersex"
+				],
+				"description": "'sex' must be one of: ['Male', 'Female', 'Intersex'] and is required."
+			},
+			"ethnicity": {
 				"bsonType": "string",
-				"description": "sex must be string and is required."
+				"description": "'ethnicity' must be a string and is required"
 			},
 			"address": {
 				"bsonType": "string",
@@ -39,12 +46,17 @@
 				"description": "'email' must be a string and is optional."
 			},
 			"medications": {
-				"bsonType": "string",
-				"description": "'medication' must be a  and is optional."
+				"bsonType": "array",
+				"items": { "bsonType": "string" },
+				"description": "'medication' must be an array of strings and is optional."
 			},
 			"past_assessment_summary": {
 				"bsonType": "string",
 				"description": "'past_assessment_summary' must be a string and is optional."
+			},
+			"assigned_doctor_id": {
+				"bsonType": "string",
+				"description": "'assigned_docter_id' must be a string and is optional."
 			},
 			"created_at": {
 				"bsonType": "date",

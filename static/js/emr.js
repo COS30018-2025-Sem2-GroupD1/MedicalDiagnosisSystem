@@ -85,12 +85,13 @@ class PatientEMR {
 
         // Update header
         document.getElementById('patientName').textContent = this.patientData.name || 'Unknown';
-        document.getElementById('patientId').textContent = `ID: ${this.patientData.patient_id}`;
+        document.getElementById('patientId').textContent = `ID: ${this.patientData._id}`;
 
         // Populate form fields
         document.getElementById('patientNameInput').value = this.patientData.name || '';
         document.getElementById('patientAgeInput').value = this.patientData.age || '';
         document.getElementById('patientSexInput').value = this.patientData.sex || '';
+        document.getElementById('patientEthnicityInput').value = this.patientData.ethnicity || '';
         document.getElementById('patientPhoneInput').value = this.patientData.phone || '';
         document.getElementById('patientEmailInput').value = this.patientData.email || '';
         document.getElementById('patientAddressInput').value = this.patientData.address || '';
@@ -235,7 +236,7 @@ class PatientEMR {
         }
 
         const exportData = {
-            patient_id: this.patientData.patient_id,
+            _id: this.patientData._id,
             name: this.patientData.name,
             age: this.patientData.age,
             sex: this.patientData.sex,
@@ -253,7 +254,7 @@ class PatientEMR {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `patient-${this.patientData.patient_id}-emr.json`;
+        a.download = `patient-${this.patientData._id}-emr.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
