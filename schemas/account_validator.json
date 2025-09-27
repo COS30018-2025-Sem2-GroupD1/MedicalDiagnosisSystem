@@ -23,7 +23,7 @@
 					"Medical Student",
 					"Other"
 				],
-				"description": "'role' must be one of: [Doctor, Healthcare Prof, Nurse, Caregiver, Physicion, Medical Student, Other] and is required."
+				"description": "'role' must be one of: ['Doctor', 'Healthcare Prof', 'Nurse', 'Caregiver', 'Physicion', 'Medical Student', 'Other'] and is required."
 			},
 			"specialty": {
 				"bsonType": "string",
