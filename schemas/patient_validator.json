@@ -55,8 +55,8 @@
 				"description": "'past_assessment_summary' must be a string and is optional."
 			},
 			"assigned_doctor_id": {
-				"bsonType": "string",
-				"description": "'assigned_docter_id' must be a string and is optional."
+				"bsonType": "object",
+				"description": "'assigned_docter_id' must be a objectId and is optional."
 			},
 			"created_at": {
 				"bsonType": "date",

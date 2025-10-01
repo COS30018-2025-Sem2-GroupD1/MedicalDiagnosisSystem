@@ -34,7 +34,7 @@ from src.utils.logger import logger
 PATIENTS_COLLECTION = "patients"
 
 def create():
-	#get_collection(PATIENTS_COLLECTION).drop()
+	get_collection(PATIENTS_COLLECTION).drop()
 	create_collection(PATIENTS_COLLECTION, "schemas/patient_validator.json")
 	get_collection(PATIENTS_COLLECTION).create_index("assigned_doctor_id")
 
@@ -52,21 +52,28 @@ def create_patient(
 ) -> str:
 	collection = get_collection(PATIENTS_COLLECTION)
 	now = datetime.now(timezone.utc)
-	doc = {
+	patient_data = {
 		"name": name,
 		"age": age,
 		"sex": sex,
 		"ethnicity": ethnicity,
-		"address": address or "",
-		"phone": phone or "",
-		"email": email or "",
-		"medications": medications or [],
-		"past_assessment_summary": past_assessment_summary or "",
-		"assigned_doctor_id": assigned_doctor_id or "",
 		"created_at": now,
 		"updated_at": now
 	}
-	result = collection.insert_one(doc)
+	if address:
+		patient_data["address"] = address
+	if phone:
+		patient_data["phone"] = phone
+	if email:
+		patient_data["email"] = email
+	if medications:
+		patient_data["medications"] = medications
+	if past_assessment_summary:
+		patient_data["past_assessment_summary"] = past_assessment_summary
+	if assigned_doctor_id:
+		patient_data["assigned_doctor_id"] = ObjectId(assigned_doctor_id)
+
+	result = collection.insert_one(patient_data)
 	return str(result.inserted_id)
 
 def get_patient_by_id(patient_id: str) -> dict[str, Any] | None:
@@ -83,6 +90,7 @@ def get_patient_by_id(patient_id: str) -> dict[str, Any] | None:
 		logger().error(f"Error in get_patient_by_id: {e}")
 		return None
 
+# TODO Make this more rigidly typed, maybe merge with create_patient?
 def update_patient_profile(
 	patient_id: str,
 	updates: dict[str, Any]

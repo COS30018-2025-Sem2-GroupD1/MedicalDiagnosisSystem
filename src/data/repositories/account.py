@@ -39,7 +39,7 @@ VALID_ROLES = [
 ]
 
 def create():
-	#get_collection(ACCOUNTS_COLLECTION).drop()
+	get_collection(ACCOUNTS_COLLECTION).drop()
 	create_collection(
 		ACCOUNTS_COLLECTION,
 		"schemas/account_validator.json"
@@ -66,10 +66,11 @@ def create_account(
 	user_data: dict[str, Any] = {
 		"name": name,
 		"role" : role,
-		"specialty": specialty or "",
 		"created_at": now,
 		"updated_at": now
 	}
+	if specialty:
+		user_data["specialty"] = specialty
 
 	try:
 		result = collection.insert_one(user_data)
@@ -79,6 +80,7 @@ def create_account(
 		logger().error(f"Failed to create account due to duplicate key: {e}")
 		raise
 
+# TODO Make this more rigidly typed, maybe merge with create_account?
 def update_account(
 	user_id: str,
 	/,
