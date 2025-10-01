@@ -38,15 +38,6 @@ def create():
 	create_collection(PATIENTS_COLLECTION, "schemas/patient_validator.json")
 	get_collection(PATIENTS_COLLECTION).create_index("assigned_doctor_id")
 
-def get_patient_by_id(patient_id: str) -> dict[str, Any] | None:
-	logger().info(f"Searching for patient with id '{patient_id}'")
-	try:
-		collection = get_collection(PATIENTS_COLLECTION)
-		return collection.find_one({"_id": ObjectId(patient_id)})
-	except Exception as e:
-		logger().error(f"Error in get_patient_by_id: {e}")
-		return None
-
 def create_patient(
 	name: str,
 	age: int,
@@ -78,21 +69,45 @@ def create_patient(
 	result = collection.insert_one(doc)
 	return str(result.inserted_id)
 
-def update_patient_profile(patient_id: str, updates: dict[str, Any]) -> int:
+def get_patient_by_id(patient_id: str) -> dict[str, Any] | None:
+	logger().info(f"Searching for patient with id '{patient_id}'")
+	try:
+		collection = get_collection(PATIENTS_COLLECTION)
+		patient = collection.find_one(
+			{"_id": ObjectId(patient_id)}
+		)
+		if patient and "_id" in patient:
+			patient["_id"] = str(patient["_id"])
+		return patient
+	except Exception as e:
+		logger().error(f"Error in get_patient_by_id: {e}")
+		return None
+
+def update_patient_profile(
+	patient_id: str,
+	updates: dict[str, Any]
+) -> int:
 	try:
 		collection = get_collection(PATIENTS_COLLECTION)
 		updates["updated_at"] = datetime.now(timezone.utc)
-		result = collection.update_one({"_id": ObjectId(patient_id)}, {"$set": updates})
+		result = collection.update_one(
+			{"_id": ObjectId(patient_id)},
+			{"$set": updates}
+		)
 		return result.modified_count
 	except Exception as e:
 		logger().error(f"Error in update_patient_profile: {e}")
 		return 0
 
-def search_patients(query: str, limit: int = 10) -> list[dict[str, Any]]:
-	"""Search patients by name (case-insensitive starts-with/contains) or partial patient_id."""
-	collection = get_collection(PATIENTS_COLLECTION)
+def search_patients(
+	query: str,
+	limit: int = 10
+) -> list[dict[str, Any]]:
+	"""Search patients by name (case-insensitive starts-with/contains)."""
 	if not query:
 		return []
+
+	collection = get_collection(PATIENTS_COLLECTION)
 
 	logger().info(f"Searching patients with query: '{query}', limit: {limit}")
 
@@ -101,15 +116,15 @@ def search_patients(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
 	try:
 		cursor = collection.find({
-			"$or": [
-				{"name": {"$regex": pattern}},
-				{"patient_id": {"$regex": pattern}}
-			]
+			"name": {"$regex": pattern}
 		}).sort("name", ASCENDING).limit(limit)
+
 		results = []
-		for p in cursor:
-			p["_id"] = str(p.get("_id")) if p.get("_id") else None
-			results.append(p)
+		for patient in cursor:
+			if patient:
+				patient["_id"] = str(patient["_id"])
+				results.append(patient)
+
 		logger().info(f"Found {len(results)} patients matching query")
 		return results
 	except Exception as e:
