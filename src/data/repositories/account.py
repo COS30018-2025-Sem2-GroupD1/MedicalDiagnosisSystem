@@ -22,8 +22,8 @@ from pymongo import ASCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import (ActionFailed, EntryNotFound,
-                                 create_collection, get_collection)
+from src.data.connection import (ActionFailed, EntryNotFound, get_collection,
+                                 setup_collection)
 from src.utils.logger import logger
 
 ACCOUNTS_COLLECTION = "accounts"
@@ -38,9 +38,9 @@ VALID_ROLES = [
 	"Other"
 ]
 
-def create():
-	get_collection(ACCOUNTS_COLLECTION).drop()
-	create_collection(
+def init():
+	#get_collection(ACCOUNTS_COLLECTION).drop()
+	setup_collection(
 		ACCOUNTS_COLLECTION,
 		"schemas/account_validator.json"
 	)

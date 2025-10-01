@@ -48,29 +48,25 @@ def get_collection(name: str) -> Collection:
 	return get_database().get_collection(name)
 
 def does_collection_exist(name: str) -> bool:
-	return True if name in get_database().list_collection_names() else False
+	return name in get_database().list_collection_names()
 
-def create_collection(
+def setup_collection(
 	collection_name: str,
 	validator_path: str,
 	validation_level: str = "moderate"
 ):
-	#get_collection(collection_name).drop()
-	if does_collection_exist(collection_name):
-		raise ActionFailed("Collection already exists")
+	if not does_collection_exist(collection_name):
+		get_database().create_collection(
+			collection_name
+		)
+		logger(tag="setup_collection").info(f"Created '{collection_name}' collection")
 
 	with open(validator_path, "r", encoding="utf-8") as f:
 		validator = json.load(f)
-	get_database().create_collection(
-		collection_name,
-		validator=validator,
-		validationLevel=validation_level
-	)
+	get_database().command({
+		"collMod": collection_name,
+		"validator": validator,
+		"validationLevel": validation_level
+	})
 
-	logger(tag="create_collection").info(
-		"Created '"
-		+ collection_name
-		+ "' collection with '"
-		+ str(validator["$jsonSchema"]["title"]).lower()
-		+ "'"
-	)
+	logger(tag="setup_collection").info(f"Applied '{str(validator["$jsonSchema"]["title"]).lower()}' to collection '{collection_name}'")

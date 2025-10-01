@@ -28,14 +28,14 @@ from pymongo import ASCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import ActionFailed, create_collection, get_collection
+from src.data.connection import ActionFailed, get_collection, setup_collection
 from src.utils.logger import logger
 
 PATIENTS_COLLECTION = "patients"
 
-def create():
-	get_collection(PATIENTS_COLLECTION).drop()
-	create_collection(PATIENTS_COLLECTION, "schemas/patient_validator.json")
+def init():
+	#get_collection(PATIENTS_COLLECTION).drop()
+	setup_collection(PATIENTS_COLLECTION, "schemas/patient_validator.json")
 	get_collection(PATIENTS_COLLECTION).create_index("assigned_doctor_id")
 
 def create_patient(
