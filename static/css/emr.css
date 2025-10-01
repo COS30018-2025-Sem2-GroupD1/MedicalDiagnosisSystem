@@ -1,14 +1,15 @@
-/* EMR Page Styles */
+/* EMR Page Specific Styles */
+
 .emr-container {
     min-height: 100vh;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+    background-color: var(--bg-secondary);
 }
 
+/* Header */
 .emr-header {
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
-    padding: 1rem 0;
+    padding: var(--spacing-lg);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -17,339 +18,517 @@
 .emr-header-content {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.emr-title {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 1rem;
+    gap: var(--spacing-md);
 }
 
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
+.emr-title i {
+    font-size: 1.5rem;
     color: var(--primary-color);
-    text-decoration: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    transition: background-color var(--transition-fast);
 }
 
-.back-link:hover {
-    background-color: var(--bg-tertiary);
-}
-
-.emr-header h1 {
+.emr-title h1 {
     margin: 0;
+    color: var(--text-primary);
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--text-primary);
 }
 
-.patient-info-header {
+.emr-actions {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    text-align: right;
+    gap: var(--spacing-md);
+    align-items: center;
 }
 
-.patient-name {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.patient-id {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    font-family: monospace;
-}
-
-.emr-main {
+/* Patient Info Bar */
+.patient-info-bar {
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: var(--spacing-lg);
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem 1rem;
 }
 
-.emr-section {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.emr-section h2 {
-    margin: 0 0 1.5rem 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
+.patient-info {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
 }
 
-.emr-section h2 i {
-    color: var(--primary-color);
-}
-
-.emr-grid {
+.patient-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
 }
 
-.emr-grid .row {
-    display: grid;
-    gap: 16px;
-}
-
-.emr-grid .row:not(.contact-info) {
-    grid-template-columns: repeat(2, 1fr);
-}
-
-.emr-grid .row.contact-info {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.emr-field {
-    display: grid;
-    gap: 6px;
-}
-
-.emr-field label {
-    font-weight: 500;
+.patient-details h3 {
+    margin: 0;
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 1.125rem;
 }
 
-.emr-field input,
-.emr-field select,
-.emr-field textarea {
-    padding: 0.75rem;
+.patient-details p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.patient-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.stat-item {
+    background-color: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    text-align: center;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-xs);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Controls */
+.emr-controls {
     background-color: var(--bg-primary);
-    color: var(--text-primary);
-    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+    padding: var(--spacing-lg);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.search-container {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.search-input {
+    flex: 1;
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.875rem;
     transition: border-color var(--transition-fast);
 }
 
-.emr-field input:focus,
-.emr-field select:focus,
-.emr-field textarea:focus {
+.search-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
 }
 
-.emr-field textarea {
-    resize: vertical;
-    min-height: 80px;
+.search-btn {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
 }
 
-/* Medications */
-.medications-container {
+.search-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.filter-container {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    gap: var(--spacing-md);
 }
 
-.medications-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    min-height: 40px;
-    padding: 0.5rem;
+.filter-select {
+    padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background-color: var(--bg-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
 }
 
-.medication-tag {
-    display: inline-flex;
+/* Content */
+.emr-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+}
+
+/* Table */
+.emr-table-container {
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.emr-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.emr-table th {
+    background-color: var(--bg-tertiary);
+    padding: var(--spacing-md);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.875rem;
+}
+
+.emr-table td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+    font-size: 0.875rem;
+}
+
+.emr-table tbody tr:hover {
+    background-color: var(--bg-secondary);
+}
+
+.emr-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* EMR Entry Types */
+.emr-type {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.emr-type-diagnosis {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.emr-type-medication {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.emr-type-vitals {
+    background-color: #f3e8ff;
+    color: #7c3aed;
+}
+
+.emr-type-lab {
+    background-color: #ecfdf5;
+    color: #065f46;
+}
+
+.emr-type-general {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+/* Confidence Score */
+.confidence-score {
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
-    background-color: var(--primary-color);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    gap: var(--spacing-xs);
+}
+
+.confidence-bar {
+    width: 60px;
+    height: 4px;
+    background-color: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    transition: width var(--transition-normal);
+}
+
+.confidence-fill.high {
+    background-color: var(--success-color);
+}
+
+.confidence-fill.medium {
+    background-color: var(--warning-color);
+}
+
+.confidence-fill.low {
+    background-color: var(--accent-color);
+}
+
+.confidence-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
     font-weight: 500;
 }
 
-.medication-tag .remove-medication {
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.action-btn {
     background: none;
     border: none;
-    color: white;
+    color: var(--text-muted);
     cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: 4px;
+    transition: all var(--transition-fast);
+    font-size: 0.875rem;
+}
+
+.action-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--primary-color);
+}
+
+.action-btn.danger:hover {
+    color: var(--accent-color);
+}
+
+/* Loading and Empty States */
+.loading-state, .empty-state {
+    text-align: center;
+    padding: var(--spacing-2xl);
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.loading-spinner {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-lg);
+}
+
+.empty-state h3 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--text-primary);
+}
+
+.empty-state p {
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--text-secondary);
+}
+
+/* EMR Detail Modal */
+.emr-detail-modal {
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.emr-detail-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.emr-detail-section h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--spacing-sm);
+}
+
+.emr-detail-list {
+    list-style: none;
     padding: 0;
-    margin-left: 0.25rem;
-    opacity: 0.7;
-    transition: opacity var(--transition-fast);
-}
-
-.medication-tag .remove-medication:hover {
-    opacity: 1;
-}
-
-.add-medication {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.add-medication input {
-    flex: 1;
     margin: 0;
 }
 
-.add-medication button {
-    white-space: nowrap;
+.emr-detail-list li {
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--bg-tertiary);
 }
 
-/* Sessions */
-.sessions-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+.emr-detail-list li:last-child {
+    border-bottom: none;
 }
 
-.session-item {
-    background-color: var(--bg-primary);
+.medication-item {
+    background-color: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    margin-bottom: var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 1rem;
-    cursor: pointer;
-    transition: all var(--transition-fast);
 }
 
-.session-item:hover {
-    border-color: var(--primary-color);
-    background-color: var(--bg-tertiary);
-}
-
-.session-title {
+.medication-name {
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-xs);
 }
 
-.session-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.8rem;
+.medication-details {
+    font-size: 0.875rem;
     color: var(--text-secondary);
 }
 
-.session-date {
-    font-family: monospace;
+.vital-signs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing-md);
 }
 
-.session-messages {
-    color: var(--text-secondary);
-}
-
-/* Actions */
-.emr-actions {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.btn-primary,
-.btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    text-decoration: none;
-}
-
-.btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.btn-primary:hover {
-    background-color: var(--primary-color-dark);
-    transform: translateY(-1px);
-}
-
-.btn-secondary {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
+.vital-sign-item {
+    background-color: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    text-align: center;
     border: 1px solid var(--border-color);
 }
 
-.btn-secondary:hover {
-    background-color: var(--bg-primary);
-    border-color: var(--primary-color);
+.vital-sign-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--spacing-xs);
 }
 
-/* Loading States */
-.loading {
-    opacity: 0.6;
-    pointer-events: none;
+.vital-sign-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .emr-header-content {
         flex-direction: column;
+        gap: var(--spacing-md);
         align-items: stretch;
-        text-align: center;
-    }
-
-    .patient-info-header {
-        align-items: center;
-        text-align: center;
-    }
-
-    .emr-main {
-        padding: 1rem;
-    }
-
-    .emr-grid {
-        grid-template-columns: 1fr;
     }
 
     .emr-actions {
+        justify-content: center;
+    }
+
+    .patient-info {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .patient-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .search-container {
         flex-direction: column;
     }
 
-    .add-medication {
+    .filter-container {
         flex-direction: column;
-        align-items: stretch;
+    }
+
+    .emr-table-container {
+        overflow-x: auto;
+    }
+
+    .emr-table {
+        min-width: 600px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
     }
 }
 
-@media (max-width: 720px) {
-    .emr-grid .row,
-    .emr-grid .row.contact-info {
-        grid-template-columns: 1fr;
+/* Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+    .emr-container {
+        background-color: var(--dark-bg-secondary);
     }
-}
 
-/* Dark Theme Adjustments */
-[data-theme="dark"] .emr-field input,
-[data-theme="dark"] .emr-field select,
-[data-theme="dark"] .emr-field textarea {
-    background-color: var(--bg-secondary);
-}
+    .emr-header {
+        background-color: var(--dark-bg-primary);
+        border-bottom-color: var(--dark-border-color);
+    }
 
-[data-theme="dark"] .medications-list {
-    background-color: var(--bg-secondary);
-}
+    .emr-title h1 {
+        color: var(--dark-text-primary);
+    }
 
-[data-theme="dark"] .session-item {
-    background-color: var(--bg-secondary);
+    .patient-info-bar {
+        background-color: var(--dark-bg-primary);
+        border-bottom-color: var(--dark-border-color);
+    }
+
+    .patient-details h3 {
+        color: var(--dark-text-primary);
+    }
+
+    .patient-details p {
+        color: var(--dark-text-secondary);
+    }
+
+    .emr-controls {
+        background-color: var(--dark-bg-primary);
+        border-bottom-color: var(--dark-border-color);
+    }
+
+    .search-input, .filter-select {
+        background-color: var(--dark-bg-secondary);
+        border-color: var(--dark-border-color);
+        color: var(--dark-text-primary);
+    }
+
+    .emr-table-container {
+        background-color: var(--dark-bg-primary);
+        border-color: var(--dark-border-color);
+    }
+
+    .emr-table th {
+        background-color: var(--dark-bg-tertiary);
+        color: var(--dark-text-primary);
+        border-bottom-color: var(--dark-border-color);
+    }
+
+    .emr-table td {
+        border-bottom-color: var(--dark-border-color);
+        color: var(--dark-text-primary);
+    }
+
+    .emr-table tbody tr:hover {
+        background-color: var(--dark-bg-secondary);
+    }
 }

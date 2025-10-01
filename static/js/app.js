@@ -1812,12 +1812,22 @@ How can I assist you today?`;
         messageElement.id = `message-${message.id}`;
         const avatar = message.role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
         const time = this.formatTime(message.timestamp);
+        
+        // Add EMR icon for assistant messages (system-generated)
+        const emrIcon = message.role === 'assistant' ? 
+            `<div class="message-actions">
+                <button class="emr-extract-btn" onclick="app.extractEMR('${message.id}')" title="Extract to EMR">
+                    <i class="fas fa-file-medical"></i>
+                </button>
+            </div>` : '';
+        
         messageElement.innerHTML = `
             <div class="message-avatar">${avatar}</div>
             <div class="message-content">
                 <div class="message-text">${this.formatMessageContent(message.content)}</div>
                 <div class="message-time">${time}</div>
-            </div>`;
+            </div>
+            ${emrIcon}`;
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         if (this.currentSession) this.currentSession.lastActivity = new Date().toISOString();
@@ -1852,6 +1862,109 @@ How can I assist you today?`;
         if (diff < 3600000) { const minutes = Math.floor(diff / 60000); return `${minutes} minute${minutes > 1 ? 's' : ''} ago`; }
         if (diff < 86400000) { const hours = Math.floor(diff / 3600000); return `${hours} hour${hours > 1 ? 's' : ''} ago`; }
         return date.toLocaleDateString();
+    }
+
+    async extractEMR(messageId) {
+        try {
+            // Check if patient is selected
+            if (!this.currentPatientId) {
+                alert('Please select a patient before extracting EMR data.');
+                return;
+            }
+
+            // Check if doctor is logged in
+            if (!this.currentUser) {
+                alert('Please log in as a doctor before extracting EMR data.');
+                return;
+            }
+
+            // Find the message
+            const message = this.currentSession?.messages?.find(m => m.id === messageId);
+            if (!message) {
+                console.error('Message not found:', messageId);
+                return;
+            }
+
+            // Show loading state
+            const button = document.querySelector(`[onclick="app.extractEMR('${messageId}')"]`);
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+
+            // Call EMR extraction API
+            const response = await fetch('/emr/extract', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    patient_id: this.currentPatientId,
+                    doctor_id: this.currentUser.id || 'default-doctor',
+                    message_id: messageId,
+                    session_id: this.currentSession?.id || 'default-session',
+                    message: message.content
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('EMR extraction successful:', result);
+                
+                // Show success message
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    button.style.color = 'var(--success-color)';
+                    setTimeout(() => {
+                        button.innerHTML = '<i class="fas fa-file-medical"></i>';
+                        button.style.color = '';
+                        button.disabled = false;
+                    }, 2000);
+                }
+                
+                // Show notification
+                this.showNotification('EMR data extracted successfully!', 'success');
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+        } catch (error) {
+            console.error('Error extracting EMR:', error);
+            
+            // Reset button state
+            const button = document.querySelector(`[onclick="app.extractEMR('${messageId}')"]`);
+            if (button) {
+                button.innerHTML = '<i class="fas fa-file-medical"></i>';
+                button.disabled = false;
+            }
+            
+            // Show error message
+            this.showNotification('Failed to extract EMR data. Please try again.', 'error');
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Show notification
+        setTimeout(() => notification.classList.add('show'), 100);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 }
 // ----------------------------------------------------------

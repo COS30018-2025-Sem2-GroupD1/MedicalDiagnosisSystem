@@ -3,136 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient EMR - Medical AI Assistant</title>
+    <title>EMR - Medical AI Assistant</title>
+    <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="stylesheet" href="/static/css/emr.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="emr-container">
         <!-- Header -->
-        <header class="emr-header">
+        <div class="emr-header">
             <div class="emr-header-content">
-                <a href="/" class="back-link">
-                    <i class="fas fa-arrow-left"></i>
-                    Back to Assistant
-                </a>
-                <h1>Patient EMR</h1>
-                <div class="patient-info-header" id="patientInfoHeader">
-                    <span class="patient-name" id="patientName">Loading...</span>
-                    <span class="patient-id" id="patientId">Loading...</span>
+                <div class="emr-title">
+                    <i class="fas fa-file-medical"></i>
+                    <h1>Electronic Medical Records</h1>
+                </div>
+                <div class="emr-actions">
+                    <button class="btn btn-secondary" id="refreshBtn">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                    <button class="btn btn-primary" id="searchBtn">
+                        <i class="fas fa-search"></i>
+                        Search
+                    </button>
+                    <a href="/static/index.html" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Chat
+                    </a>
                 </div>
             </div>
-        </header>
+        </div>
 
-        <!-- Main Content -->
-        <main class="emr-main">
-            <!-- Patient Overview -->
-            <section class="emr-section">
-                <h2><i class="fas fa-user"></i> Patient Overview</h2>
-                <div class="emr-grid">
-                    <!-- Row 1: Name and Age -->
-                    <div class="row">
-                        <div class="emr-field">
-                            <label>Full Name</label>
-                            <input type="text" id="patientNameInput" placeholder="Enter patient name">
-                        </div>
-                        <div class="emr-field">
-                            <label>Age</label>
-                            <input type="number" id="patientAgeInput" placeholder="Enter age" min="0" max="150">
-                        </div>
+        <!-- Patient Info Bar -->
+        <div class="patient-info-bar" id="patientInfoBar" style="display: none;">
+            <div class="patient-info">
+                <div class="patient-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="patient-details">
+                    <h3 id="patientName">Patient Name</h3>
+                    <p id="patientDetails">Age: -- | Sex: -- | ID: --</p>
+                </div>
+            </div>
+            <div class="patient-stats" id="patientStats">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="emr-controls">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search EMR entries..." class="search-input">
+                <button class="search-btn" id="searchButton">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div class="filter-container">
+                <select id="dateFilter" class="filter-select">
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                </select>
+                <select id="typeFilter" class="filter-select">
+                    <option value="all">All Types</option>
+                    <option value="diagnosis">Diagnosis</option>
+                    <option value="medication">Medication</option>
+                    <option value="vitals">Vital Signs</option>
+                    <option value="lab">Lab Results</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- EMR Entries Table -->
+        <div class="emr-content">
+            <div class="emr-table-container">
+                <table class="emr-table" id="emrTable">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Type</th>
+                            <th>Diagnosis</th>
+                            <th>Medications</th>
+                            <th>Vital Signs</th>
+                            <th>Confidence</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="emrTableBody">
+                        <!-- EMR entries will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-state" id="loadingState" style="display: none;">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <p>Loading EMR data...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fas fa-file-medical"></i>
+                </div>
+                <h3>No EMR Data Found</h3>
+                <p>No medical records found for this patient. EMR data will appear here when you extract information from chat messages.</p>
+                <a href="/static/index.html" class="btn btn-primary">
+                    <i class="fas fa-comments"></i>
+                    Go to Chat
+                </a>
+            </div>
+        </div>
+
+        <!-- EMR Detail Modal -->
+        <div class="modal" id="emrDetailModal">
+            <div class="modal-content emr-detail-modal">
+                <div class="modal-header">
+                    <h3>EMR Entry Details</h3>
+                    <button class="modal-close" id="emrDetailModalClose">&times;</button>
+                </div>
+                <div class="modal-body" id="emrDetailContent">
+                    <!-- EMR details will be populated here -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="emrDetailModalCancel">Close</button>
+                    <button class="btn btn-danger" id="deleteEmrBtn" style="display: none;">Delete Entry</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Modal -->
+        <div class="modal" id="searchModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Advanced Search</h3>
+                    <button class="modal-close" id="searchModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="semanticSearchInput">Search by meaning (semantic search):</label>
+                        <input type="text" id="semanticSearchInput" placeholder="e.g., 'chest pain treatment' or 'diabetes medication'">
                     </div>
-                    <!-- Row 2: Sex and Ethnicity -->
-                    <div class="row">
-                        <div class="emr-field">
-                            <label>Sex</label>
-                            <select id="patientSexInput">
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Intersex">Intersex</option>
-                            </select>
-                        </div>
-                        <div class="emr-field">
-                            <label>Ethnicity</label>
-                            <input type="ethnicity" id="patientEthnicityInput" placeholder="Enter ethnicity">
-                        </div>
-                    </div>
-                    <!-- Row 3: Contact Information -->
-                    <div class="row contact-info">
-                        <div class="emr-field">
-                            <label>Phone</label>
-                            <input type="tel" id="patientPhoneInput" placeholder="Enter phone number">
-                        </div>
-                        <div class="emr-field">
-                            <label>Email</label>
-                            <input type="email" id="patientEmailInput" placeholder="Enter email address">
-                        </div>
-                        <div class="emr-field">
-                            <label>Address</label>
-                            <input type="text" id="patientAddressInput" placeholder="Enter full address">
-                        </div>
+                    <div class="form-group">
+                        <label for="exactSearchInput">Search by exact text:</label>
+                        <input type="text" id="exactSearchInput" placeholder="e.g., 'hypertension' or 'metformin'">
                     </div>
                 </div>
-            </section>
-
-            <!-- Medical Information -->
-            <section class="emr-section">
-                <h2><i class="fas fa-pills"></i> Medical Information</h2>
-                <div class="emr-grid">
-                    <div class="row">
-                        <div class="emr-field">
-                            <label>Current Medications</label>
-                            <div class="medications-container">
-                                <div class="medications-list" id="medicationsList">
-                                    <!-- Medications will be added here dynamically -->
-                                </div>
-                                <div class="add-medication">
-                                    <input type="text" id="newMedicationInput" placeholder="Add new medication">
-                                    <button id="addMedicationBtn" class="btn-secondary">
-                                        <i class="fas fa-plus"></i> Add
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="emr-field">
-                            <label>Past Assessment Summary</label>
-                            <textarea id="pastAssessmentInput" placeholder="Enter past assessment summary" rows="4"></textarea>
-                        </div>
-                    </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="searchModalCancel">Cancel</button>
+                    <button class="btn btn-primary" id="performSearchBtn">Search</button>
                 </div>
-            </section>
-
-            <!-- Recent Sessions -->
-            <section class="emr-section">
-                <h2><i class="fas fa-comments"></i> Recent Chat Sessions</h2>
-                <div class="sessions-container" id="sessionsContainer">
-                    <!-- Sessions will be loaded here -->
-                </div>
-            </section>
-
-            <!-- Actions -->
-            <section class="emr-section">
-                <h2><i class="fas fa-cog"></i> Actions</h2>
-                <div class="emr-actions">
-                    <button id="savePatientBtn" class="btn-primary">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                    <button id="refreshPatientBtn" class="btn-secondary">
-                        <i class="fas fa-refresh"></i> Refresh Data
-                    </button>
-                    <button id="exportPatientBtn" class="btn-secondary">
-                        <i class="fas fa-download"></i> Export EMR
-                    </button>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-            <div>Loading...</div>
+            </div>
         </div>
     </div>
 
