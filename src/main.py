@@ -86,7 +86,7 @@ def startup_event(state: MedicalState):
 	#session_repo.create()
 	#message_repo.create()
 	#medical_repo.create()
-	#emr_repo.create()
+	emr_repo.create()
 
 def shutdown_event():
 	"""Cleanup on shutdown"""

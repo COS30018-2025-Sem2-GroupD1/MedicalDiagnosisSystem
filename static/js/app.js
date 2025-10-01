@@ -1816,7 +1816,7 @@ How can I assist you today?`;
         // Add EMR icon for assistant messages (system-generated)
         const emrIcon = message.role === 'assistant' ? 
             `<div class="message-actions">
-                <button class="emr-extract-btn" onclick="app.extractEMR('${message.id}')" title="Extract to EMR">
+                <button class="emr-extract-btn" onclick="app.extractEMR('${message.id}')" title="Extract to EMR" data-message-id="${message.id}">
                     <i class="fas fa-file-medical"></i>
                 </button>
             </div>` : '';
@@ -1831,6 +1831,11 @@ How can I assist you today?`;
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         if (this.currentSession) this.currentSession.lastActivity = new Date().toISOString();
+        
+        // Check EMR status for assistant messages
+        if (message.role === 'assistant' && this.currentPatientId) {
+            this.checkEMRStatus(message.id);
+        }
     }
 
     formatMessageContent(content) {
@@ -1925,7 +1930,9 @@ How can I assist you today?`;
                 // Show notification
                 this.showNotification('EMR data extracted successfully!', 'success');
             } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                const errorMessage = errorData.detail || `HTTP ${response.status}: ${response.statusText}`;
+                throw new Error(errorMessage);
             }
 
         } catch (error) {
@@ -1940,6 +1947,24 @@ How can I assist you today?`;
             
             // Show error message
             this.showNotification('Failed to extract EMR data. Please try again.', 'error');
+        }
+    }
+
+    async checkEMRStatus(messageId) {
+        try {
+            const response = await fetch(`/emr/check/${messageId}`);
+            if (response.ok) {
+                const result = await response.json();
+                const button = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (button && result.emr_exists) {
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    button.style.color = 'var(--success-color)';
+                    button.title = 'EMR data already extracted';
+                    button.disabled = true;
+                }
+            }
+        } catch (error) {
+            console.warn('Could not check EMR status:', error);
         }
     }
 

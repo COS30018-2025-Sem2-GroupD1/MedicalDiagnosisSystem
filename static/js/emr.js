@@ -9,7 +9,7 @@ class EMRPage {
         this.filteredEntries = [];
         this.currentPage = 1;
         this.entriesPerPage = 20;
-        
+
         this.init();
     }
 
@@ -182,7 +182,7 @@ class EMRPage {
         if (!this.currentPatientId) return;
 
         this.showLoading(true);
-        
+
         try {
             const response = await fetch(`/emr/patient/${this.currentPatientId}?limit=100`);
             if (response.ok) {
@@ -195,7 +195,7 @@ class EMRPage {
             }
         } catch (error) {
             console.error('Error loading EMR data:', error);
-            this.showEmptyState();
+            this.showErrorState('Failed to load EMR data. Please try again.');
         } finally {
             this.showLoading(false);
         }
@@ -232,7 +232,7 @@ class EMRPage {
                             </button>
                             <button class="action-btn danger" onclick="emrPage.deleteEMREntry('${entry.emr_id}')" title="Delete">
                                 <i class="fas fa-trash"></i>
-                            </button>
+                </button>
                         </div>
                     </td>
                 </tr>
@@ -480,7 +480,7 @@ class EMRPage {
         }
 
         this.showLoading(true);
-        
+
         try {
             let searchResults = [];
             
@@ -507,7 +507,7 @@ class EMRPage {
                 if (semanticQuery) {
                     const exactIds = new Set(exactResults.map(r => r.emr_id));
                     searchResults = searchResults.concat(exactResults.filter(r => !exactIds.has(r.emr_id)));
-                } else {
+            } else {
                     searchResults = exactResults;
                 }
             }
@@ -539,6 +539,19 @@ class EMRPage {
     showEmptyState() {
         const emptyState = document.getElementById('emptyState');
         const tableContainer = document.querySelector('.emr-table-container');
+        
+        emptyState.style.display = 'block';
+        tableContainer.style.display = 'none';
+    }
+
+    showErrorState(message) {
+        const emptyState = document.getElementById('emptyState');
+        const tableContainer = document.querySelector('.emr-table-container');
+        
+        // Update the empty state to show error message
+        emptyState.querySelector('h3').textContent = 'Error Loading EMR Data';
+        emptyState.querySelector('p').textContent = message;
+        emptyState.querySelector('.btn').style.display = 'none';
         
         emptyState.style.display = 'block';
         tableContainer.style.display = 'none';

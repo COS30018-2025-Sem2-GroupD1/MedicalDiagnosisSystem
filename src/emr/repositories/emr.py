@@ -24,8 +24,12 @@ def create():
         collection.create_index("patient_id")
         collection.create_index("doctor_id")
         collection.create_index("session_id")
+        collection.create_index("message_id")
         collection.create_index("created_at")
         collection.create_index([("patient_id", ASCENDING), ("created_at", DESCENDING)])
+        collection.create_index([("patient_id", ASCENDING), ("doctor_id", ASCENDING)])
+        collection.create_index([("session_id", ASCENDING), ("created_at", DESCENDING)])
+        collection.create_index("confidence_score")
         logger().info("EMR collection created successfully with indexes")
     except Exception as e:
         logger().error(f"Error creating EMR collection: {e}")
@@ -36,6 +40,13 @@ def create_emr_entry(emr_data: EMRCreateRequest, embeddings: List[float]) -> str
     """Create a new EMR entry in the database."""
     try:
         collection = get_collection(EMR_COLLECTION)
+        
+        # Check if EMR entry already exists for this message
+        existing = collection.find_one({"message_id": emr_data.message_id})
+        if existing:
+            logger().warning(f"EMR entry already exists for message {emr_data.message_id}")
+            return str(existing["_id"])
+        
         now = datetime.now(timezone.utc)
         
         doc = {
@@ -220,6 +231,17 @@ def delete_emr_entry(emr_id: str) -> bool:
         
     except Exception as e:
         logger().error(f"Error deleting EMR entry {emr_id}: {e}")
+        return False
+
+
+def check_emr_exists(message_id: str) -> bool:
+    """Check if an EMR entry already exists for a message."""
+    try:
+        collection = get_collection(EMR_COLLECTION)
+        existing = collection.find_one({"message_id": message_id})
+        return existing is not None
+    except Exception as e:
+        logger().error(f"Error checking EMR existence: {e}")
         return False
 
 
