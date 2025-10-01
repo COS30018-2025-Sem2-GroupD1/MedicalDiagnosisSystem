@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from src.core.state import MedicalState, get_state
 from src.emr.models.emr import EMRResponse, EMRSearchRequest, EMRUpdateRequest
-from src.emr.services.emr_service import EMRService
+from src.emr.services.service import EMRService
 from src.utils.logger import logger
 
 router = APIRouter(prefix="/emr", tags=["EMR"])

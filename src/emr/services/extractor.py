@@ -1,18 +1,19 @@
-# emr/services/emr_extractor.py
+# emr/services/extractor.py
 
 import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.emr.models.emr import ExtractedData, Medication, VitalSigns, LabResult
-from src.services.gemini import GeminiRotator
+from src.services.gemini import gemini_chat
+from src.utils.rotator import APIKeyRotator
 from src.utils.logger import logger
 
 
 class EMRExtractor:
     """Service for extracting structured medical data from chat messages using Gemini AI."""
     
-    def __init__(self, gemini_rotator: GeminiRotator):
+    def __init__(self, gemini_rotator: APIKeyRotator):
         self.gemini_rotator = gemini_rotator
     
     async def extract_medical_data(self, message: str, patient_context: Optional[Dict[str, Any]] = None) -> Tuple[ExtractedData, float]:
@@ -124,12 +125,8 @@ Return the JSON followed by the confidence score on a new line."""
     async def _call_gemini_api(self, prompt: str) -> str:
         """Call the Gemini API with the extraction prompt."""
         try:
-            # Use the gemini rotator to get a response
-            response = await self.gemini_rotator.generate_response(
-                prompt,
-                max_tokens=2000,
-                temperature=0.1  # Low temperature for more consistent extraction
-            )
+            # Use the gemini_chat function with the rotator
+            response = await gemini_chat(prompt, self.gemini_rotator)
             return response
         except Exception as e:
             logger().error(f"Error calling Gemini API: {e}")

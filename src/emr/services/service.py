@@ -1,4 +1,4 @@
-# emr/services/emr_service.py
+# emr/services/service.py
 
 from typing import Any, Dict, List, Optional
 
@@ -12,8 +12,8 @@ from src.emr.repositories.emr import (
     delete_emr_entry,
     get_emr_statistics
 )
-from src.emr.services.emr_extractor import EMRExtractor
-from src.services.gemini import GeminiRotator
+from src.emr.services.extractor import EMRExtractor
+from src.utils.rotator import APIKeyRotator
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import logger
 
@@ -21,7 +21,7 @@ from src.utils.logger import logger
 class EMRService:
     """Main service for EMR operations including extraction, storage, and retrieval."""
     
-    def __init__(self, gemini_rotator: GeminiRotator, embedding_client: EmbeddingClient):
+    def __init__(self, gemini_rotator: APIKeyRotator, embedding_client: EmbeddingClient):
         self.gemini_rotator = gemini_rotator
         self.embedding_client = embedding_client
         self.extractor = EMRExtractor(gemini_rotator)
