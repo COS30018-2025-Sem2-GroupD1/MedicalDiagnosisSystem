@@ -4,7 +4,6 @@ import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from bson import ObjectId
 
 from src.core.state import MedicalState, get_state
 from src.models.chat import ChatRequest, ChatResponse, SummariseRequest
