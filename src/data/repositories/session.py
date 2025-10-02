@@ -58,6 +58,8 @@ def create_session(
 	try:
 		result = collection.insert_one(session_data)
 		session_data["_id"] = str(result.inserted_id)
+		session_data["patient_id"] = str(session_data["patient_id"])
+		session_data["account_id"] = str(session_data["account_id"])
 		return session_data
 	except Exception as e:
 		logger().error(f"Failed to create chat session with data {session_data}: {e}")
@@ -81,6 +83,8 @@ def get_user_sessions(
 	for session in cursor:
 		if session:
 			session["_id"] = str(session["_id"])
+			session["patient_id"] = str(session["patient_id"])
+			session["account_id"] = str(session["account_id"])
 			results.append(session)
 
 	return results
@@ -92,19 +96,26 @@ def list_patient_sessions(
 	collection_name: str = SESSIONS_COLLECTION
 ) -> list[dict[str, Any]]:
 	collection = get_collection(collection_name)
-	cursor = collection.find({
-		"patient_id": ObjectId(patient_id)
-	}).sort(
-		"updated_at", DESCENDING
-	).limit(limit)
+	try:
+		cursor = collection.find({
+			"patient_id": ObjectId(patient_id)
+		}).sort(
+			"updated_at", DESCENDING
+		).limit(limit)
 
-	results = []
-	for session in cursor:
-		if session:
-			session["_id"] = str(session["_id"])
-			results.append(session)
+		results = []
+		for session in cursor:
+			if session:
+				session["_id"] = str(session["_id"])
+				session["patient_id"] = str(session["patient_id"])
+				session["account_id"] = str(session["account_id"])
+				results.append(session)
 
-	return results
+		return results
+	except Exception as e:
+		logger().error(f"Error listing patient sessions for patient_id {patient_id}: {e}")
+		# Re-raise the exception to be handled by the route
+		raise
 
 def get_session(
 	session_id: str,
