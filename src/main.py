@@ -31,11 +31,13 @@ from src.api.routes import patient as patients_route
 from src.api.routes import session as session_route
 from src.api.routes import static as static_route
 from src.api.routes import system as system_route
+from src.emr.routes import emr as emr_route
 from src.core.state import MedicalState, get_state
 from src.data.repositories import account as account_repo
 from src.data.repositories import medical as medical_repo
 from src.data.repositories import patient as patient_repo
 from src.data.repositories import session as session_repo
+from src.emr.repositories import emr as emr_repo
 
 
 def startup_event(state: MedicalState):
@@ -82,6 +84,7 @@ def startup_event(state: MedicalState):
 	patient_repo.init()
 	session_repo.init()
 	#medical_repo.init()
+	emr_repo.create()
 
 def shutdown_event():
 	"""Cleanup on shutdown"""
@@ -127,6 +130,7 @@ app.include_router(account_route.router)
 app.include_router(system_route.router)
 app.include_router(static_route.router)
 app.include_router(audio_route.router)
+app.include_router(emr_route.router)
 
 @app.get("/api/info")
 async def get_api_info():

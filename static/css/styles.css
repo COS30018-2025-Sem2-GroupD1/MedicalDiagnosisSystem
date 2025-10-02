@@ -481,6 +481,96 @@ body {
     text-align: right;
 }
 
+/* EMR Button Styles */
+.message-actions {
+    display: flex;
+    align-items: center;
+    margin-left: var(--spacing-sm);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.message:hover .message-actions {
+    opacity: 1;
+}
+
+.emr-extract-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: 6px;
+    transition: all var(--transition-fast);
+    font-size: 0.875rem;
+}
+
+.emr-extract-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.emr-extract-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Notification Styles */
+.notification {
+    position: fixed;
+    top: var(--spacing-lg);
+    right: var(--spacing-lg);
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform var(--transition-normal);
+    max-width: 300px;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.notification-success {
+    border-left: 4px solid var(--success-color);
+}
+
+.notification-error {
+    border-left: 4px solid var(--accent-color);
+}
+
+.notification-info {
+    border-left: 4px solid var(--primary-color);
+}
+
+.notification-content i {
+    font-size: 1.125rem;
+}
+
+.notification-success .notification-content i {
+    color: var(--success-color);
+}
+
+.notification-error .notification-content i {
+    color: var(--accent-color);
+}
+
+.notification-info .notification-content i {
+    color: var(--primary-color);
+}
+
 /* Chat Input */
 .chat-input-container {
     padding: var(--spacing-lg);

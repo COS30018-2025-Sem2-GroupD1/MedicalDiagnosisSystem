@@ -1,0 +1,118 @@
+{
+	"$jsonSchema": {
+		"bsonType": "object",
+		"title": "EMR validator",
+		"required": [
+			"patient_id",
+			"doctor_id",
+			"message_id",
+			"session_id",
+			"extracted_data",
+			"created_at",
+			"updated_at"
+		],
+		"properties": {
+			"patient_id": {
+				"bsonType": "string",
+				"description": "ID of the patient this EMR entry belongs to"
+			},
+			"doctor_id": {
+				"bsonType": "string",
+				"description": "ID of the doctor who triggered the EMR extraction"
+			},
+			"message_id": {
+				"bsonType": "string",
+				"description": "ID of the message that was analyzed for EMR extraction"
+			},
+			"session_id": {
+				"bsonType": "string",
+				"description": "ID of the chat session this EMR entry belongs to"
+			},
+			"original_message": {
+				"bsonType": "string",
+				"description": "The original message content that was analyzed"
+			},
+			"extracted_data": {
+				"bsonType": "object",
+				"properties": {
+					"diagnosis": {
+						"bsonType": "array",
+						"items": {"bsonType": "string"},
+						"description": "List of diagnoses identified"
+					},
+					"symptoms": {
+						"bsonType": "array",
+						"items": {"bsonType": "string"},
+						"description": "List of symptoms mentioned"
+					},
+					"medications": {
+						"bsonType": "array",
+						"items": {
+							"bsonType": "object",
+							"properties": {
+								"name": {"bsonType": "string"},
+								"dosage": {"bsonType": "string"},
+								"frequency": {"bsonType": "string"},
+								"duration": {"bsonType": "string"}
+							}
+						},
+						"description": "List of medications prescribed or mentioned"
+					},
+					"vital_signs": {
+						"bsonType": "object",
+						"properties": {
+							"blood_pressure": {"bsonType": "string"},
+							"heart_rate": {"bsonType": "string"},
+							"temperature": {"bsonType": "string"},
+							"respiratory_rate": {"bsonType": "string"},
+							"oxygen_saturation": {"bsonType": "string"}
+						},
+						"description": "Vital signs mentioned in the message"
+					},
+					"lab_results": {
+						"bsonType": "array",
+						"items": {
+							"bsonType": "object",
+							"properties": {
+								"test_name": {"bsonType": "string"},
+								"value": {"bsonType": "string"},
+								"unit": {"bsonType": "string"},
+								"reference_range": {"bsonType": "string"}
+							}
+						},
+						"description": "Laboratory results mentioned"
+					},
+					"procedures": {
+						"bsonType": "array",
+						"items": {"bsonType": "string"},
+						"description": "Medical procedures mentioned or performed"
+					},
+					"notes": {
+						"bsonType": "string",
+						"description": "Additional clinical notes and observations"
+					}
+				},
+				"description": "Structured medical data extracted from the message"
+			},
+			"embeddings": {
+				"bsonType": "array",
+				"items": {"bsonType": "number"},
+				"description": "Vector embeddings for semantic search"
+			},
+			"confidence_score": {
+				"bsonType": "number",
+				"minimum": 0,
+				"maximum": 1,
+				"description": "Confidence score of the extraction (0-1)"
+			},
+			"created_at": {
+				"bsonType": "date",
+				"description": "Timestamp when the EMR entry was created"
+			},
+			"updated_at": {
+				"bsonType": "date",
+				"description": "Timestamp when the EMR entry was last updated"
+			}
+		}
+	}
+}
