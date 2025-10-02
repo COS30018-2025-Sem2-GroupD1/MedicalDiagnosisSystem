@@ -199,6 +199,7 @@ class PatientEMR {
                 name: document.getElementById('patientNameInput').value.trim(),
                 age: parseInt(document.getElementById('patientAgeInput').value) || null,
                 sex: document.getElementById('patientSexInput').value || null,
+                ethnicity: document.getElementById('patientEthnicityInput').value || null,
                 phone: document.getElementById('patientPhoneInput').value.trim() || null,
                 email: document.getElementById('patientEmailInput').value.trim() || null,
                 address: document.getElementById('patientAddressInput').value.trim() || null,
@@ -240,13 +241,14 @@ class PatientEMR {
             name: this.patientData.name,
             age: this.patientData.age,
             sex: this.patientData.sex,
+            ethnicity: this.patientData.ethnicity,
             phone: this.patientData.phone,
             email: this.patientData.email,
             address: this.patientData.address,
             medications: this.medications,
             past_assessment_summary: this.patientData.past_assessment_summary,
             created_at: this.patientData.created_at,
-            updated_at: new Date().toISOString(),
+            updated_at: this.patientData.updated_at,
             sessions: this.sessions
         };
 
