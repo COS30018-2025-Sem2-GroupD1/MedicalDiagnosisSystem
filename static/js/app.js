@@ -1396,7 +1396,8 @@ How can I assist you today?`;
 
         // Process sessions
         this.backendSessions = sessions.map(s => ({
-            id: s.session_id,
+            // FIX: Add a fallback to _id to make the frontend more robust
+            id: s.session_id || s._id,
             title: s.title || 'New Chat',
             messages: [],
             createdAt: s.created_at || new Date().toISOString(),
@@ -1413,6 +1414,11 @@ How can I assist you today?`;
     }
 
     hydrateMessagesForSession = async function (sessionId) {
+        // FIX: Add a guard clause to prevent calling the API with an invalid ID
+        if (!sessionId || sessionId === 'undefined') {
+            console.error('[DEBUG] hydrateMessagesForSession was called with an invalid session ID:', sessionId);
+            return;
+        }
         try {
             // Check localStorage cache first
             const cacheKey = `messages_${this.currentPatientId}_${sessionId}`;
@@ -1436,7 +1442,7 @@ How can I assist you today?`;
 
             // If no cache or cache is stale, fetch from backend
             if (messages.length === 0) {
-                const resp = await fetch(`/session/${sessionId}/messages?patient_id=${this.currentPatientId}&limit=1000`);
+                const resp = await fetch(`/session/${sessionId}/messages?limit=1000`);
                 if (!resp.ok) {
                     console.warn(`Failed to fetch messages for session ${sessionId}:`, resp.status);
                     return;
