@@ -8,17 +8,17 @@ from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import ConnectionFailure, OperationFailure, PyMongoError
 
-from src.data.connection import ActionFailed, create_collection, get_collection
+from src.data.connection import ActionFailed, setup_collection, get_collection
 from src.utils.logger import logger
 from src.emr.models.emr import EMRCreateRequest, EMRResponse, ExtractedData
 
 EMR_COLLECTION = "emr"
 
 
-def create():
+def init():
     """Create the EMR collection with validation schema."""
     try:
-        create_collection(EMR_COLLECTION, "schemas/emr_validator.json")
+        setup_collection(EMR_COLLECTION, "schemas/emr_validator.json")
         # Create indexes for better performance
         collection = get_collection(EMR_COLLECTION)
         collection.create_index("patient_id")
@@ -40,15 +40,15 @@ def create_emr_entry(emr_data: EMRCreateRequest, embeddings: List[float]) -> str
     """Create a new EMR entry in the database."""
     try:
         collection = get_collection(EMR_COLLECTION)
-        
+
         # Check if EMR entry already exists for this message
         existing = collection.find_one({"message_id": emr_data.message_id})
         if existing:
             logger().warning(f"EMR entry already exists for message {emr_data.message_id}")
             return str(existing["_id"])
-        
+
         now = datetime.now(timezone.utc)
-        
+
         doc = {
             "patient_id": emr_data.patient_id,
             "doctor_id": emr_data.doctor_id,
@@ -61,11 +61,11 @@ def create_emr_entry(emr_data: EMRCreateRequest, embeddings: List[float]) -> str
             "created_at": now,
             "updated_at": now
         }
-        
+
         result = collection.insert_one(doc)
         logger().info(f"Created EMR entry for patient {emr_data.patient_id}, message {emr_data.message_id}")
         return str(result.inserted_id)
-        
+
     except Exception as e:
         logger().error(f"Error creating EMR entry: {e}")
         raise
@@ -85,8 +85,8 @@ def get_emr_by_id(emr_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_patient_emr_entries(
-    patient_id: str, 
-    limit: int = 20, 
+    patient_id: str,
+    limit: int = 20,
     offset: int = 0
 ) -> List[Dict[str, Any]]:
     """Get EMR entries for a specific patient, ordered by creation date."""
@@ -95,15 +95,15 @@ def get_patient_emr_entries(
         cursor = collection.find(
             {"patient_id": patient_id}
         ).sort("created_at", DESCENDING).skip(offset).limit(limit)
-        
+
         results = []
         for doc in cursor:
             doc["_id"] = str(doc["_id"])
             results.append(doc)
-        
+
         logger().info(f"Retrieved {len(results)} EMR entries for patient {patient_id}")
         return results
-        
+
     except Exception as e:
         logger().error(f"Error getting patient EMR entries: {e}")
         return []
@@ -118,7 +118,7 @@ def search_emr_by_semantic_similarity(
     """Search EMR entries using semantic similarity with embeddings."""
     try:
         collection = get_collection(EMR_COLLECTION)
-        
+
         # Use MongoDB's vector search capabilities if available
         # For now, we'll implement a simple cosine similarity search
         pipeline = [
@@ -178,14 +178,14 @@ def search_emr_by_semantic_similarity(
             {"$sort": {"similarity": DESCENDING}},
             {"$limit": limit}
         ]
-        
+
         results = list(collection.aggregate(pipeline))
         for doc in results:
             doc["_id"] = str(doc["_id"])
-        
+
         logger().info(f"Found {len(results)} similar EMR entries for patient {patient_id}")
         return results
-        
+
     except Exception as e:
         logger().error(f"Error searching EMR by similarity: {e}")
         return []
@@ -196,20 +196,20 @@ def update_emr_entry(emr_id: str, updates: Dict[str, Any]) -> bool:
     try:
         collection = get_collection(EMR_COLLECTION)
         updates["updated_at"] = datetime.now(timezone.utc)
-        
+
         result = collection.update_one(
             {"_id": ObjectId(emr_id)},
             {"$set": updates}
         )
-        
+
         success = result.modified_count > 0
         if success:
             logger().info(f"Updated EMR entry {emr_id}")
         else:
             logger().warning(f"No EMR entry found with ID {emr_id}")
-        
+
         return success
-        
+
     except Exception as e:
         logger().error(f"Error updating EMR entry {emr_id}: {e}")
         return False
@@ -220,15 +220,15 @@ def delete_emr_entry(emr_id: str) -> bool:
     try:
         collection = get_collection(EMR_COLLECTION)
         result = collection.delete_one({"_id": ObjectId(emr_id)})
-        
+
         success = result.deleted_count > 0
         if success:
             logger().info(f"Deleted EMR entry {emr_id}")
         else:
             logger().warning(f"No EMR entry found with ID {emr_id}")
-        
+
         return success
-        
+
     except Exception as e:
         logger().error(f"Error deleting EMR entry {emr_id}: {e}")
         return False
@@ -249,7 +249,7 @@ def get_emr_statistics(patient_id: str) -> Dict[str, Any]:
     """Get EMR statistics for a patient."""
     try:
         collection = get_collection(EMR_COLLECTION)
-        
+
         pipeline = [
             {"$match": {"patient_id": patient_id}},
             {
@@ -267,7 +267,7 @@ def get_emr_statistics(patient_id: str) -> Dict[str, Any]:
                 }
             }
         ]
-        
+
         result = list(collection.aggregate(pipeline))
         if result:
             return result[0]
@@ -279,7 +279,7 @@ def get_emr_statistics(patient_id: str) -> Dict[str, Any]:
                 "diagnosis_count": 0,
                 "medication_count": 0
             }
-            
+
     except Exception as e:
         logger().error(f"Error getting EMR statistics: {e}")
         return {}
