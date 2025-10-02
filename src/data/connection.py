@@ -69,4 +69,5 @@ def setup_collection(
 		"validationLevel": validation_level
 	})
 
-	logger(tag="setup_collection").info(f"Applied '{str(validator["$jsonSchema"]["title"]).lower()}' to collection '{collection_name}'")
+	lower_title = str(validator["$jsonSchema"]["title"]).lower()
+	logger(tag="setup_collection").info(f"Applied '{lower_title}' to collection '{collection_name}'")
