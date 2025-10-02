@@ -83,7 +83,7 @@ def get_user_sessions(
 			session["_id"] = str(session["_id"])
 			results.append(session)
 
-	return list(cursor)
+	return results
 
 def list_patient_sessions(
 	patient_id: str,
