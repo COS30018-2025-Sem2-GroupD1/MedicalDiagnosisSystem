@@ -34,7 +34,6 @@ from src.api.routes import system as system_route
 from src.core.state import MedicalState, get_state
 from src.data.repositories import account as account_repo
 from src.data.repositories import medical as medical_repo
-from src.data.repositories import message as message_repo
 from src.data.repositories import patient as patient_repo
 from src.data.repositories import session as session_repo
 
@@ -78,12 +77,11 @@ def startup_event(state: MedicalState):
 
 	logger(tag="startup").info("Medical AI Assistant startup complete")
 
-	# TODO On first startup, create all repositories if they don't exist
-	#account_repo.create()
-	#patient_repo.create()
-	#session_repo.create()
-	#message_repo.create()
-	#medical_repo.create()
+	# TODO On startup initialise all repositories, creating them if they don't exist
+	account_repo.init()
+	patient_repo.init()
+	session_repo.init()
+	#medical_repo.init()
 
 def shutdown_event():
 	"""Cleanup on shutdown"""

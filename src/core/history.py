@@ -1,14 +1,9 @@
 # core/history.py
 
-from datetime import datetime, timezone
-
 from src.config.settings import settings
 from src.core.memory import MemoryLRU
-from src.data.repositories.medical import (get_recent_memory_summaries,
-                                           save_memory_summary,
+from src.data.repositories.medical import (save_memory_summary,
                                            search_memory_summaries_semantic)
-from src.data.repositories.message import save_chat_message
-from src.data.repositories.session import ensure_session
 from src.services import summariser
 from src.services.nvidia import nvidia_chat
 from src.utils.embeddings import EmbeddingClient
@@ -44,33 +39,34 @@ class MedicalHistoryManager:
 			cache_key = patient_id or user_id
 			self.memory.add(cache_key, summary)
 
-			# Add to session history
+			# Add to session history (sent_by_user field)
 			self.memory.add_message_to_session(session_id, "user", question)
 			self.memory.add_message_to_session(session_id, "assistant", answer)
 
 			# Persist to MongoDB with patient/doctor context
 			if patient_id and doctor_id:
-				ensure_session(
-					session_id=session_id,
-					patient_id=patient_id,
-					doctor_id=doctor_id,
-					title=session_title or "New Chat",
-					last_activity=datetime.now(timezone.utc)
-				)
-				save_chat_message(
-					session_id=session_id,
-					patient_id=patient_id,
-					doctor_id=doctor_id,
-					role="user",
-					content=question
-				)
-				save_chat_message(
-					session_id=session_id,
-					patient_id=patient_id,
-					doctor_id=doctor_id,
-					role="assistant",
-					content=answer
-				)
+			# TODO Fix
+			#	ensure_session(
+			#		session_id=session_id,
+			#		patient_id=patient_id,
+			#		doctor_id=doctor_id,
+			#		title=session_title or "New Chat",
+			#		last_activity=datetime.now(timezone.utc)
+			#	)
+			#	save_chat_message(
+			#		session_id=session_id,
+			#		patient_id=patient_id,
+			#		doctor_id=doctor_id,
+			#		role="user",
+			#		content=question
+			#	)
+			#	save_chat_message(
+			#		session_id=session_id,
+			#		patient_id=patient_id,
+			#		doctor_id=doctor_id,
+			#		role="assistant",
+			#		content=answer
+			#	)
 
 				# Generate embedding for semantic search
 				embedding = None
@@ -127,14 +123,14 @@ class MedicalHistoryManager:
 			self.memory.update_session_title(session_id, title)
 
 			# TODO Verify this isn't redundant
-			if patient_id and doctor_id:
-				ensure_session(
-					session_id=session_id,
-					patient_id=patient_id,
-					doctor_id=doctor_id,
-					title=title,
-					last_activity=datetime.now(timezone.utc)
-				)
+			#if patient_id and doctor_id:
+			#	ensure_session(
+			#		session_id=session_id,
+			#		patient_id=patient_id,
+			#		doctor_id=doctor_id,
+			#		title=title,
+			#		last_activity=datetime.now(timezone.utc)
+			#	)
 
 	# NOTE Likely depreciated
 	def get_conversation_context(
@@ -179,7 +175,10 @@ class MedicalHistoryManager:
 		session_context = ""
 		if session:
 			recent_messages = session.get_messages(10)
-			session_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
+			session_context = "\n".join([
+				f"{'User' if msg.sent_by_user else 'Assistant'}: {msg.content}"
+				for msg in recent_messages
+			])
 
 		# Use NVIDIA to reason about STM relevance
 		relevant_stm = []

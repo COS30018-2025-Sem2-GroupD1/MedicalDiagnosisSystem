@@ -4,14 +4,10 @@ from pydantic import BaseModel
 
 
 class ChatRequest(BaseModel):
-	user_id: str
+	account_id: str
 	patient_id: str
-	doctor_id: str
-	session_id: str
+	session_id: str | None = None
 	message: str
-	user_role: str | None = "Medical Professional"
-	user_specialty: str | None = ""
-	title: str | None = "New Chat"
 
 class ChatResponse(BaseModel):
 	response: str
@@ -20,9 +16,8 @@ class ChatResponse(BaseModel):
 	medical_context: str | None = None
 
 class SessionRequest(BaseModel):
-	user_id: str
+	account_id: str
 	patient_id: str
-	doctor_id: str
 	title: str | None = "New Chat"
 
 class SummariseRequest(BaseModel):

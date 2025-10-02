@@ -1,8 +1,5 @@
 # core/memory.py
 
-import uuid
-from datetime import datetime, timezone
-
 from src.core.profile import UserProfile
 from src.core.session import ChatSession
 from src.data.repositories import account, medical, session
@@ -36,9 +33,15 @@ class MemoryLRU:
 		data = account.get_account(user_id)
 		return UserProfile.from_dict(data) if data else None
 
-	def create_session(self, user_id: str, title: str = "New Chat") -> str:
+	def create_session(
+		self,
+		user_id: str,
+		patient_id: str,
+		title: str = "New Chat"
+	):
 		"""Creates a new chat session for a user."""
-		return session.create_session(user_id, title)
+		data = session.create_session(user_id, patient_id, title)
+		return ChatSession.from_dict(data)
 
 	def get_session(self, session_id: str) -> ChatSession | None:
 		"""Retrieves a single chat session by its ID."""
@@ -58,22 +61,11 @@ class MemoryLRU:
 		self,
 		session_id: str,
 		role: str,
-		content: str,
-		metadata: dict = {}
+		content: str
 	):
-		"""
-		Adds a message to a chat session.
-
-		@TODO Update.
-		"""
-		message = {
-			"id": str(uuid.uuid4()),
-			"role": role,
-			"content": content,
-			"timestamp": datetime.now(timezone.utc),
-			"metadata": metadata
-		}
-		session.add_message(session_id, message)
+		"""Adds a message to a chat session."""
+		sent_by_user = role == "user"
+		session.add_message(session_id, content, sent_by_user)
 
 	def update_session_title(self, session_id: str, title: str):
 		"""Updates the title of a session."""

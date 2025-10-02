@@ -52,18 +52,13 @@ async def get_patient(patient_id: str):
 	try:
 		logger().info(f"GET /patient/{patient_id}")
 		try:
-			# Validate ObjectId format
-			if not ObjectId.is_valid(patient_id):
-				raise HTTPException(status_code=400, detail="Invalid patient ID format")
+			patient = get_patient_by_id(patient_id)
 		except InvalidId:
 			raise HTTPException(status_code=400, detail="Invalid patient ID format")
 
-		patient = get_patient_by_id(patient_id)
 		if not patient:
 			raise HTTPException(status_code=404, detail="Patient not found")
 
-		# Convert ObjectId to string for JSON response
-		patient["_id"] = str(patient["_id"])
 		return patient
 	except HTTPException:
 		raise
@@ -90,12 +85,13 @@ async def update_patient(patient_id: str, req: PatientUpdateRequest):
 		logger().error(f"Error updating patient: {e}")
 		raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{patient_id}/sessions")
+@router.get("/{patient_id}/session")
 async def list_sessions_for_patient(patient_id: str):
 	"""List sessions for a patient from Mongo"""
 	try:
-		logger().info(f"GET /patient/{patient_id}/sessions")
-		return {"sessions": list_patient_sessions(patient_id)}
+		logger().info(f"GET /patient/{patient_id}/session")
+		sessions = list_patient_sessions(patient_id)
+		return {"sessions": sessions}
 	except Exception as e:
 		logger().error(f"Error listing sessions: {e}")
 		raise HTTPException(status_code=500, detail=str(e))

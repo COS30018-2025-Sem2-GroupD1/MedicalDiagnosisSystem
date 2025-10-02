@@ -4,9 +4,9 @@ import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from bson import ObjectId
 
 from src.core.state import MedicalState, get_state
-from src.data.repositories.session import ensure_session
 from src.models.chat import ChatRequest, ChatResponse, SummariseRequest
 from src.services.medical_response import generate_medical_response
 from src.services.summariser import summarise_title_with_nvidia
@@ -24,56 +24,44 @@ async def chat_endpoint(
 	"""
 	start_time = time.time()
 
-	try:
-		logger().info(f"POST /chat user={request.user_id} session={request.session_id} patient={request.patient_id} doctor={request.doctor_id}")
-		logger().info(f"Message: {request.message[:100]}...")  # Log first 100 chars of message
-	except Exception as e:
-		logger().error(f"Error in request: {e}")
-		logger().error(f"Request data: {request.model_dump()}")
-		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+	logger().info(f"POST /chat user={request.account_id} session={request.session_id} patient={request.patient_id}")
+	logger().info(f"Message: {request.message[:100]}...")  # Log first 100 chars of message
 
-	try:
-		# Get or create user profile (doctor as current user profile)
-		user_profile = state.memory_system.get_user(request.user_id)
-		if not user_profile:
-			state.memory_system.create_user()
-	except Exception as e:
-		logger().error(f"Error retrieving or creating user profile: {e}")
-		logger().error(f"Request data: {request.model_dump()}")
-		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+	# Currently completely pointless
+	#user_profile = state.memory_system.get_user(request.account_id)
+	#if not user_profile:
+	#	state.memory_system.create_user()
 
-	try:
-		# Get or create session (cache)
-		session = state.memory_system.get_session(request.session_id)
-		if not session:
-			session_id = state.memory_system.create_session(request.user_id, request.title or "New Chat")
-			request.session_id = session_id  # Update session ID if new session created
+	session = None
+	session_id = request.session_id
+
+	#if request.session_id != "default":
+	if session_id:
+		try:
 			session = state.memory_system.get_session(session_id)
-			logger().info(f"Created new session: {session_id}")
-	except Exception as e:
-		logger().error(f"Error retrieving or creating session: {e}")
-		logger().error(f"Request data: {request.model_dump()}")
-		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+		except Exception as e:
+			logger().error(f"Error retrieving session: {e}")
+			raise HTTPException(status_code=400, detail=f"Invalid session ID ({session_id}): {str(e)}")
 
-	try:
-		# Ensure session exists in Mongo with patient/doctor context
-		ensure_session(
-			session_id=request.session_id,
-			patient_id=request.patient_id,
-			doctor_id=request.doctor_id,
-			title=request.title or "New Chat",
-			last_activity=datetime.now(timezone.utc)
+	if not session:
+		if not request.patient_id:
+			raise HTTPException(status_code=400, detail="patient_id required for new sessions")
+
+		session = state.memory_system.create_session(
+			request.account_id,
+			request.patient_id,
+			"New Chat"
 		)
-	except Exception as e:
-		logger().error(f"Error ensuring session: {e}")
-		logger().error(f"Request data: {request.model_dump()}")
-		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+		logger().info(f"Created new session: {session.session_id}")
+
+	session_id = session.session_id
 
 	try:
 		# Get enhanced medical context with STM + LTM semantic search + NVIDIA reasoning
 		medical_context = await state.history_manager.get_enhanced_conversation_context(
-			request.user_id,
-			request.session_id,
+			request.account_id,
+			session_id,
 			request.message,
 			state.nvidia_rotator,
 			patient_id=request.patient_id
@@ -85,11 +73,11 @@ async def chat_endpoint(
 
 	try:
 		# Generate response using Gemini AI
-		logger().info(f"Generating medical response using Gemini AI for user {request.user_id}")
+		logger().info(f"Generating medical response using Gemini AI for user {request.account_id}")
 		response = await generate_medical_response(
 			request.message,
-			request.user_role or "Medical Professional",
-			request.user_specialty or "",
+			"Medical Professional",
+			"",
 			state.gemini_rotator,
 			medical_context
 		)
@@ -97,15 +85,15 @@ async def chat_endpoint(
 		# Process and store the exchange
 		try:
 			await state.history_manager.process_medical_exchange(
-				request.user_id,
-				request.session_id,
+				request.account_id,
+				session_id,
 				request.message,
 				response,
 				state.gemini_rotator,
 				state.nvidia_rotator,
 				patient_id=request.patient_id,
-				doctor_id=request.doctor_id,
-				session_title=request.title or "New Chat"
+				doctor_id=request.account_id,
+				session_title="New Chat"
 			)
 		except Exception as e:
 			logger().warning(f"Failed to process medical exchange: {e}")
@@ -114,12 +102,12 @@ async def chat_endpoint(
 		# Calculate response time
 		response_time = time.time() - start_time
 
-		logger().info(f"Generated response in {response_time:.2f}s for user {request.user_id}")
+		logger().info(f"Generated response in {response_time:.2f}s for user {request.account_id}")
 		logger().info(f"Response length: {len(response)} characters")
 
 		return ChatResponse(
 			response=response,
-			session_id=request.session_id,
+			session_id=session_id,
 			timestamp=datetime.now(timezone.utc).isoformat(),
 			medical_context=medical_context if medical_context else None
 		)

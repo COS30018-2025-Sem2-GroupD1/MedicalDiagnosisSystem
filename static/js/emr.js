@@ -150,7 +150,7 @@ class PatientEMR {
 
     async loadPatientSessions() {
         try {
-            const resp = await fetch(`/patient/${this.patientId}/sessions`);
+            const resp = await fetch(`/patient/${this.patientId}/session`);
             if (resp.ok) {
                 const data = await resp.json();
                 this.sessions = data.sessions || [];

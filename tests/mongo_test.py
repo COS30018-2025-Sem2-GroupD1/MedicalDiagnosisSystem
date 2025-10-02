@@ -17,7 +17,7 @@ from src.data.repositories import session as chat_repo
 from src.data.repositories.account import ACCOUNTS_COLLECTION
 from src.data.repositories.medical import (MEDICAL_CONTEXT_COLLECTION,
                                            MEDICAL_RECORDS_COLLECTION)
-from src.data.repositories.session import CHAT_SESSIONS_COLLECTION
+from src.data.repositories.session import SESSIONS_COLLECTION
 from src.utils.logger import logger
 
 
@@ -30,7 +30,7 @@ class TestMongoDBRepositories(unittest.TestCase):
 		cls.db = db_conn.get_database()
 		cls.test_collections = {
 			ACCOUNTS_COLLECTION: "test_accounts",
-			CHAT_SESSIONS_COLLECTION: "test_chat_sessions",
+			SESSIONS_COLLECTION: "test_chat_sessions",
 			MEDICAL_RECORDS_COLLECTION: "test_medical_records",
 			MEDICAL_CONTEXT_COLLECTION: "test_medical_context"
 		}
@@ -57,7 +57,7 @@ class TestMongoDBRepositories(unittest.TestCase):
 
 	def test_chat_session_operations(self):
 		"""Tests chat session creation, message handling, and retrieval."""
-		test_coll = self.test_collections[CHAT_SESSIONS_COLLECTION]
+		test_coll = self.test_collections[SESSIONS_COLLECTION]
 
 		session_id = chat_repo.create_session("test_user_1", "Test Chat", collection_name=test_coll)
 		self.assertIsNotNone(session_id)
@@ -93,7 +93,7 @@ class TestMongoDBRepositories(unittest.TestCase):
 	def test_utility_functions(self):
 		"""Tests database utility functions like indexing and backups."""
 		test_accounts = self.test_collections[ACCOUNTS_COLLECTION]
-		test_sessions = self.test_collections[CHAT_SESSIONS_COLLECTION]
+		test_sessions = self.test_collections[SESSIONS_COLLECTION]
 
 		db_utils.create_index(test_accounts, "email", unique=True)
 		chat_repo.create_session("test_user_1", "Old Chat", collection_name=test_sessions)
@@ -108,7 +108,7 @@ class TestMongoDBRepositories(unittest.TestCase):
 	def test_error_handling(self):
 		"""Tests expected error cases, such as duplicate keys and invalid IDs."""
 		test_accounts = self.test_collections[ACCOUNTS_COLLECTION]
-		test_sessions = self.test_collections[CHAT_SESSIONS_COLLECTION]
+		test_sessions = self.test_collections[SESSIONS_COLLECTION]
 
 		db_utils.create_index(test_accounts, "name", unique=True)
 		account_repo.create_account(name="User", user_id="user1", collection_name=test_accounts)

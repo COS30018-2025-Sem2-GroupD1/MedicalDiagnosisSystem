@@ -332,7 +332,7 @@ class MedicalChatbotApp {
         } else {
             // Create default user
             this.currentUser = {
-                id: this.generateId(),
+                id: this.generateId(), // This is a temporary local ID
                 name: 'Anonymous',
                 role: 'Medical Professional',
                 specialty: '',
@@ -352,7 +352,7 @@ class MedicalChatbotApp {
 
         // Create new session
         this.currentSession = {
-            id: this.generateId(),
+            id: 'default',
             title: 'New Chat',
             messages: [],
             createdAt: new Date().toISOString(),
@@ -382,7 +382,7 @@ class MedicalChatbotApp {
         if (sessions.length === 0) {
             // Create a new session immediately so it shows in sidebar
             this.currentSession = {
-                id: this.generateId(),
+                id: 'default',
                 title: 'New Chat',
                 messages: [],
                 createdAt: new Date().toISOString(),
@@ -844,7 +844,7 @@ How can I assist you today?`;
 
             if (isBackendSession) {
                 // Delete from backend (MongoDB + memory system)
-                const resp = await fetch(`/sessions/${sessionId}`, {
+                const resp = await fetch(`/session/${sessionId}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -977,7 +977,7 @@ How can I assist you today?`;
                     name: doctor.name,
                     role: doctor.role || 'Medical Professional',
                     specialty: doctor.specialty || '',
-                    _id: doctor._id || doctor.doctor_id
+                    _id: doctor._id // API returns _id, not doctor_id
                 }));
                 // Also save to localStorage for offline access
                 localStorage.setItem('medicalChatbotDoctors', JSON.stringify(this.doctors));
@@ -1025,7 +1025,8 @@ How can I assist you today?`;
             if (resp.ok) {
                 const data = await resp.json();
                 // Add to local doctors list
-                this.doctors.push({ name: data.name, _id: data.doctor_id });
+                // FIX: Use account_id from the response
+                this.doctors.push({ name: data.name, _id: data.account_id });
                 this.saveDoctors();
                 return data;
             }
@@ -1097,16 +1098,17 @@ How can I assist you today?`;
                     specialty,
                     medical_roles: [role]
                 });
-                if (result) {
+                if (result && result.account_id) {
                     this.doctors.unshift({
                         name,
                         role,
                         specialty,
-                        _id: result.doctor_id
+                        _id: result.account_id // FIX: Use account_id from response
                     });
                     this.saveDoctors();
 
                     // Update current user profile
+                    this.currentUser.id = result.account_id; // FIX: CRITICAL - Update the user ID
                     this.currentUser.name = name;
                     this.currentUser.role = role;
                     this.currentUser.specialty = specialty;
@@ -1140,31 +1142,10 @@ How can I assist you today?`;
             console.warn('Failed to check doctor existence:', e);
         }
 
-        // Update current user profile
+        // Update current user profile info (ID will be updated upon creation)
         this.currentUser.name = name;
         this.currentUser.role = role;
         this.currentUser.specialty = specialty;
-        this.saveUser();
-        this.updateUserDisplay();
-
-        // Update local doctors list
-        const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
-        if (existingDoctorIndex === -1) {
-            // Add new doctor to local list
-            this.doctors.unshift({
-                name,
-                role,
-                specialty
-            });
-        } else {
-            // Update existing doctor in local list
-            this.doctors[existingDoctorIndex] = {
-                ...this.doctors[existingDoctorIndex],
-                role: role,
-                specialty: specialty
-            };
-        }
-        this.saveDoctors();
 
         // Only create new doctor in MongoDB if it doesn't exist
         if (!doctorExists) {
@@ -1186,19 +1167,35 @@ How can I assist you today?`;
                 const data = await resp.json();
                 console.log('[Doctor] Created new doctor in backend:', data);
 
-                // Update local doctor with the ID from backend
-                const localDoctor = this.doctors.find(d => d.name === name);
-                if (localDoctor) {
-                    localDoctor._id = data.doctor_id;
-                    this.saveDoctors();
+                // FIX: CRITICAL - Update the current user's ID with the one from the database
+                if (data.account_id) {
+                    this.currentUser.id = data.account_id;
                 }
+
+                // Update local doctor list with the ID from backend
+                const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
+                if (existingDoctorIndex === -1) {
+                    this.doctors.unshift({ name, role, specialty, _id: data.account_id });
+                } else {
+                    this.doctors[existingDoctorIndex]._id = data.account_id;
+                }
+
             } catch (err) {
                 console.warn('[Doctor] failed to create doctor in backend:', err);
             }
         } else {
+             // If doctor exists, find their ID and update currentUser
+            const existingDoctor = this.doctors.find(d => d.name === name);
+            if (existingDoctor && existingDoctor._id) {
+                this.currentUser.id = existingDoctor._id;
+            }
             console.log('[Doctor] Doctor already exists in backend, no creation needed');
         }
 
+        // Save the updated user profile (with potentially new ID)
+        this.saveUser();
+        this.updateUserDisplay();
+        this.saveDoctors();
         this.hideModal('userModal');
     }
 
@@ -1210,16 +1207,9 @@ How can I assist you today?`;
         try {
             const storedPatients = JSON.parse(localStorage.getItem('medicalChatbotPatients') || '[]');
             return storedPatients.filter(p => {
-                // Check name match (case-insensitive contains)
                 const nameMatch = p.name.toLowerCase().includes(query.toLowerCase());
-                // Check _id match
-                let idMatch = p._id.includes(query);
-                //// Check patient_id match
-                //let idMatch = p.patient_id.includes(query);
-                //// Special handling for numeric queries - check if patient_id starts with the query
-                //if (/^\d+$/.test(query)) {
-                //    idMatch = p.patient_id.startsWith(query) || p.patient_id.includes(query);
-                //}
+                // FIX: Check _id field which is what the API returns
+                const idMatch = p._id && p._id.includes(query);
                 return nameMatch || idMatch;
             });
         } catch (e) {
@@ -1229,21 +1219,19 @@ How can I assist you today?`;
     }
 
     combinePatientResults(mongoResults, localResults) {
-        // Create a map to deduplicate by patient_id, with MongoDB results taking priority
         const resultMap = new Map();
-
         // Add MongoDB results first (they take priority)
         mongoResults.forEach(patient => {
-            resultMap.set(patient.patient_id, patient);
+            // FIX: Use _id as the unique key
+            if(patient._id) resultMap.set(patient._id, patient);
         });
-
         // Add localStorage results only if not already present
         localResults.forEach(patient => {
-            if (!resultMap.has(patient.patient_id)) {
-                resultMap.set(patient.patient_id, patient);
+            // FIX: Use _id as the unique key
+            if (patient._id && !resultMap.has(patient._id)) {
+                resultMap.set(patient._id, patient);
             }
         });
-
         return Array.from(resultMap.values());
     }
 
@@ -1342,9 +1330,9 @@ How can I assist you today?`;
                 const data = await resp.json();
                 console.log('[DEBUG] Search results:', data);
                 const first = (data.results || [])[0];
-                if (first) {
+                if (first && first._id) { // FIX: Check for _id
                     console.log('[DEBUG] Found patient, setting as current:', first);
-                    this.currentPatientId = first._id;
+                    this.currentPatientId = first._id; // FIX: Use _id from search result
                     this.savePatientId();
                     input.value = first._id;
                     this.updatePatientDisplay(first._id, first.name || 'Unknown');
@@ -1387,7 +1375,7 @@ How can I assist you today?`;
         // If no cache or cache is stale, fetch from backend
         if (sessions.length === 0) {
             try {
-                const resp = await fetch(`/patient/${this.currentPatientId}/sessions`);
+                const resp = await fetch(`/patient/${this.currentPatientId}/session`);
                 if (resp.ok) {
                     const data = await resp.json();
                     sessions = Array.isArray(data.sessions) ? data.sessions : [];
@@ -1448,7 +1436,7 @@ How can I assist you today?`;
 
             // If no cache or cache is stale, fetch from backend
             if (messages.length === 0) {
-                const resp = await fetch(`/sessions/${sessionId}/messages?patient_id=${this.currentPatientId}&limit=1000`);
+                const resp = await fetch(`/session/${sessionId}/messages?patient_id=${this.currentPatientId}&limit=1000`);
                 if (!resp.ok) {
                     console.warn(`Failed to fetch messages for session ${sessionId}:`, resp.status);
                     return;
@@ -1512,13 +1500,15 @@ How can I assist you today?`;
             items.forEach(p => {
                 const div = document.createElement('div');
                 div.className = 'patient-suggestion';
-                div.textContent = `${p.name || 'Unknown'} (${p.patient_id})`;
+                // FIX: Use _id for display as it's the consistent identifier
+                div.textContent = `${p.name || 'Unknown'} (${p._id})`;
                 div.addEventListener('click', async () => {
-                    this.currentPatientId = p.patient_id;
+                    // FIX: Use _id from the patient object
+                    this.currentPatientId = p._id;
                     this.savePatientId();
-                    patientInput.value = p.patient_id;
+                    patientInput.value = p._id;
                     hideSuggestions();
-                    this.updatePatientDisplay(p.patient_id, p.name || 'Unknown');
+                    this.updatePatientDisplay(p._id, p.name || 'Unknown');
                     await this.fetchAndRenderPatientSessions();
                 });
                 suggestionsEl.appendChild(div);
@@ -1693,8 +1683,26 @@ How can I assist you today?`;
         this.addMessage('user', message);
         this.showLoading(true);
         try {
-            const response = await this.callMedicalAPI(message);
-            this.addMessage('assistant', response);
+            const isNewSession = this.currentSession && this.currentSession.id === 'default';
+            const responseData = await this.callMedicalAPI(message);
+
+            if (isNewSession && responseData.session_id) {
+                console.log(`[DEBUG] New session created on backend. Updating session ID from 'default' to '${responseData.session_id}'`);
+                const oldId = this.currentSession.id;
+                this.currentSession.id = responseData.session_id;
+
+                // Update the session ID in the locally stored array
+                const sessions = this.getChatSessions();
+                const sessionIndex = sessions.findIndex(s => s.id === oldId);
+                if (sessionIndex !== -1) {
+                    sessions[sessionIndex].id = this.currentSession.id;
+                    localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
+                }
+                // Re-render the session list to reflect the new ID
+                this.loadChatSessions();
+            }
+
+            this.addMessage('assistant', responseData.response || 'I apologize, but I received an empty response. Please try again.');
             this.updateCurrentSession();
 
             // Invalidate caches after successful message exchange
@@ -1716,23 +1724,25 @@ How can I assist you today?`;
 
     callMedicalAPI = async function (message) {
         try {
+            const payload = {
+                account_id: this.currentUser.id,
+                patient_id: this.currentPatientId,
+                message: message
+            };
+
+            // Only include session_id if it's not the default placeholder
+            if (this.currentSession?.id && this.currentSession.id !== 'default') {
+                payload.session_id = this.currentSession.id;
+            }
+
             const response = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                user_id: this.currentUser.id,
-                    patient_id: this.currentPatientId,
-                    doctor_id: this.currentUser.id,
-                session_id: this.currentSession?.id || 'default',
-                message: message,
-                user_role: this.currentUser.role,
-                user_specialty: this.currentUser.specialty,
-                title: this.currentSession?.title || 'New Chat'
-            })
+                body: JSON.stringify(payload)
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            return data.response || 'I apologize, but I received an empty response. Please try again.';
+            return data;
         } catch (error) {
             console.error('API call failed:', error);
             console.error('Error details:', {
@@ -1742,7 +1752,9 @@ How can I assist you today?`;
                 session: this.currentSession,
                 patientId: this.currentPatientId
             });
-            if (error.name === 'TypeError' && error.message.includes('fetch')) return this.generateMockResponse(message);
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                return { response: this.generateMockResponse(message) };
+            }
             throw error;
         }
     }

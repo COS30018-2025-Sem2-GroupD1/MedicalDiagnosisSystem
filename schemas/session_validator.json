@@ -3,19 +3,24 @@
 		"bsonType": "object",
 		"title": "Session validator",
 		"required": [
-			"user_id",
+			"account_id",
+			"patient_id",
 			"title",
 			"created_at",
 			"updated_at"
 		],
 		"properties": {
-			"user_id": {
-				"bsonType": "string",
-				"description": "'user_id' must be a string is required."
+			"account_id": {
+				"bsonType": "objectId",
+				"description": "'account_id' must be an objectId and is required."
+			},
+			"patient_id": {
+				"bsonType": "objectId",
+				"description": "'patient_id' must be an objectId and is required."
 			},
 			"title": {
 				"bsonType": "string",
-				"description": "'title' must be a string and is optional."
+				"description": "'title' must be an string and is optional."
 			},
 			"created_at": {
 				"bsonType": "date",
@@ -27,8 +32,35 @@
 			},
 			"messages": {
 				"bsonType": "array",
-				"items": {"bsonType": "string"},
-				"description": "'messages' must be a string and is optional."
+				"items": {
+					"bsonType": "object",
+					"title": "Message validator",
+					"required": [
+						"_id",
+						"sent_by_user",
+						"content",
+						"timestamp"
+					],
+					"properties": {
+						"_id": {
+							"bsonType": "int",
+							"minimum": 0,
+							"description": "'_id' must be a int is required."
+						},
+						"sent_by_user": {
+							"bsonType": "bool",
+							"description": "'sent_by_user' must be a bool is required."
+						},
+						"content": {
+							"bsonType": "string",
+							"description": "'content' must be a string is required."
+						},
+						"timestamp": {
+							"bsonType": "date",
+							"description": "'timestamp' must be a date and is required."
+						}
+					}
+				}
 			}
 		}
 	}

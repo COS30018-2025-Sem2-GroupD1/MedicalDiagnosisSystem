@@ -8,9 +8,8 @@ from src.core.state import MedicalState, get_state
 from src.data.repositories.account import ACCOUNTS_COLLECTION
 from src.data.repositories.medical import (MEDICAL_MEMORY_COLLECTION,
                                            MEDICAL_RECORDS_COLLECTION)
-from src.data.repositories.message import CHAT_MESSAGES_COLLECTION
 from src.data.repositories.patient import PATIENTS_COLLECTION
-from src.data.repositories.session import CHAT_SESSIONS_COLLECTION
+from src.data.repositories.session import SESSIONS_COLLECTION
 
 router = APIRouter(prefix="/system", tags=["System"])
 
@@ -36,11 +35,10 @@ async def get_database():
 
 	collections = [
 		ACCOUNTS_COLLECTION,
-		CHAT_SESSIONS_COLLECTION,
-		CHAT_MESSAGES_COLLECTION,
+		PATIENTS_COLLECTION,
+		SESSIONS_COLLECTION,
 		MEDICAL_RECORDS_COLLECTION,
-		MEDICAL_MEMORY_COLLECTION,
-		PATIENTS_COLLECTION
+		MEDICAL_MEMORY_COLLECTION
 	]
 
 	result = {}
