@@ -4,8 +4,8 @@ import json
 import os
 
 from pymongo import MongoClient
-from pymongo.collection import Collection
-from pymongo.database import Database
+from pymongo.collection import Collection as pym_coll
+from pymongo.database import Database as pym_db
 
 from src.utils.logger import logger
 
@@ -13,15 +13,25 @@ from src.utils.logger import logger
 # Handle exceptions: `pymongo.errors.ConnectionFailure`, `pymongo.errors.OperationFailure`
 # Handle cases where _id is not found
 
+class Collections:
+	ACCOUNT = "accounts"
+	PATIENT = "patients"
+	SESSION = "sessions"
+	MEDICAL_RECORDS = "medical_records"
+	MEDICAL_MEMORY = "medical_memory"
+
 class ActionFailed(Exception):
-	"""Raised when a database action fails."""
+	"""
+		Raised when a database action fails.
+		Generic, non-specific exception that should be raised by any database access function when a more specific error has been caught.
+	"""
 
 class EntryNotFound(Exception):
-	"""Raised when an entry cannot be found in the database."""
+	"""Raised when an entry cannot be found in the database (no _id matches)."""
 
 _mongo_client: MongoClient | None = None
 
-def get_database(db_name: str = "medicaldiagnosissystem") -> Database:
+def get_database(db_name: str = "medicaldiagnosissystem") -> pym_db:
 	"""Gets the database instance, managing a single connection."""
 	global _mongo_client
 	if _mongo_client is None:
@@ -43,7 +53,7 @@ def close_connection():
 		_mongo_client.close()
 		_mongo_client = None
 
-def get_collection(name: str) -> Collection:
+def get_collection(name: str) -> pym_coll:
 	"""Retrieves a MongoDB collection by name. Create it if it does not exist."""
 	return get_database().get_collection(name)
 

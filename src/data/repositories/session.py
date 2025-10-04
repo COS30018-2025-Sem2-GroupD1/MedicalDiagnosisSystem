@@ -26,15 +26,15 @@ from pymongo import DESCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import ActionFailed, get_collection, setup_collection
+from src.data.connection import (ActionFailed, Collections, get_collection,
+                                 setup_collection)
 from src.utils.logger import logger
 
-SESSIONS_COLLECTION = "sessions"
 
 def init():
-	#get_collection(SESSIONS_COLLECTION).drop()
-	setup_collection(SESSIONS_COLLECTION, "schemas/session_validator.json")
-	get_collection(SESSIONS_COLLECTION).create_index("messages._id")
+	#get_collection(Collection.SESSION).drop()
+	setup_collection(Collections.SESSION, "schemas/session_validator.json")
+	get_collection(Collections.SESSION).create_index("messages._id")
 	logger("Init").info("Created index on messages._id")
 
 def create_session(
@@ -42,7 +42,7 @@ def create_session(
 	patient_id: str,
 	title: str,
 	*,
-	collection_name: str = SESSIONS_COLLECTION
+	collection_name: str = Collections.SESSION
 ) -> dict[str, Any]:
 	"""Creates a new chat session."""
 	collection = get_collection(collection_name)
@@ -69,7 +69,7 @@ def get_user_sessions(
 	account_id: str,
 	limit: int = 20,
 	*,
-	collection_name: str = SESSIONS_COLLECTION
+	collection_name: str = Collections.SESSION
 ) -> list[dict[str, Any]]:
 	"""Retrieves the most recent chat sessions for a specific user."""
 	collection = get_collection(collection_name)
@@ -93,7 +93,7 @@ def list_patient_sessions(
 	patient_id: str,
 	limit: int = 20,
 	*,
-	collection_name: str = SESSIONS_COLLECTION
+	collection_name: str = Collections.SESSION
 ) -> list[dict[str, Any]]:
 	collection = get_collection(collection_name)
 	try:
@@ -119,8 +119,8 @@ def list_patient_sessions(
 
 def get_session(
 	session_id: str,
-	/, *,
-	collection_name: str = SESSIONS_COLLECTION
+	*,
+	collection_name: str = Collections.SESSION
 ) -> dict[str, Any] | None:
 	"""Retrieves a single chat session by its ID."""
 	collection = get_collection(collection_name)
@@ -137,7 +137,7 @@ def get_session_messages(
 	session_id: str,
 	limit: int | None = None,
 	*,
-	collection_name: str = SESSIONS_COLLECTION
+	collection_name: str = Collections.SESSION
 ) -> list[dict[str, Any]]:
 	"""Get messages from a specific chat session"""
 	collection = get_collection(collection_name)
@@ -154,7 +154,7 @@ def update_session_title(
 	session_id: str,
 	title: str,
 	*,
-	collection_name: str = SESSIONS_COLLECTION
+	collection_name: str = Collections.SESSION
 ) -> bool:
 	"""Updates the title of a chat session."""
 	collection = get_collection(collection_name)
@@ -171,8 +171,8 @@ def update_session_title(
 
 def delete_session(
 	session_id: str,
-	/, *,
-	collection_name: str = SESSIONS_COLLECTION
+	*,
+	collection_name: str = Collections.SESSION
 ) -> bool:
 	"""Deletes a chat session."""
 	collection = get_collection(collection_name)
@@ -182,7 +182,7 @@ def delete_session(
 def prune_old_sessions(
 	days: int = 30,
 	*,
-	collection_name: str = SESSIONS_COLLECTION
+	collection_name: str = Collections.SESSION
 ) -> int:
 	"""Delete chat sessions older than specified days"""
 	collection = get_collection(collection_name)
@@ -199,7 +199,7 @@ def add_message(
 	content: str,
 	sent_by_user: bool,
 	*,
-	collection_name: str = SESSIONS_COLLECTION
+	collection_name: str = Collections.SESSION
 ):
 	"""Add a message to a chat session"""
 	collection = get_collection(collection_name)

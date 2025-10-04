@@ -6,8 +6,7 @@ from pymongo import ASCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import (ActionFailed, get_collection,
-                                        get_database)
+from src.data.connection import ActionFailed, get_collection, get_database
 from src.utils.logger import logger
 
 

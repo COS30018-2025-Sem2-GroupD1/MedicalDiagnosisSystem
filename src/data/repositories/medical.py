@@ -13,16 +13,14 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import ActionFailed, get_collection
+from src.data.connection import ActionFailed, Collections, get_collection
 from src.utils.logger import logger
 
-MEDICAL_RECORDS_COLLECTION = "medical_records"
-MEDICAL_MEMORY_COLLECTION = "medical_memory"
 
 def create_medical_record(
 	record_data: dict[str, Any],
 	/, *,
-	collection_name: str = MEDICAL_RECORDS_COLLECTION
+	collection_name: str = Collections.MEDICAL_RECORDS
 ) -> str:
 	"""Creates a new medical record."""
 	collection = get_collection(collection_name)
@@ -34,7 +32,7 @@ def create_medical_record(
 def get_user_medical_records(
 	user_id: str,
 	/, *,
-	collection_name: str = MEDICAL_RECORDS_COLLECTION
+	collection_name: str = Collections.MEDICAL_RECORDS
 ) -> list[dict[str, Any]]:
 	"""Retrieves all medical records for a specific user."""
 	collection = get_collection(collection_name)
@@ -50,7 +48,7 @@ def add_medical_context(
 	/,
 	summary: str,
 	*,
-	collection_name: str = MEDICAL_MEMORY_COLLECTION
+	collection_name: str = Collections.MEDICAL_MEMORY
 ) -> str:
 	"""Adds a medical context summary for a user."""
 	collection = get_collection(collection_name)
@@ -68,7 +66,7 @@ def get_medical_context(
 	/,
 	limit: int | None = None,
 	*,
-	collection_name: str = MEDICAL_MEMORY_COLLECTION
+	collection_name: str = Collections.MEDICAL_MEMORY
 ) -> list[dict[str, Any]]:
 	"""Retrieves medical context summaries for a user."""
 	collection = get_collection(collection_name)
@@ -90,7 +88,7 @@ def save_memory_summary(
 	summary: str,
 	embedding: list[float] | None = None,
 	created_at: datetime | None = None,
-	collection_name: str = MEDICAL_MEMORY_COLLECTION
+	collection_name: str = Collections.MEDICAL_MEMORY
 ) -> str:
 	collection = get_collection(collection_name)
 	ts = created_at or datetime.now(timezone.utc)
@@ -110,7 +108,7 @@ def get_recent_memory_summaries(
 	/,
 	*,
 	limit: int = 20,
-	collection_name: str = MEDICAL_MEMORY_COLLECTION
+	collection_name: str = Collections.MEDICAL_MEMORY
 ) -> list[str]:
 	collection = get_collection(collection_name)
 	docs = list(collection.find({"patient_id": patient_id}).sort("created_at", DESCENDING).limit(limit))
@@ -123,7 +121,7 @@ def search_memory_summaries_semantic(
 	*,
 	limit: int = 5,
 	similarity_threshold: float = 0.5,  # >= 50% semantic similarity
-	collection_name: str = MEDICAL_MEMORY_COLLECTION
+	collection_name: str = Collections.MEDICAL_MEMORY
 ) -> list[dict[str, Any]]:
 	"""
 	Search memory summaries using semantic similarity with embeddings.

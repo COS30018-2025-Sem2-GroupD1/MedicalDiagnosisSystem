@@ -28,15 +28,15 @@ from pymongo import ASCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import ActionFailed, get_collection, setup_collection
+from src.data.connection import (ActionFailed, Collections, get_collection,
+                                 setup_collection)
 from src.utils.logger import logger
 
-PATIENTS_COLLECTION = "patients"
 
 def init():
-	#get_collection(PATIENTS_COLLECTION).drop()
-	setup_collection(PATIENTS_COLLECTION, "schemas/patient_validator.json")
-	get_collection(PATIENTS_COLLECTION).create_index("assigned_doctor_id")
+	#get_collection(Collection.PATIENT).drop()
+	setup_collection(Collections.PATIENT, "schemas/patient_validator.json")
+	get_collection(Collections.PATIENT).create_index("assigned_doctor_id")
 
 def create_patient(
 	name: str,
@@ -48,9 +48,11 @@ def create_patient(
 	email: str | None = None,
 	medications: list[str] | None = None,
 	past_assessment_summary: str | None = None,
-	assigned_doctor_id: str | None = None
+	assigned_doctor_id: str | None = None,
+	*,
+	collection_name: str = Collections.PATIENT
 ) -> str:
-	collection = get_collection(PATIENTS_COLLECTION)
+	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
 	patient_data = {
 		"name": name,
@@ -76,10 +78,14 @@ def create_patient(
 	result = collection.insert_one(patient_data)
 	return str(result.inserted_id)
 
-def get_patient_by_id(patient_id: str) -> dict[str, Any] | None:
+def get_patient_by_id(
+	patient_id: str,
+	*,
+	collection_name: str = Collections.PATIENT
+) -> dict[str, Any] | None:
 	logger().info(f"Searching for patient with id '{patient_id}'")
 	try:
-		collection = get_collection(PATIENTS_COLLECTION)
+		collection = get_collection(collection_name)
 		patient = collection.find_one(
 			{"_id": ObjectId(patient_id)}
 		)
@@ -93,10 +99,12 @@ def get_patient_by_id(patient_id: str) -> dict[str, Any] | None:
 # TODO Make this more rigidly typed, maybe merge with create_patient?
 def update_patient_profile(
 	patient_id: str,
-	updates: dict[str, Any]
+	updates: dict[str, Any],
+	*,
+	collection_name: str = Collections.PATIENT
 ) -> int:
 	try:
-		collection = get_collection(PATIENTS_COLLECTION)
+		collection = get_collection(collection_name)
 		updates["updated_at"] = datetime.now(timezone.utc)
 		result = collection.update_one(
 			{"_id": ObjectId(patient_id)},
@@ -109,13 +117,15 @@ def update_patient_profile(
 
 def search_patients(
 	query: str,
-	limit: int = 10
+	limit: int = 10,
+	*,
+	collection_name: str = Collections.PATIENT
 ) -> list[dict[str, Any]]:
 	"""Search patients by name (case-insensitive starts-with/contains)."""
 	if not query:
 		return []
 
-	collection = get_collection(PATIENTS_COLLECTION)
+	collection = get_collection(collection_name)
 
 	logger().info(f"Searching patients with query: '{query}', limit: {limit}")
 

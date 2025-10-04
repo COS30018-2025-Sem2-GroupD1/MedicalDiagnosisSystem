@@ -5,11 +5,7 @@ import time
 from fastapi import APIRouter, Depends
 
 from src.core.state import MedicalState, get_state
-from src.data.repositories.account import ACCOUNTS_COLLECTION
-from src.data.repositories.medical import (MEDICAL_MEMORY_COLLECTION,
-                                           MEDICAL_RECORDS_COLLECTION)
-from src.data.repositories.patient import PATIENTS_COLLECTION
-from src.data.repositories.session import SESSIONS_COLLECTION
+from src.data.connection import Collections
 
 router = APIRouter(prefix="/system", tags=["System"])
 
@@ -34,11 +30,11 @@ async def get_database():
 	from src.data.connection import get_collection
 
 	collections = [
-		ACCOUNTS_COLLECTION,
-		PATIENTS_COLLECTION,
-		SESSIONS_COLLECTION,
-		MEDICAL_RECORDS_COLLECTION,
-		MEDICAL_MEMORY_COLLECTION
+		Collections.ACCOUNT,
+		Collections.PATIENT,
+		Collections.SESSION,
+		Collections.MEDICAL_RECORDS,
+		Collections.MEDICAL_MEMORY
 	]
 
 	result = {}

@@ -22,11 +22,9 @@ from pymongo import ASCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import (ActionFailed, EntryNotFound, get_collection,
-                                 setup_collection)
+from src.data.connection import (ActionFailed, Collections, EntryNotFound,
+                                 get_collection, setup_collection)
 from src.utils.logger import logger
-
-ACCOUNTS_COLLECTION = "accounts"
 
 VALID_ROLES = [
 	"Doctor",
@@ -39,16 +37,16 @@ VALID_ROLES = [
 ]
 
 def init():
-	#get_collection(ACCOUNTS_COLLECTION).drop()
+	#get_collection(Collection.ACCOUNT).drop()
 	setup_collection(
-		ACCOUNTS_COLLECTION,
+		Collections.ACCOUNT,
 		"schemas/account_validator.json"
 	)
 
 # TODO Use this for database-status
 def get_account_frame(
 	*,
-	collection_name: str = ACCOUNTS_COLLECTION
+	collection_name: str = Collections.ACCOUNT
 ) -> DataFrame:
 	"""Get accounts as a pandas DataFrame"""
 	return DataFrame(get_collection(collection_name).find())
@@ -58,7 +56,7 @@ def create_account(
 	role: str,
 	specialty: str | None = None,
 	*,
-	collection_name: str = ACCOUNTS_COLLECTION
+	collection_name: str = Collections.ACCOUNT
 ) -> str:
 	"""Creates a new user account."""
 	collection = get_collection(collection_name)
@@ -83,10 +81,9 @@ def create_account(
 # TODO Make this more rigidly typed, maybe merge with create_account?
 def update_account(
 	user_id: str,
-	/,
 	updates: dict[str, Any],
 	*,
-	collection_name: str = ACCOUNTS_COLLECTION
+	collection_name: str = Collections.ACCOUNT
 ) -> bool:
 	"""Updates an existing user account."""
 	collection = get_collection(collection_name)
@@ -102,8 +99,8 @@ def update_account(
 
 def get_account(
 	user_id: str,
-	/, *,
-	collection_name: str = ACCOUNTS_COLLECTION
+	*,
+	collection_name: str = Collections.ACCOUNT
 ) -> dict[str, Any] | None:
 	"""Retrieves an account by ID and updates their last_seen timestamp."""
 	collection = get_collection(collection_name)
@@ -122,19 +119,28 @@ def get_account(
 		account["_id"] = str(account["_id"])
 	return account
 
-def get_account_by_name(name: str) -> dict[str, Any] | None:
+def get_account_by_name(
+	name: str,
+	*,
+	collection_name: str = Collections.ACCOUNT
+) -> dict[str, Any] | None:
 	"""Get account by name from accounts collection"""
 	logger().info("Trying to retrieve account: " + name)
-	collection = get_collection(ACCOUNTS_COLLECTION)
+	collection = get_collection(collection_name)
 	account = collection.find_one({"name": name})
 	# Convert _id from an object to a string
 	if account and "_id" in account:
 		account["_id"] = str(account["_id"])
 	return account
 
-def search_accounts(query: str, limit: int = 10) -> list[dict[str, Any]]:
+def search_accounts(
+	query: str,
+	limit: int = 10,
+	*,
+	collection_name: str = Collections.ACCOUNT
+) -> list[dict[str, Any]]:
 	"""Search accounts by name (case-insensitive contains) from accounts collection"""
-	collection = get_collection(ACCOUNTS_COLLECTION)
+	collection = get_collection(collection_name)
 	if not query:
 		return []
 
@@ -162,9 +168,13 @@ def search_accounts(query: str, limit: int = 10) -> list[dict[str, Any]]:
 		logger().error(f"Error in search_account: {e}")
 		return []
 
-def get_all_accounts(limit: int = 50) -> list[dict[str, Any]]:
+def get_all_accounts(
+	limit: int = 50,
+	*,
+	collection_name: str = Collections.ACCOUNT
+) -> list[dict[str, Any]]:
 	"""Get all doctors with optional limit from accounts collection"""
-	collection = get_collection(ACCOUNTS_COLLECTION)
+	collection = get_collection(collection_name)
 	try:
 		cursor = collection.find().sort(
 			"name", ASCENDING
