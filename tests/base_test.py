@@ -24,9 +24,10 @@ class BaseMongoTest(unittest.TestCase):
 		"""Initialize test database connection"""
 		cls.db = get_database()
 		# Map production collections to test collections
+		# The key is the collection's actual name (the attribute's value)
 		cls._collections = {
-			name: f"test_{name.lower()}" for name, _ in vars(Collections).items()
-			if not name.startswith('_')
+			value: f"test_{value.lower()}" for name, value in vars(Collections).items()
+			if not name.startswith('_') and isinstance(value, str)
 		}
 
 	def setUp(self):
@@ -40,6 +41,12 @@ class BaseMongoTest(unittest.TestCase):
 			self.db.drop_collection(test_name)
 
 	def get_doc_by_id(self, collection: str, doc_id: str) -> dict[str, Any] | None:
-		"""Helper to get a document by ID"""
-		test_coll = self._collections[collection]
-		return get_collection(test_coll).find_one({"_id": ObjectId(doc_id)})
+		"""
+		Helper to get a document by ID.
+		`collection` should be the production collection name from `Collections`.
+		"""
+		# Look up the test collection name using the production name as the key
+		test_coll_name = self._collections.get(collection)
+		if not test_coll_name:
+			raise KeyError(f"No test collection mapping found for '{collection}'")
+		return get_collection(test_coll_name).find_one({"_id": ObjectId(doc_id)})
