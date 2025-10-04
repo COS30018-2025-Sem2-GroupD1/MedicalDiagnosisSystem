@@ -117,9 +117,10 @@ def get_account(
 		},
 		return_document=True
 	)
-	# Convert _id from an object to a string
-	if "_id" in account:
+
+	if account:
 		account["_id"] = str(account["_id"])
+
 	return account
 
 def get_account_by_name(
