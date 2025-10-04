@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
 
-from src.data.connection import ActionFailed, Collections, get_collection
+from src.data.connection import (ActionFailed, Collections, close_connection,
+                                 get_collection)
 from src.data.repositories import session as session_repo
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
@@ -185,3 +186,4 @@ if __name__ == "__main__":
 		unittest.main(verbosity=2)
 	finally:
 		logger().info("Tests completed and database connection closed.")
+		close_connection()
