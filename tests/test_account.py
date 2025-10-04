@@ -7,7 +7,7 @@ from pymongo import ASCENDING
 from pymongo.errors import DuplicateKeyError
 
 from src.data.connection import Collections, get_collection
-from src.data.repositories import account as Repo
+from src.data.repositories import account as account_repo
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
 
@@ -20,7 +20,7 @@ class TestAccountRepository(BaseMongoTest):
 		self.test_collection = self._collections[Collections.ACCOUNT]
 
 		# Call the updated init function directly to set up the test collection
-		Repo.init(collection_name=self.test_collection, drop=True)
+		account_repo.init(collection_name=self.test_collection, drop=True)
 
 		# Add a unique index on 'name' to test for duplicate key errors
 		get_collection(self.test_collection).create_index(
@@ -33,11 +33,11 @@ class TestAccountRepository(BaseMongoTest):
 		self.assertIn(self.test_collection, self.db.list_collection_names())
 
 		# 2. Test the drop functionality
-		Repo.create_account("ToDelete", "Doctor", collection_name=self.test_collection)
+		account_repo.create_account("ToDelete", "Doctor", collection_name=self.test_collection)
 		self.assertEqual(get_collection(self.test_collection).count_documents({}), 1)
 
 		# Re-initialize with drop=True
-		Repo.init(collection_name=self.test_collection, drop=True)
+		account_repo.init(collection_name=self.test_collection, drop=True)
 
 		# Assert the collection is now empty but still exists
 		self.assertEqual(get_collection(self.test_collection).count_documents({}), 0)
@@ -48,7 +48,7 @@ class TestAccountRepository(BaseMongoTest):
 		# Test basic creation
 		name = "Test Doctor"
 		role = "Doctor"
-		account_id = Repo.create_account(
+		account_id = account_repo.create_account(
 			name=name,
 			role=role,
 			collection_name=self.test_collection
@@ -63,7 +63,7 @@ class TestAccountRepository(BaseMongoTest):
 		self.assertEqual(doc["created_at"], doc["updated_at"]) # type: ignore
 
 		# Test creation with specialty
-		account_id_spec = Repo.create_account(
+		account_id_spec = account_repo.create_account(
 			name="Specialist",
 			role="Doctor",
 			specialty="Cardiology",
@@ -75,18 +75,18 @@ class TestAccountRepository(BaseMongoTest):
 
 		# Test creating a user with a duplicate name raises an error
 		with self.assertRaises(DuplicateKeyError):
-			Repo.create_account(name=name, role="Nurse", collection_name=self.test_collection)
+			account_repo.create_account(name=name, role="Nurse", collection_name=self.test_collection)
 
 	def test_get_account(self):
 		"""Test retrieving a single account by its ID."""
-		account_id = Repo.create_account(
+		account_id = account_repo.create_account(
 			"GetMe", "Doctor", collection_name=self.test_collection
 		)
 		original_doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
 		self.assertNotIn("last_seen", original_doc) # type: ignore
 
 		# Get the account and verify 'last_seen' is updated
-		account = Repo.get_account(account_id, collection_name=self.test_collection)
+		account = account_repo.get_account(account_id, collection_name=self.test_collection)
 		self.assertIsNotNone(account)
 		self.assertEqual(account["_id"], account_id) # type: ignore
 		self.assertEqual(account["name"], "GetMe") # type: ignore
@@ -96,26 +96,26 @@ class TestAccountRepository(BaseMongoTest):
 
 		# Test retrieval of a non-existent account returns None
 		non_existent_id = str(ObjectId())
-		account = Repo.get_account(non_existent_id, collection_name=self.test_collection)
+		account = account_repo.get_account(non_existent_id, collection_name=self.test_collection)
 		self.assertIsNone(account)
 
 	def test_get_account_by_name(self):
 		"""Test retrieving an account by name."""
 		name = "FindByName"
-		Repo.create_account(name, "Nurse", collection_name=self.test_collection)
+		account_repo.create_account(name, "Nurse", collection_name=self.test_collection)
 
-		account = Repo.get_account_by_name(name, collection_name=self.test_collection)
+		account = account_repo.get_account_by_name(name, collection_name=self.test_collection)
 		self.assertIsNotNone(account)
 		self.assertEqual(account["name"], name) # type: ignore
 		self.assertIsInstance(account["_id"], str) # type: ignore
 
 		# Test retrieval of a non-existent name returns None
-		account = Repo.get_account_by_name("NonExistent", collection_name=self.test_collection)
+		account = account_repo.get_account_by_name("NonExistent", collection_name=self.test_collection)
 		self.assertIsNone(account)
 
 	def test_update_account(self):
 		"""Test updating an existing account's data."""
-		account_id = Repo.create_account(
+		account_id = account_repo.create_account(
 			name="Update Test",
 			role="Doctor",
 			collection_name=self.test_collection
@@ -124,7 +124,7 @@ class TestAccountRepository(BaseMongoTest):
 		self.assertIsNotNone(original_doc)
 
 		updates = {"name": "Updated Name", "specialty": "Pediatrics"}
-		success = Repo.update_account(account_id, updates, collection_name=self.test_collection)
+		success = account_repo.update_account(account_id, updates, collection_name=self.test_collection)
 		self.assertTrue(success)
 
 		updated_doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
@@ -135,11 +135,11 @@ class TestAccountRepository(BaseMongoTest):
 		self.assertLess(original_doc["updated_at"], updated_doc["updated_at"]) # type: ignore
 
 		# Test that updating a non-existent account returns False
-		success = Repo.update_account(str(ObjectId()), {"name": "No One"}, collection_name=self.test_collection)
+		success = account_repo.update_account(str(ObjectId()), {"name": "No One"}, collection_name=self.test_collection)
 		self.assertFalse(success)
 
 		# Test that 'created_at' is ignored in updates and does not change
-		success = Repo.update_account(
+		success = account_repo.update_account(
 			account_id,
 			{"created_at": datetime(2000, 1, 1)},
 			collection_name=self.test_collection
@@ -150,48 +150,48 @@ class TestAccountRepository(BaseMongoTest):
 
 	def test_search_accounts(self):
 		"""Test account search functionality for various cases."""
-		Repo.create_account("Alpha Doctor", "Doctor", collection_name=self.test_collection)
-		Repo.create_account("Beta Doctor", "Doctor", collection_name=self.test_collection)
-		Repo.create_account("Charlie Medical", "Medical Student", collection_name=self.test_collection)
+		account_repo.create_account("Alpha Doctor", "Doctor", collection_name=self.test_collection)
+		account_repo.create_account("Beta Doctor", "Doctor", collection_name=self.test_collection)
+		account_repo.create_account("Charlie Medical", "Medical Student", collection_name=self.test_collection)
 
 		# Test case-insensitive partial match
-		results = Repo.search_accounts("beta", collection_name=self.test_collection)
+		results = account_repo.search_accounts("beta", collection_name=self.test_collection)
 		self.assertEqual(len(results), 1)
 		self.assertEqual(results[0]["name"], "Beta Doctor")
 
 		# Test case-insensitive full match
-		results = Repo.search_accounts("ALPHA DOCTOR", collection_name=self.test_collection)
+		results = account_repo.search_accounts("ALPHA DOCTOR", collection_name=self.test_collection)
 		self.assertEqual(len(results), 1)
 
 		# Test query that matches multiple entries with a limit
-		results = Repo.search_accounts("Doctor", limit=2, collection_name=self.test_collection)
+		results = account_repo.search_accounts("Doctor", limit=2, collection_name=self.test_collection)
 		self.assertEqual(len(results), 2)
 		self.assertEqual(results[0]['name'], 'Alpha Doctor') # Assumes ascending sort by name
 		self.assertEqual(results[1]['name'], 'Beta Doctor')
 
 		# Test query with no matches
-		results = Repo.search_accounts("NonExistent", collection_name=self.test_collection)
+		results = account_repo.search_accounts("NonExistent", collection_name=self.test_collection)
 		self.assertEqual(len(results), 0)
 
 		# Test empty query string returns an empty list
-		results = Repo.search_accounts("", collection_name=self.test_collection)
+		results = account_repo.search_accounts("", collection_name=self.test_collection)
 		self.assertEqual(len(results), 0)
 
 	def test_get_all_accounts(self):
 		"""Test retrieving all accounts with limit and sorting."""
-		Repo.create_account("Charlie", "Doctor", collection_name=self.test_collection)
-		Repo.create_account("Alpha", "Nurse", collection_name=self.test_collection)
-		Repo.create_account("Beta", "Caregiver", collection_name=self.test_collection)
+		account_repo.create_account("Charlie", "Doctor", collection_name=self.test_collection)
+		account_repo.create_account("Alpha", "Nurse", collection_name=self.test_collection)
+		account_repo.create_account("Beta", "Caregiver", collection_name=self.test_collection)
 
 		# Test getting all accounts, verifying ascending sort order by name
-		all_accounts = Repo.get_all_accounts(collection_name=self.test_collection)
+		all_accounts = account_repo.get_all_accounts(collection_name=self.test_collection)
 		self.assertEqual(len(all_accounts), 3)
 		self.assertEqual(all_accounts[0]["name"], "Alpha")
 		self.assertEqual(all_accounts[1]["name"], "Beta")
 		self.assertEqual(all_accounts[2]["name"], "Charlie")
 
 		# Test with a limit
-		limited_accounts = Repo.get_all_accounts(limit=2, collection_name=self.test_collection)
+		limited_accounts = account_repo.get_all_accounts(limit=2, collection_name=self.test_collection)
 		self.assertEqual(len(limited_accounts), 2)
 		self.assertEqual(limited_accounts[0]["name"], "Alpha")
 		self.assertEqual(limited_accounts[1]["name"], "Beta")
@@ -199,15 +199,15 @@ class TestAccountRepository(BaseMongoTest):
 	def test_get_account_frame(self):
 		"""Test retrieving accounts as a pandas DataFrame."""
 		# Test with an empty collection
-		df_empty = Repo.get_account_frame(collection_name=self.test_collection)
+		df_empty = account_repo.get_account_frame(collection_name=self.test_collection)
 		self.assertIsInstance(df_empty, DataFrame)
 		self.assertTrue(df_empty.empty)
 
 		# Add data and test again
-		id1 = Repo.create_account("Frame Alpha", "Doctor", collection_name=self.test_collection)
-		Repo.create_account("Frame Beta", "Nurse", specialty="ICU", collection_name=self.test_collection)
+		id1 = account_repo.create_account("Frame Alpha", "Doctor", collection_name=self.test_collection)
+		account_repo.create_account("Frame Beta", "Nurse", specialty="ICU", collection_name=self.test_collection)
 
-		df = Repo.get_account_frame(collection_name=self.test_collection)
+		df = account_repo.get_account_frame(collection_name=self.test_collection)
 		self.assertIsInstance(df, DataFrame)
 		self.assertEqual(len(df), 2)
 
