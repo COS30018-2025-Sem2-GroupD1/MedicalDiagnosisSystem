@@ -26,9 +26,6 @@ class ActionFailed(Exception):
 		Generic, non-specific exception that should be raised by any database access function when a more specific error has been caught.
 	"""
 
-class EntryNotFound(Exception):
-	"""Raised when an entry cannot be found in the database (no _id matches)."""
-
 _mongo_client: MongoClient | None = None
 
 def get_database(db_name: str = "medicaldiagnosissystem") -> pym_db:
