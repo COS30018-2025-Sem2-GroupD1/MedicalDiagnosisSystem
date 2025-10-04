@@ -40,7 +40,7 @@ def init(
 	if drop:
 		get_collection(collection_name).drop()
 	setup_collection(collection_name, validator_path)
-	get_collection(Collections.SESSION).create_index("messages._id")
+	get_collection(collection_name).create_index("messages._id")
 	logger("Init").info("Created index on messages._id")
 
 def create_session(
@@ -133,7 +133,10 @@ def get_session(
 	try:
 		session = collection.find_one({"_id": ObjectId(session_id)})
 		if session:
-			session["_id"] = str(session["_id"])  # Convert ObjectId to string
+			# Convert ObjectId to string
+			session["_id"] = str(session["_id"])
+			session["account_id"] = str(session["account_id"])
+			session["patient_id"] = str(session["patient_id"])
 		return session
 	except Exception as e:
 		logger().error(f"Error retrieving session {session_id}: {e}")
@@ -154,7 +157,11 @@ def get_session_messages(
 	]
 	if limit:
 		pipeline.append({"$limit": limit})
-	return [doc["messages"] for doc in collection.aggregate(pipeline)]
+
+	# Project to return only the messages sub-document
+	pipeline.append({"$replaceRoot": {"newRoot": "$messages"}})
+
+	return list(collection.aggregate(pipeline))
 
 def update_session_title(
 	session_id: str,
@@ -165,7 +172,7 @@ def update_session_title(
 	"""Updates the title of a chat session."""
 	collection = get_collection(collection_name)
 	result = collection.update_one(
-		{"_id": session_id},
+		{"_id": ObjectId(session_id)},
 		{
 			"$set": {
 				"title": title,
