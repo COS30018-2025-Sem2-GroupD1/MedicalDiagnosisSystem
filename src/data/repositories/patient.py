@@ -42,7 +42,7 @@ def init(
 	if drop:
 		get_collection(collection_name).drop()
 	setup_collection(collection_name, validator_path)
-	get_collection(Collections.PATIENT).create_index("assigned_doctor_id")
+	get_collection(collection_name).create_index("assigned_doctor_id")
 	logger("Init").info("Created index on assigned_doctor_id")
 
 def create_patient(
