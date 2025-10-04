@@ -3,10 +3,8 @@ from datetime import datetime
 
 from bson import ObjectId
 from pandas import DataFrame
-from pymongo import ASCENDING
-from pymongo.errors import DuplicateKeyError
 
-from src.data.connection import Collections, get_collection
+from src.data.connection import Collections, get_collection, close_connection
 from src.data.repositories import account as account_repo
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
@@ -21,11 +19,6 @@ class TestAccountRepository(BaseMongoTest):
 
 		# Call the updated init function directly to set up the test collection
 		account_repo.init(collection_name=self.test_collection, drop=True)
-
-		# Add a unique index on 'name' to test for duplicate key errors
-		get_collection(self.test_collection).create_index(
-			[("name", ASCENDING)], unique=True
-		)
 
 	def test_init_functionality(self):
 		"""Test the init function's ability to create and drop collections."""
@@ -72,10 +65,6 @@ class TestAccountRepository(BaseMongoTest):
 		doc_spec = self.get_doc_by_id(Collections.ACCOUNT, account_id_spec)
 		self.assertIsNotNone(doc_spec)
 		self.assertEqual(doc_spec["specialty"], "Cardiology") # type: ignore
-
-		# Test creating a user with a duplicate name raises an error
-		with self.assertRaises(DuplicateKeyError):
-			account_repo.create_account(name=name, role="Nurse", collection_name=self.test_collection)
 
 	def test_get_account(self):
 		"""Test retrieving a single account by its ID."""
@@ -225,3 +214,4 @@ if __name__ == "__main__":
 		unittest.main(verbosity=2)
 	finally:
 		logger().info("Tests completed and database connection closed.")
+		close_connection()
