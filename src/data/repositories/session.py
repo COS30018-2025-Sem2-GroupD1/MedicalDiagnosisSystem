@@ -31,9 +31,15 @@ from src.data.connection import (ActionFailed, Collections, get_collection,
 from src.utils.logger import logger
 
 
-def init():
-	#get_collection(Collection.SESSION).drop()
-	setup_collection(Collections.SESSION, "schemas/session_validator.json")
+def init(
+	*,
+	collection_name: str = Collections.SESSION,
+	validator_path: str = "schemas/session_validator.json",
+	drop: bool = False
+):
+	if drop:
+		get_collection(collection_name).drop()
+	setup_collection(collection_name, validator_path)
 	get_collection(Collections.SESSION).create_index("messages._id")
 	logger("Init").info("Created index on messages._id")
 

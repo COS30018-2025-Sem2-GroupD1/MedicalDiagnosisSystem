@@ -13,9 +13,20 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
                             OperationFailure, PyMongoError)
 
-from src.data.connection import ActionFailed, Collections, get_collection
+from src.data.connection import (ActionFailed, Collections, get_collection,
+                                 setup_collection)
 from src.utils.logger import logger
 
+
+#def init(
+#	*,
+#	collection_name: str = Collections.MEDICAL_MEMORY,
+#	validator_path: str = "schemas/account_validator.json",
+#	drop: bool = False
+#):
+#	if drop:
+#		get_collection(collection_name).drop()
+#	setup_collection(collection_name, validator_path)
 
 def create_medical_record(
 	record_data: dict[str, Any],

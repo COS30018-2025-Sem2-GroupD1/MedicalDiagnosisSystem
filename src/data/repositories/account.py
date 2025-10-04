@@ -36,12 +36,15 @@ VALID_ROLES = [
 	"Other"
 ]
 
-def init():
-	#get_collection(Collection.ACCOUNT).drop()
-	setup_collection(
-		Collections.ACCOUNT,
-		"schemas/account_validator.json"
-	)
+def init(
+	*,
+	collection_name: str = Collections.ACCOUNT,
+	validator_path: str = "schemas/account_validator.json",
+	drop: bool = False
+):
+	if drop:
+		get_collection(collection_name).drop()
+	setup_collection(collection_name, validator_path)
 
 # TODO Use this for database-status
 def get_account_frame(

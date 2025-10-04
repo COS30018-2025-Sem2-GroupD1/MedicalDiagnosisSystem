@@ -33,10 +33,17 @@ from src.data.connection import (ActionFailed, Collections, get_collection,
 from src.utils.logger import logger
 
 
-def init():
-	#get_collection(Collection.PATIENT).drop()
-	setup_collection(Collections.PATIENT, "schemas/patient_validator.json")
+def init(
+	*,
+	collection_name: str = Collections.PATIENT,
+	validator_path: str = "schemas/patient_validator.json",
+	drop: bool = False
+):
+	if drop:
+		get_collection(collection_name).drop()
+	setup_collection(collection_name, validator_path)
 	get_collection(Collections.PATIENT).create_index("assigned_doctor_id")
+	logger("Init").info("Created index on assigned_doctor_id")
 
 def create_patient(
 	name: str,
