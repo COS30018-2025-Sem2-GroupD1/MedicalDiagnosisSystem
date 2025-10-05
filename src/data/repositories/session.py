@@ -56,9 +56,9 @@ def create_session(
 	collection_name: str = Collections.SESSION
 ) -> dict[str, Any]:
 	"""Creates a new chat session, raising ActionFailed on error."""
-	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
 	try:
+		collection = get_collection(collection_name)
 		session_data: dict[str, Any] = {
 			"account_id": ObjectId(account_id),
 			"patient_id": ObjectId(patient_id),

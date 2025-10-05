@@ -65,7 +65,6 @@ def create_patient(
 	collection_name: str = Collections.PATIENT
 ) -> str:
 	"""Creates a new patient record, raising ActionFailed on error."""
-	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
 	patient_data = {
 		"name": name,
@@ -83,6 +82,7 @@ def create_patient(
 	if past_assessment_summary: patient_data["past_assessment_summary"] = past_assessment_summary
 
 	try:
+		collection = get_collection(collection_name)
 		if assigned_doctor_id:
 			patient_data["assigned_doctor_id"] = ObjectId(assigned_doctor_id)
 
@@ -160,11 +160,11 @@ def search_patients(
 	if not query:
 		return []
 
-	collection = get_collection(collection_name)
 	logger().info(f"Searching patients with query: '{query}', limit: {limit}")
 	pattern = re.compile(re.escape(query), re.IGNORECASE)
 
 	try:
+		collection = get_collection(collection_name)
 		cursor = collection.find({
 			"name": {"$regex": pattern}
 		}).sort("name", ASCENDING).limit(limit)
