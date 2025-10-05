@@ -22,9 +22,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo import DESCENDING
-from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
-                            OperationFailure, PyMongoError)
+from pymongo.errors import ConnectionFailure, PyMongoError, WriteError
 
 from src.data.connection import (ActionFailed, Collections, get_collection,
                                  setup_collection)
@@ -37,11 +37,16 @@ def init(
 	validator_path: str = "schemas/session_validator.json",
 	drop: bool = False
 ):
-	if drop:
-		get_collection(collection_name).drop()
-	setup_collection(collection_name, validator_path)
-	get_collection(collection_name).create_index("messages._id")
-	logger("Init").info("Created index on messages._id")
+	"""Initializes the collection, applying schema and indexes."""
+	try:
+		if drop:
+			get_collection(collection_name).drop()
+		setup_collection(collection_name, validator_path)
+		get_collection(collection_name).create_index("messages._id")
+		logger("Init").info(f"Created index on messages._id in '{collection_name}'")
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Failed to initialize collection '{collection_name}': {e}")
+		raise ActionFailed(f"Database operation failed during initialization: {e}") from e
 
 def create_session(
 	account_id: str,
@@ -50,26 +55,30 @@ def create_session(
 	*,
 	collection_name: str = Collections.SESSION
 ) -> dict[str, Any]:
-	"""Creates a new chat session."""
+	"""Creates a new chat session, raising ActionFailed on error."""
 	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
-	session_data: dict[str, Any] = {
-		"account_id": ObjectId(account_id),
-		"patient_id": ObjectId(patient_id),
-		"title": title,
-		"created_at": now,
-		"updated_at": now,
-		"messages": []  # Initialize empty messages array
-	}
 	try:
+		session_data: dict[str, Any] = {
+			"account_id": ObjectId(account_id),
+			"patient_id": ObjectId(patient_id),
+			"title": title,
+			"created_at": now,
+			"updated_at": now,
+			"messages": []
+		}
 		result = collection.insert_one(session_data)
+		# Convert ObjectIds back to strings for the return value
 		session_data["_id"] = str(result.inserted_id)
 		session_data["patient_id"] = str(session_data["patient_id"])
 		session_data["account_id"] = str(session_data["account_id"])
 		return session_data
-	except Exception as e:
-		logger().error(f"Failed to create chat session with data {session_data}: {e}")
-		raise
+	except InvalidId as e:
+		logger().error(f"Invalid ObjectId format provided for session creation: {e}")
+		raise ActionFailed("Account ID or Patient ID is not a valid format.") from e
+	except (WriteError, ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Failed to create chat session: {e}")
+		raise ActionFailed("A database error occurred while creating the session.") from e
 
 def get_user_sessions(
 	account_id: str,
@@ -77,23 +86,27 @@ def get_user_sessions(
 	*,
 	collection_name: str = Collections.SESSION
 ) -> list[dict[str, Any]]:
-	"""Retrieves the most recent chat sessions for a specific user."""
-	collection = get_collection(collection_name)
-	cursor = collection.find(
-		{"account_id": ObjectId(account_id)}
-	).sort(
-		"updated_at", DESCENDING
-	).limit(limit)
+	"""Retrieves sessions for a user, raising ActionFailed on error."""
+	try:
+		obj_account_id = ObjectId(account_id)
+		collection = get_collection(collection_name)
+		cursor = collection.find(
+			{"account_id": obj_account_id}
+		).sort("updated_at", DESCENDING).limit(limit)
 
-	results = []
-	for session in cursor:
-		if session:
+		results = []
+		for session in cursor:
 			session["_id"] = str(session["_id"])
 			session["patient_id"] = str(session["patient_id"])
 			session["account_id"] = str(session["account_id"])
 			results.append(session)
-
-	return results
+		return results
+	except InvalidId as e:
+		logger().error(f"Invalid account_id format for get_user_sessions: '{account_id}'")
+		raise ActionFailed("The provided account ID is not a valid format.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error listing sessions for account '{account_id}': {e}")
+		raise ActionFailed("A database error occurred while retrieving user sessions.") from e
 
 def list_patient_sessions(
 	patient_id: str,
@@ -101,46 +114,49 @@ def list_patient_sessions(
 	*,
 	collection_name: str = Collections.SESSION
 ) -> list[dict[str, Any]]:
-	collection = get_collection(collection_name)
+	"""Retrieves sessions for a patient, raising ActionFailed on error."""
 	try:
-		cursor = collection.find({
-			"patient_id": ObjectId(patient_id)
-		}).sort(
-			"updated_at", DESCENDING
-		).limit(limit)
+		obj_patient_id = ObjectId(patient_id)
+		collection = get_collection(collection_name)
+		cursor = collection.find(
+			{"patient_id": obj_patient_id}
+		).sort("updated_at", DESCENDING).limit(limit)
 
 		results = []
 		for session in cursor:
-			if session:
-				session["_id"] = str(session["_id"])
-				session["patient_id"] = str(session["patient_id"])
-				session["account_id"] = str(session["account_id"])
-				results.append(session)
-
+			session["_id"] = str(session["_id"])
+			session["patient_id"] = str(session["patient_id"])
+			session["account_id"] = str(session["account_id"])
+			results.append(session)
 		return results
-	except Exception as e:
-		logger().error(f"Error listing patient sessions for patient_id {patient_id}: {e}")
-		# Re-raise the exception to be handled by the route
-		raise
+	except InvalidId as e:
+		logger().error(f"Invalid patient_id format for list_patient_sessions: '{patient_id}'")
+		raise ActionFailed("The provided patient ID is not a valid format.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error listing sessions for patient '{patient_id}': {e}")
+		raise ActionFailed("A database error occurred while retrieving patient sessions.") from e
 
 def get_session(
 	session_id: str,
 	*,
 	collection_name: str = Collections.SESSION
 ) -> dict[str, Any] | None:
-	"""Retrieves a single chat session by its ID."""
-	collection = get_collection(collection_name)
+	"""Retrieves a session. Returns None if not found, raises ActionFailed on error."""
 	try:
-		session = collection.find_one({"_id": ObjectId(session_id)})
+		obj_session_id = ObjectId(session_id)
+		collection = get_collection(collection_name)
+		session = collection.find_one({"_id": obj_session_id})
 		if session:
-			# Convert ObjectId to string
 			session["_id"] = str(session["_id"])
 			session["account_id"] = str(session["account_id"])
 			session["patient_id"] = str(session["patient_id"])
 		return session
-	except Exception as e:
-		logger().error(f"Error retrieving session {session_id}: {e}")
-		return None
+	except InvalidId as e:
+		logger().error(f"Invalid session_id format for get_session: '{session_id}'")
+		raise ActionFailed("The provided session ID is not a valid format.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error retrieving session '{session_id}': {e}")
+		raise ActionFailed("A database error occurred while retrieving the session.") from e
 
 def get_session_messages(
 	session_id: str,
@@ -148,20 +164,25 @@ def get_session_messages(
 	*,
 	collection_name: str = Collections.SESSION
 ) -> list[dict[str, Any]]:
-	"""Get messages from a specific chat session"""
-	collection = get_collection(collection_name)
-	pipeline = [
-		{"$match": {"_id": ObjectId(session_id)}},
-		{"$unwind": "$messages"},
-		{"$sort": {"messages.timestamp": -1}}
-	]
-	if limit:
-		pipeline.append({"$limit": limit})
-
-	# Project to return only the messages sub-document
-	pipeline.append({"$replaceRoot": {"newRoot": "$messages"}})
-
-	return list(collection.aggregate(pipeline))
+	"""Gets messages from a session, raising ActionFailed on error."""
+	try:
+		obj_session_id = ObjectId(session_id)
+		collection = get_collection(collection_name)
+		pipeline = [
+			{"$match": {"_id": obj_session_id}},
+			{"$unwind": "$messages"},
+			{"$sort": {"messages.timestamp": -1}}
+		]
+		if limit:
+			pipeline.append({"$limit": limit})
+		pipeline.append({"$replaceRoot": {"newRoot": "$messages"}})
+		return list(collection.aggregate(pipeline))
+	except InvalidId as e:
+		logger().error(f"Invalid session_id format for get_session_messages: '{session_id}'")
+		raise ActionFailed("The provided session ID is not a valid format.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error retrieving messages for session '{session_id}': {e}")
+		raise ActionFailed("A database error occurred while retrieving messages.") from e
 
 def update_session_title(
 	session_id: str,
@@ -169,43 +190,61 @@ def update_session_title(
 	*,
 	collection_name: str = Collections.SESSION
 ) -> bool:
-	"""Updates the title of a chat session."""
-	collection = get_collection(collection_name)
-	result = collection.update_one(
-		{"_id": ObjectId(session_id)},
-		{
-			"$set": {
-				"title": title,
-				"updated_at": datetime.now(timezone.utc)
+	"""Updates a session's title, raising ActionFailed on error."""
+	try:
+		obj_session_id = ObjectId(session_id)
+		collection = get_collection(collection_name)
+		result = collection.update_one(
+			{"_id": obj_session_id},
+			{
+				"$set": {
+					"title": title,
+					"updated_at": datetime.now(timezone.utc)
+				}
 			}
-		}
-	)
-	return result.modified_count > 0
+		)
+		return result.modified_count > 0
+	except InvalidId as e:
+		logger().error(f"Invalid session_id format for update_session_title: '{session_id}'")
+		raise ActionFailed("The provided session ID is not a valid format.") from e
+	except (WriteError, ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error updating title for session '{session_id}': {e}")
+		raise ActionFailed("A database error occurred while updating the session title.") from e
 
 def delete_session(
 	session_id: str,
 	*,
 	collection_name: str = Collections.SESSION
 ) -> bool:
-	"""Deletes a chat session."""
-	collection = get_collection(collection_name)
-	result = collection.delete_one({"_id": ObjectId(session_id)})
-	return result.deleted_count > 0
+	"""Deletes a session, raising ActionFailed on error."""
+	try:
+		obj_session_id = ObjectId(session_id)
+		collection = get_collection(collection_name)
+		result = collection.delete_one({"_id": obj_session_id})
+		return result.deleted_count > 0
+	except InvalidId as e:
+		logger().error(f"Invalid session_id format for delete_session: '{session_id}'")
+		raise ActionFailed("The provided session ID is not a valid format.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error deleting session '{session_id}': {e}")
+		raise ActionFailed("A database error occurred while deleting the session.") from e
 
 def prune_old_sessions(
 	days: int = 30,
 	*,
 	collection_name: str = Collections.SESSION
 ) -> int:
-	"""Delete chat sessions older than specified days"""
-	collection = get_collection(collection_name)
-	cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-	result = collection.delete_many({
-		"updated_at": {"$lt": cutoff}
-	})
-	if result.deleted_count > 0:
-		logger().info(f"Deleted {result.deleted_count} old sessions (>{days} days)")
-	return result.deleted_count
+	"""Deletes old sessions, raising ActionFailed on error."""
+	try:
+		collection = get_collection(collection_name)
+		cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+		result = collection.delete_many({"updated_at": {"$lt": cutoff}})
+		if result.deleted_count > 0:
+			logger().info(f"Deleted {result.deleted_count} old sessions (>{days} days)")
+		return result.deleted_count
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error during session prune: {e}")
+		raise ActionFailed("A database error occurred while pruning old sessions.") from e
 
 def add_message(
 	session_id: str,
@@ -214,31 +253,30 @@ def add_message(
 	*,
 	collection_name: str = Collections.SESSION
 ):
-	"""Add a message to a chat session"""
-	collection = get_collection(collection_name)
-
+	"""Adds a message to a session, raising ActionFailed on error."""
 	try:
-		# Get current highest message ID
+		obj_session_id = ObjectId(session_id)
+		collection = get_collection(collection_name)
+
 		session = collection.find_one(
-			{"_id": ObjectId(session_id)},
-			{"messages": {"$slice": -1}}  # Get last message only
+			{"_id": obj_session_id},
+			{"messages": {"$slice": -1}} # Get last message only
 		)
 		if not session:
 			raise ActionFailed(f"Chat session not found: {session_id}")
 
 		messages = session.get("messages", [])
 		next_id = messages[0]["_id"] + 1 if messages else 0
-
 		now = datetime.now(timezone.utc)
 		message_data: dict[str, Any] = {
-			"_id": next_id,  # Required by schema
+			"_id": next_id,
 			"sent_by_user": sent_by_user,
 			"content": content,
 			"timestamp": now
 		}
 
 		result = collection.update_one(
-			{"_id": ObjectId(session_id)},
+			{"_id": obj_session_id},
 			{
 				"$push": {"messages": message_data},
 				"$set": {"updated_at": now}
@@ -246,8 +284,16 @@ def add_message(
 		)
 
 		if result.modified_count == 0:
-			raise ActionFailed(f"Failed to add message to session: {session_id}")
+			# This could happen in a race condition or if the session was deleted mid-operation.
+			raise ActionFailed(f"Failed to add message to session, no documents modified: {session_id}")
 
-	except Exception as e:
-		logger().error(f"Failed to add message: {e}")
-		raise ActionFailed("Failed to add message")
+	except InvalidId as e:
+		logger().error(f"Invalid session_id format for add_message: '{session_id}'")
+		raise ActionFailed("The provided session ID is not a valid format.") from e
+	except ActionFailed as e:
+		# Re-raise the specific ActionFailed for "not found" or "not modified"
+		logger().warning(str(e))
+		raise
+	except (WriteError, ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error adding message to session '{session_id}': {e}")
+		raise ActionFailed("A database error occurred while adding the message.") from e
