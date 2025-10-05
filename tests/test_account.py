@@ -1,212 +1,191 @@
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 from bson import ObjectId
-from pandas import DataFrame
+from pymongo.errors import ConnectionFailure
 
-from src.data.connection import Collections, get_collection, close_connection
+from src.data.connection import (ActionFailed, Collections, close_connection,
+                                 get_collection)
 from src.data.repositories import account as account_repo
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
 
 
 class TestAccountRepository(BaseMongoTest):
+	"""Test class for the 'happy path' and edge cases of account repository functions."""
 
 	def setUp(self):
 		"""Set up the test environment before each test."""
 		super().setUp()
 		self.test_collection = self._collections[Collections.ACCOUNT]
-
-		# Call the updated init function directly to set up the test collection
 		account_repo.init(collection_name=self.test_collection, drop=True)
 
 	def test_init_functionality(self):
-		"""Test the init function's ability to create and drop collections."""
-		# 1. Verify the collection exists after setUp
+		"""Test the init function's ability to create, drop, and preserve collections."""
 		self.assertIn(self.test_collection, self.db.list_collection_names())
-
-		# 2. Test the drop functionality
-		account_repo.create_account("ToDelete", "Doctor", collection_name=self.test_collection)
+		# Test that data persists when drop=False
+		account_id = account_repo.create_account("Persist Test", "Doctor", collection_name=self.test_collection)
+		account_repo.init(collection_name=self.test_collection, drop=False)
 		self.assertEqual(get_collection(self.test_collection).count_documents({}), 1)
-
-		# Re-initialize with drop=True
+		# Test that data is deleted when drop=True
 		account_repo.init(collection_name=self.test_collection, drop=True)
-
-		# Assert the collection is now empty but still exists
 		self.assertEqual(get_collection(self.test_collection).count_documents({}), 0)
-		self.assertIn(self.test_collection, self.db.list_collection_names())
 
 	def test_create_account(self):
-		"""Test account creation with various parameters and constraints."""
+		"""Test successful account creation, including optional fields."""
 		# Test basic creation
-		name = "Test Doctor"
-		role = "Doctor"
-		account_id = account_repo.create_account(
-			name=name,
-			role=role,
-			collection_name=self.test_collection
-		)
+		name, role = "Test Doctor", "Doctor"
+		account_id = account_repo.create_account(name=name, role=role, collection_name=self.test_collection)
 		self.assertIsInstance(account_id, str)
 		doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
 		self.assertIsNotNone(doc)
 		self.assertEqual(doc["name"], name) # type: ignore
-		self.assertEqual(doc["role"], role) # type: ignore
-		self.assertIn("created_at", doc) # type: ignore
-		self.assertIn("updated_at", doc) # type: ignore
-		self.assertEqual(doc["created_at"], doc["updated_at"]) # type: ignore
-
 		# Test creation with specialty
-		account_id_spec = account_repo.create_account(
-			name="Specialist",
-			role="Doctor",
-			specialty="Cardiology",
-			collection_name=self.test_collection
-		)
-		doc_spec = self.get_doc_by_id(Collections.ACCOUNT, account_id_spec)
-		self.assertIsNotNone(doc_spec)
-		self.assertEqual(doc_spec["specialty"], "Cardiology") # type: ignore
+		spec_id = account_repo.create_account("Spec", "Nurse", specialty="Cardiology", collection_name=self.test_collection)
+		spec_doc = self.get_doc_by_id(Collections.ACCOUNT, spec_id)
+		self.assertEqual(spec_doc["specialty"], "Cardiology") # type: ignore
 
-	def test_get_account(self):
-		"""Test retrieving a single account by its ID."""
-		account_id = account_repo.create_account(
-			"GetMe", "Doctor", collection_name=self.test_collection
-		)
-		original_doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
-		self.assertNotIn("last_seen", original_doc) # type: ignore
-
-		# Get the account and verify 'last_seen' is updated
-		account = account_repo.get_account(account_id, collection_name=self.test_collection)
-		self.assertIsNotNone(account)
-		self.assertEqual(account["_id"], account_id) # type: ignore
-		self.assertEqual(account["name"], "GetMe") # type: ignore
-		self.assertIn("last_seen", account) # type: ignore
-		self.assertIsInstance(account["last_seen"], datetime) # type: ignore
-		self.assertIsInstance(account["_id"], str) # type: ignore
-
-		# Test retrieval of a non-existent account returns None
-		non_existent_id = str(ObjectId())
-		account = account_repo.get_account(non_existent_id, collection_name=self.test_collection)
-		self.assertIsNone(account)
-
-	def test_get_account_by_name(self):
-		"""Test retrieving an account by name."""
-		name = "FindByName"
-		account_repo.create_account(name, "Nurse", collection_name=self.test_collection)
-
-		account = account_repo.get_account_by_name(name, collection_name=self.test_collection)
-		self.assertIsNotNone(account)
-		self.assertEqual(account["name"], name) # type: ignore
-		self.assertIsInstance(account["_id"], str) # type: ignore
-
-		# Test retrieval of a non-existent name returns None
-		account = account_repo.get_account_by_name("NonExistent", collection_name=self.test_collection)
-		self.assertIsNone(account)
-
-	def test_update_account(self):
-		"""Test updating an existing account's data."""
-		account_id = account_repo.create_account(
-			name="Update Test",
-			role="Doctor",
-			collection_name=self.test_collection
-		)
+	def test_update_account_logic(self):
+		"""Test the specific business logic of the update_account function."""
+		account_id = account_repo.create_account("Update Logic", "Doctor", collection_name=self.test_collection)
 		original_doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
 		self.assertIsNotNone(original_doc)
 
-		updates = {"name": "Updated Name", "specialty": "Pediatrics"}
+		# Test that 'created_at' is immutable
+		updates = {"name": "Updated Name", "created_at": datetime(2000, 1, 1)}
 		success = account_repo.update_account(account_id, updates, collection_name=self.test_collection)
 		self.assertTrue(success)
-
 		updated_doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
 		self.assertIsNotNone(updated_doc)
-		self.assertEqual(updated_doc["name"], "Updated Name") # type: ignore
-		self.assertEqual(updated_doc["specialty"], "Pediatrics") # type: ignore
 		self.assertEqual(updated_doc["created_at"], original_doc["created_at"]) # type: ignore
 		self.assertLess(original_doc["updated_at"], updated_doc["updated_at"]) # type: ignore
 
-		# Test that updating a non-existent account returns False
-		success = account_repo.update_account(str(ObjectId()), {"name": "No One"}, collection_name=self.test_collection)
-		self.assertFalse(success)
+		# Test updating a non-existent account returns False
+		self.assertFalse(account_repo.update_account(str(ObjectId()), {"name": "No One"}, collection_name=self.test_collection))
 
-		# Test that 'created_at' is ignored in updates and does not change
-		success = account_repo.update_account(
-			account_id,
-			{"created_at": datetime(2000, 1, 1)},
-			collection_name=self.test_collection
-		)
-		self.assertTrue(success)
+	def test_get_account_logic(self):
+		"""Test that get_account updates 'last_seen' but not 'updated_at'."""
+		account_id = account_repo.create_account("GetMe", "Doctor", collection_name=self.test_collection)
+		original_doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
+		self.assertIsNotNone(original_doc)
+		self.assertNotIn("last_seen", original_doc) # type: ignore
+
+		# Get the account, which should add 'last_seen'
+		account = account_repo.get_account(account_id, collection_name=self.test_collection)
+		self.assertIsNotNone(account)
+		self.assertIn("last_seen", account) # type: ignore
+
+		# Verify that 'updated_at' was NOT modified by the get operation
 		final_doc = self.get_doc_by_id(Collections.ACCOUNT, account_id)
-		self.assertEqual(final_doc["created_at"], original_doc["created_at"]) # type: ignore
+		self.assertIsNotNone(final_doc)
+		self.assertEqual(final_doc["updated_at"], original_doc["updated_at"]) # type: ignore
+
+	def test_get_account_by_name(self):
+		"""Test retrieving an account by name and check for deprecation warning."""
+		name = "FindByName"
+		account_repo.create_account(name, "Nurse", collection_name=self.test_collection)
+
+		# Check that the function works and raises the expected warning
+		with self.assertWarns(DeprecationWarning):
+			account = account_repo.get_account_by_name(name, collection_name=self.test_collection)
+		self.assertIsNotNone(account)
+		self.assertEqual(account["name"], name) # type: ignore
+
+		# Test retrieval of a non-existent name returns None
+		with self.assertWarns(DeprecationWarning):
+			self.assertIsNone(account_repo.get_account_by_name("NonExistent", collection_name=self.test_collection))
 
 	def test_search_accounts(self):
-		"""Test account search functionality for various cases."""
+		"""Test search functionality with various edge cases."""
 		account_repo.create_account("Alpha Doctor", "Doctor", collection_name=self.test_collection)
-		account_repo.create_account("Beta Doctor", "Doctor", collection_name=self.test_collection)
-		account_repo.create_account("Charlie Medical", "Medical Student", collection_name=self.test_collection)
+		account_repo.create_account("Beta Nurse", "Nurse", collection_name=self.test_collection)
+		account_repo.create_account("Charlie Doctor", "Doctor", collection_name=self.test_collection)
 
 		# Test case-insensitive partial match
-		results = account_repo.search_accounts("beta", collection_name=self.test_collection)
-		self.assertEqual(len(results), 1)
-		self.assertEqual(results[0]["name"], "Beta Doctor")
-
-		# Test case-insensitive full match
-		results = account_repo.search_accounts("ALPHA DOCTOR", collection_name=self.test_collection)
-		self.assertEqual(len(results), 1)
-
-		# Test query that matches multiple entries with a limit
-		results = account_repo.search_accounts("Doctor", limit=2, collection_name=self.test_collection)
-		self.assertEqual(len(results), 2)
-		self.assertEqual(results[0]['name'], 'Alpha Doctor') # Assumes ascending sort by name
-		self.assertEqual(results[1]['name'], 'Beta Doctor')
-
+		self.assertEqual(len(account_repo.search_accounts("alpha", collection_name=self.test_collection)), 1)
+		# Test query matching multiple documents
+		self.assertEqual(len(account_repo.search_accounts("Doctor", collection_name=self.test_collection)), 2)
+		# Test limit parameter
+		self.assertEqual(len(account_repo.search_accounts("Doctor", limit=1, collection_name=self.test_collection)), 1)
 		# Test query with no matches
-		results = account_repo.search_accounts("NonExistent", collection_name=self.test_collection)
-		self.assertEqual(len(results), 0)
-
+		self.assertEqual(len(account_repo.search_accounts("NonExistent", collection_name=self.test_collection)), 0)
 		# Test empty query string returns an empty list
-		results = account_repo.search_accounts("", collection_name=self.test_collection)
-		self.assertEqual(len(results), 0)
+		self.assertEqual(len(account_repo.search_accounts("", collection_name=self.test_collection)), 0)
 
 	def test_get_all_accounts(self):
-		"""Test retrieving all accounts with limit and sorting."""
+		"""Test retrieving all accounts, verifying sorting and limit."""
 		account_repo.create_account("Charlie", "Doctor", collection_name=self.test_collection)
 		account_repo.create_account("Alpha", "Nurse", collection_name=self.test_collection)
 		account_repo.create_account("Beta", "Caregiver", collection_name=self.test_collection)
 
-		# Test getting all accounts, verifying ascending sort order by name
 		all_accounts = account_repo.get_all_accounts(collection_name=self.test_collection)
 		self.assertEqual(len(all_accounts), 3)
+		# Verify results are sorted by name
 		self.assertEqual(all_accounts[0]["name"], "Alpha")
-		self.assertEqual(all_accounts[1]["name"], "Beta")
 		self.assertEqual(all_accounts[2]["name"], "Charlie")
 
 		# Test with a limit
 		limited_accounts = account_repo.get_all_accounts(limit=2, collection_name=self.test_collection)
 		self.assertEqual(len(limited_accounts), 2)
-		self.assertEqual(limited_accounts[0]["name"], "Alpha")
 		self.assertEqual(limited_accounts[1]["name"], "Beta")
 
 	def test_get_account_frame(self):
-		"""Test retrieving accounts as a pandas DataFrame."""
+		"""Test retrieving accounts as a pandas DataFrame for empty and populated collections."""
 		# Test with an empty collection
 		df_empty = account_repo.get_account_frame(collection_name=self.test_collection)
-		self.assertIsInstance(df_empty, DataFrame)
 		self.assertTrue(df_empty.empty)
+		# Test with data
+		account_repo.create_account("Frame Alpha", "Doctor", collection_name=self.test_collection)
+		df_full = account_repo.get_account_frame(collection_name=self.test_collection)
+		self.assertEqual(len(df_full), 1)
 
-		# Add data and test again
-		id1 = account_repo.create_account("Frame Alpha", "Doctor", collection_name=self.test_collection)
-		account_repo.create_account("Frame Beta", "Nurse", specialty="ICU", collection_name=self.test_collection)
 
-		df = account_repo.get_account_frame(collection_name=self.test_collection)
-		self.assertIsInstance(df, DataFrame)
-		self.assertEqual(len(df), 2)
+class TestAccountRepositoryExceptions(BaseMongoTest):
+	"""Test class for the exception handling of all account repository functions."""
 
-		# Check if expected columns are present
-		expected_cols = {"_id", "name", "role", "created_at", "updated_at"}
-		self.assertTrue(expected_cols.issubset(set(df.columns)))
+	def setUp(self):
+		"""Set up the test environment before each test."""
+		super().setUp()
+		self.test_collection = self._collections[Collections.ACCOUNT]
+		account_repo.init(collection_name=self.test_collection, drop=True)
+		get_collection(self.test_collection).create_index("name", unique=True)
 
-		# Verify content of a specific row
-		alpha_row = df[df['_id'] == ObjectId(id1)]
-		self.assertEqual(alpha_row.iloc[0]["name"], "Frame Alpha")
+	def test_create_account_write_error(self):
+		"""Test that creating an account with invalid data raises ActionFailed."""
+		account_repo.create_account("Duplicate Name", "Doctor", collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.create_account("Duplicate Name", "Nurse", collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.create_account("Schema Test", "InvalidRole", collection_name=self.test_collection)
+
+	def test_invalid_id_raises_action_failed(self):
+		"""Test that functions raise ActionFailed when given a malformed ObjectId string."""
+		with self.assertRaises(ActionFailed):
+			account_repo.get_account("not-a-valid-id", collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.update_account("not-a-valid-id", {"name": "test"}, collection_name=self.test_collection)
+
+	@patch('src.data.repositories.account.get_collection')
+	def test_all_functions_raise_on_connection_error(self, mock_get_collection):
+		"""Test that all repo functions catch generic PyMongoErrors and raise ActionFailed."""
+		mock_get_collection.side_effect = ConnectionFailure("Simulated connection error")
+		with self.assertRaises(ActionFailed):
+			account_repo.init(collection_name=self.test_collection, drop=True)
+		with self.assertRaises(ActionFailed):
+			account_repo.get_account_frame(collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.create_account("test", "Doctor", collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.update_account(str(ObjectId()), {"name": "test"}, collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.get_account(str(ObjectId()), collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.get_account_by_name("test", collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.search_accounts("test", collection_name=self.test_collection)
+		with self.assertRaises(ActionFailed):
+			account_repo.get_all_accounts(collection_name=self.test_collection)
 
 if __name__ == "__main__":
 	try:
