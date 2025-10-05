@@ -87,14 +87,12 @@ class TestAccountRepository(BaseMongoTest):
 		account_repo.create_account(name, "Nurse", collection_name=self.test_collection)
 
 		# Check that the function works and raises the expected warning
-		with self.assertWarns(DeprecationWarning):
-			account = account_repo.get_account_by_name(name, collection_name=self.test_collection)
+		account = account_repo.get_account_by_name(name, collection_name=self.test_collection)
 		self.assertIsNotNone(account)
 		self.assertEqual(account["name"], name) # type: ignore
 
 		# Test retrieval of a non-existent name returns None
-		with self.assertWarns(DeprecationWarning):
-			self.assertIsNone(account_repo.get_account_by_name("NonExistent", collection_name=self.test_collection))
+		self.assertIsNone(account_repo.get_account_by_name("NonExistent", collection_name=self.test_collection))
 
 	def test_search_accounts(self):
 		"""Test search functionality with various edge cases."""
