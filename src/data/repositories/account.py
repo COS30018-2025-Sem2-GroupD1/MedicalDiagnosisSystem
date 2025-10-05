@@ -32,7 +32,7 @@ VALID_ROLES = [
 	"Healthcare Prof",
 	"Nurse",
 	"Caregiver",
-	"Physicion",
+	"Physician",
 	"Medical Student",
 	"Other"
 ]
@@ -58,7 +58,8 @@ def get_account_frame(
 ) -> DataFrame:
 	"""Get accounts as a pandas DataFrame, raising ActionFailed on error."""
 	try:
-		return DataFrame(get_collection(collection_name).find())
+		collection = get_collection(collection_name)
+		return DataFrame(collection.find())
 	except (ConnectionFailure, PyMongoError) as e:
 		logger().error(f"Failed to retrieve account frame: {e}")
 		raise ActionFailed(f"Could not retrieve accounts for DataFrame: {e}") from e
@@ -71,7 +72,6 @@ def create_account(
 	collection_name: str = Collections.ACCOUNT
 ) -> str:
 	"""Creates a new user account, raising ActionFailed on error."""
-	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
 	user_data: dict[str, Any] = {
 		"name": name,
@@ -83,11 +83,11 @@ def create_account(
 		user_data["specialty"] = specialty
 
 	try:
+		collection = get_collection(collection_name)
 		result = collection.insert_one(user_data)
 		logger().info(f"Created new account: {result.inserted_id}")
 		return str(result.inserted_id)
-	except (WriteError) as e:
-		# Specifically catch unique constraint or validation errors
+	except WriteError as e:
 		logger().error(f"Failed to create account due to data conflict: {e}")
 		raise ActionFailed(f"Account could not be created. Data is conflicting or invalid.") from e
 	except (ConnectionFailure, PyMongoError) as e:
@@ -103,22 +103,21 @@ def update_account(
 	"""Updates an existing user account, raising ActionFailed on error."""
 	try:
 		obj_user_id = ObjectId(user_id)
-	except InvalidId as e:
-		logger().error(f"Invalid user_id format for update: '{user_id}'")
-		raise ActionFailed(f"The provided user ID '{user_id}' is not a valid format.") from e
+		collection = get_collection(collection_name)
 
-	collection = get_collection(collection_name)
-	if "created_at" in updates:
-		logger().warning("Attempting to modify the 'created_at' attribute of an account. This is not allowed.")
-		updates.pop("created_at")
-	updates["updated_at"] = datetime.now(timezone.utc)
+		if "created_at" in updates:
+			logger().warning("Attempting to modify the 'created_at' attribute of an account. This is not allowed.")
+			updates.pop("created_at")
+		updates["updated_at"] = datetime.now(timezone.utc)
 
-	try:
 		result = collection.update_one(
 			{"_id": obj_user_id},
 			{"$set": updates}
 		)
 		return result.modified_count > 0
+	except InvalidId as e:
+		logger().error(f"Invalid user_id format for update: '{user_id}'")
+		raise ActionFailed(f"The provided user ID '{user_id}' is not a valid format.") from e
 	except (ConnectionFailure, PyMongoError) as e:
 		logger().error(f"Database error while updating account '{user_id}': {e}")
 		raise ActionFailed(f"A database error occurred while updating the account.") from e
@@ -131,14 +130,9 @@ def get_account(
 	"""Retrieves an account by ID. Returns None if not found, raises ActionFailed on error."""
 	try:
 		obj_user_id = ObjectId(user_id)
-	except InvalidId as e:
-		logger().error(f"Invalid user_id format for get: '{user_id}'")
-		raise ActionFailed(f"The provided user ID '{user_id}' is not a valid format.") from e
+		collection = get_collection(collection_name)
+		now = datetime.now(timezone.utc)
 
-	collection = get_collection(collection_name)
-	now = datetime.now(timezone.utc)
-
-	try:
 		account = collection.find_one_and_update(
 			{"_id": obj_user_id},
 			{"$set": {"last_seen": now}},
@@ -147,6 +141,9 @@ def get_account(
 		if account:
 			account["_id"] = str(account["_id"])
 		return account
+	except InvalidId as e:
+		logger().error(f"Invalid user_id format for get: '{user_id}'")
+		raise ActionFailed(f"The provided user ID '{user_id}' is not a valid format.") from e
 	except (ConnectionFailure, PyMongoError) as e:
 		logger().error(f"Database error while getting account '{user_id}': {e}")
 		raise ActionFailed(f"A database error occurred while retrieving the account.") from e
@@ -159,8 +156,8 @@ def get_account_by_name(
 ) -> dict[str, Any] | None:
 	"""Gets an account by name. Returns None if not found, raises ActionFailed on error."""
 	logger().info(f"Trying to retrieve account: {name}")
-	collection = get_collection(collection_name)
 	try:
+		collection = get_collection(collection_name)
 		account = collection.find_one({"name": name})
 		if account:
 			account["_id"] = str(account["_id"])
@@ -179,19 +176,18 @@ def search_accounts(
 	if not query:
 		return []
 
-	collection = get_collection(collection_name)
 	logger().info(f"Searching accounts with query: '{query}', limit: {limit}")
 	pattern = re.compile(re.escape(query), re.IGNORECASE)
 
 	try:
+		collection = get_collection(collection_name)
 		cursor = collection.find({
 			"name": {"$regex": pattern}
 		}).sort("name", ASCENDING).limit(limit)
 
-		results = []
-		for account in cursor:
-			account["_id"] = str(account["_id"])
-			results.append(account)
+		results = [
+			{**account, "_id": str(account["_id"])} for account in cursor
+		]
 
 		logger().info(f"Found {len(results)} accounts matching query")
 		return results
@@ -205,14 +201,13 @@ def get_all_accounts(
 	collection_name: str = Collections.ACCOUNT
 ) -> list[dict[str, Any]]:
 	"""Gets all accounts, raising ActionFailed on error."""
-	collection = get_collection(collection_name)
 	try:
+		collection = get_collection(collection_name)
 		cursor = collection.find().sort("name", ASCENDING).limit(limit)
 
-		results = []
-		for account in cursor:
-			account["_id"] = str(account["_id"])
-			results.append(account)
+		results = [
+			{**account, "_id": str(account["_id"])} for account in cursor
+		]
 
 		logger().info(f"Retrieved {len(results)} accounts")
 		return results
