@@ -15,7 +15,7 @@ Each account represents a doctor.
 import re
 from datetime import datetime, timezone
 from typing import Any
-from warnings import deprecated
+#from warnings import deprecated
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -148,13 +148,17 @@ def get_account(
 		logger().error(f"Database error while getting account '{user_id}': {e}")
 		raise ActionFailed(f"A database error occurred while retrieving the account.") from e
 
-@deprecated("Inferior to search_accounts")
+#@deprecated("Inferior to search_accounts")
 def get_account_by_name(
 	name: str,
 	*,
 	collection_name: str = Collections.ACCOUNT
 ) -> dict[str, Any] | None:
-	"""Gets an account by name. Returns None if not found, raises ActionFailed on error."""
+	"""
+	Gets an account by name. Returns None if not found, raises ActionFailed on error.
+
+	@depreciated
+	"""
 	logger().info(f"Trying to retrieve account: {name}")
 	try:
 		collection = get_collection(collection_name)
