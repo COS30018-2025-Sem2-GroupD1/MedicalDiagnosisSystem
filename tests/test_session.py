@@ -174,9 +174,6 @@ class TestSessionRepositoryExceptions(BaseMongoTest):
 			session_repo.add_message(str(ObjectId()), "t", True, collection_name=self.test_collection)
 
 if __name__ == "__main__":
-	try:
-		logger().info("Starting MongoDB repository integration tests...")
-		unittest.main(verbosity=2)
-	finally:
-		logger().info("Tests completed and database connection closed.")
-		close_connection()
+	logger().info("Starting MongoDB repository integration tests...")
+	unittest.main(verbosity=2)
+	logger().info("Tests completed and database connection closed.")

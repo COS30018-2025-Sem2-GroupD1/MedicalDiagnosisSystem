@@ -13,7 +13,8 @@ from typing import Any
 
 from bson import ObjectId
 
-from src.data.connection import Collections, get_collection, get_database
+from src.data.connection import (Collections, close_connection, get_collection,
+                                 get_database)
 
 
 class BaseMongoTest(unittest.TestCase):
@@ -21,22 +22,28 @@ class BaseMongoTest(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
-		"""Initialize test database connection"""
+		"""Initialize test database connection once for the entire test class."""
 		cls.db = get_database()
 		# Map production collections to test collections
-		# The key is the collection's actual name (the attribute's value)
 		cls._collections = {
 			value: f"test_{value.lower()}" for name, value in vars(Collections).items()
 			if not name.startswith('_') and isinstance(value, str)
 		}
 
+	@classmethod
+	def tearDownClass(cls):
+		"""Close the database connection once after all tests in the class are done."""
+		close_connection()
+
 	def setUp(self):
-		"""Create clean test collections before each test"""
+		"""Create clean test collections before each test."""
 		for test_name in self._collections.values():
 			self.db.drop_collection(test_name)
 
 	def tearDown(self):
-		"""Clean up test collections after each test"""
+		"""Clean up test collections after each test."""
+		# This tearDown is for individual test cleanup, not connection closing.
+		# We can leave it empty or keep the collection drop for extra safety.
 		for test_name in self._collections.values():
 			self.db.drop_collection(test_name)
 
@@ -45,7 +52,6 @@ class BaseMongoTest(unittest.TestCase):
 		Helper to get a document by ID.
 		`collection` should be the production collection name from `Collections`.
 		"""
-		# Look up the test collection name using the production name as the key
 		test_coll_name = self._collections.get(collection)
 		if not test_coll_name:
 			raise KeyError(f"No test collection mapping found for '{collection}'")

@@ -188,9 +188,6 @@ class TestAccountRepositoryExceptions(BaseMongoTest):
 			account_repo.get_all_accounts(collection_name=self.test_collection)
 
 if __name__ == "__main__":
-	try:
-		logger().info("Starting MongoDB repository integration tests...")
-		unittest.main(verbosity=2)
-	finally:
-		logger().info("Tests completed and database connection closed.")
-		close_connection()
+	logger().info("Starting MongoDB repository integration tests...")
+	unittest.main(verbosity=2)
+	logger().info("Tests completed and database connection closed.")
