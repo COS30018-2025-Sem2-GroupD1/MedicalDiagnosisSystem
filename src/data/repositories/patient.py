@@ -1,4 +1,4 @@
-# data/patient/operations.py
+# data/repositories/patient.py
 """
 Patient management operations for MongoDB.
 A patient is a person who has been assigned to a doctor for treatment.
@@ -24,9 +24,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo import ASCENDING
-from pymongo.errors import (ConnectionFailure, DuplicateKeyError,
-                            OperationFailure, PyMongoError)
+from pymongo.errors import ConnectionFailure, PyMongoError, WriteError
 
 from src.data.connection import (ActionFailed, Collections, get_collection,
                                  setup_collection)
@@ -39,11 +39,16 @@ def init(
 	validator_path: str = "schemas/patient_validator.json",
 	drop: bool = False
 ):
-	if drop:
-		get_collection(collection_name).drop()
-	setup_collection(collection_name, validator_path)
-	get_collection(collection_name).create_index("assigned_doctor_id")
-	logger("Init").info("Created index on assigned_doctor_id")
+	"""Initializes the collection, applying schema and indexes."""
+	try:
+		if drop:
+			get_collection(collection_name).drop()
+		setup_collection(collection_name, validator_path)
+		get_collection(collection_name).create_index("assigned_doctor_id")
+		logger("Init").info(f"Created index on assigned_doctor_id in '{collection_name}'")
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Failed to initialize collection '{collection_name}': {e}")
+		raise ActionFailed(f"Database operation failed during initialization: {e}") from e
 
 def create_patient(
 	name: str,
@@ -59,6 +64,7 @@ def create_patient(
 	*,
 	collection_name: str = Collections.PATIENT
 ) -> str:
+	"""Creates a new patient record, raising ActionFailed on error."""
 	collection = get_collection(collection_name)
 	now = datetime.now(timezone.utc)
 	patient_data = {
@@ -69,39 +75,52 @@ def create_patient(
 		"created_at": now,
 		"updated_at": now
 	}
-	if address:
-		patient_data["address"] = address
-	if phone:
-		patient_data["phone"] = phone
-	if email:
-		patient_data["email"] = email
-	if medications:
-		patient_data["medications"] = medications
-	if past_assessment_summary:
-		patient_data["past_assessment_summary"] = past_assessment_summary
-	if assigned_doctor_id:
-		patient_data["assigned_doctor_id"] = ObjectId(assigned_doctor_id)
+	# Add optional fields to the dictionary
+	if address: patient_data["address"] = address
+	if phone: patient_data["phone"] = phone
+	if email: patient_data["email"] = email
+	if medications: patient_data["medications"] = medications
+	if past_assessment_summary: patient_data["past_assessment_summary"] = past_assessment_summary
 
-	result = collection.insert_one(patient_data)
-	return str(result.inserted_id)
+	try:
+		if assigned_doctor_id:
+			patient_data["assigned_doctor_id"] = ObjectId(assigned_doctor_id)
+
+		result = collection.insert_one(patient_data)
+		return str(result.inserted_id)
+	except InvalidId as e:
+		logger().error(f"Invalid assigned_doctor_id format: '{assigned_doctor_id}'")
+		raise ActionFailed(f"The assigned doctor ID is not a valid format.") from e
+	except WriteError as e:
+		logger().error(f"Failed to create patient due to validation or write error: {e}")
+		raise ActionFailed(f"Patient could not be created due to invalid data.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error while creating patient: {e}")
+		raise ActionFailed(f"A database error occurred while creating the patient.") from e
 
 def get_patient_by_id(
 	patient_id: str,
 	*,
 	collection_name: str = Collections.PATIENT
 ) -> dict[str, Any] | None:
+	"""Gets a patient by ID. Returns None if not found, raises ActionFailed on error."""
 	logger().info(f"Searching for patient with id '{patient_id}'")
 	try:
+		obj_patient_id = ObjectId(patient_id)
 		collection = get_collection(collection_name)
-		patient = collection.find_one(
-			{"_id": ObjectId(patient_id)}
-		)
-		if patient and "_id" in patient:
+		patient = collection.find_one({"_id": obj_patient_id})
+
+		if patient:
 			patient["_id"] = str(patient["_id"])
+			if "assigned_doctor_id" in patient:
+				patient["assigned_doctor_id"] = str(patient["assigned_doctor_id"])
 		return patient
-	except Exception as e:
-		logger().error(f"Error in get_patient_by_id: {e}")
-		return None
+	except InvalidId as e:
+		logger().error(f"Invalid patient_id format for get: '{patient_id}'")
+		raise ActionFailed(f"The provided patient ID '{patient_id}' is not a valid format.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error in get_patient_by_id for ID '{patient_id}': {e}")
+		raise ActionFailed(f"A database error occurred while retrieving the patient.") from e
 
 # TODO Make this more rigidly typed, maybe merge with create_patient?
 def update_patient_profile(
@@ -110,17 +129,26 @@ def update_patient_profile(
 	*,
 	collection_name: str = Collections.PATIENT
 ) -> int:
+	"""Updates a patient's profile, raising ActionFailed on error."""
 	try:
+		obj_patient_id = ObjectId(patient_id)
 		collection = get_collection(collection_name)
 		updates["updated_at"] = datetime.now(timezone.utc)
+
 		result = collection.update_one(
-			{"_id": ObjectId(patient_id)},
+			{"_id": obj_patient_id},
 			{"$set": updates}
 		)
 		return result.modified_count
-	except Exception as e:
-		logger().error(f"Error in update_patient_profile: {e}")
-		return 0
+	except InvalidId as e:
+		logger().error(f"Invalid patient_id format for update: '{patient_id}'")
+		raise ActionFailed(f"The provided patient ID '{patient_id}' is not a valid format.") from e
+	except WriteError as e:
+		logger().error(f"Failed to update patient '{patient_id}' due to validation or write error: {e}")
+		raise ActionFailed(f"Patient profile could not be updated due to invalid data.") from e
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error in update_patient_profile for ID '{patient_id}': {e}")
+		raise ActionFailed(f"A database error occurred while updating the patient profile.") from e
 
 def search_patients(
 	query: str,
@@ -128,15 +156,12 @@ def search_patients(
 	*,
 	collection_name: str = Collections.PATIENT
 ) -> list[dict[str, Any]]:
-	"""Search patients by name (case-insensitive starts-with/contains)."""
+	"""Searches patients by name, raising ActionFailed on error."""
 	if not query:
 		return []
 
 	collection = get_collection(collection_name)
-
 	logger().info(f"Searching patients with query: '{query}', limit: {limit}")
-
-	# Build a regex for name search and patient_id partial match
 	pattern = re.compile(re.escape(query), re.IGNORECASE)
 
 	try:
@@ -146,12 +171,13 @@ def search_patients(
 
 		results = []
 		for patient in cursor:
-			if patient:
-				patient["_id"] = str(patient["_id"])
-				results.append(patient)
+			patient["_id"] = str(patient["_id"])
+			if "assigned_doctor_id" in patient:
+				patient["assigned_doctor_id"] = str(patient["assigned_doctor_id"])
+			results.append(patient)
 
 		logger().info(f"Found {len(results)} patients matching query")
 		return results
-	except Exception as e:
-		logger().error(f"Error in search_patients: {e}")
-		return []
+	except (ConnectionFailure, PyMongoError) as e:
+		logger().error(f"Database error during patient search for query '{query}': {e}")
+		raise ActionFailed(f"A database error occurred during the patient search.") from e
