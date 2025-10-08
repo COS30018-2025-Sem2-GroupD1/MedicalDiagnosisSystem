@@ -1,4 +1,4 @@
-# data/repositories/account.py
+# src/data/repositories/account.py
 """
 User account management operations for MongoDB.
 Each account represents a doctor.
@@ -10,12 +10,12 @@ Each account represents a doctor.
 	specialty: Any extra information about the account
 	created_at: The timestamp when the account was created
 	updated_at: The timestamp when the account data was last modified
+	last_seen: The last time this account was retrieved
 """
 
 import re
 from datetime import datetime, timezone
 from typing import Any
-#from warnings import deprecated
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -25,7 +25,12 @@ from pymongo.errors import ConnectionFailure, PyMongoError, WriteError
 
 from src.data.connection import (ActionFailed, Collections, get_collection,
                                  setup_collection)
+from src.models.account import Account
 from src.utils.logger import logger
+
+#from warnings import deprecated
+
+
 
 VALID_ROLES = [
 	"Doctor",
@@ -127,21 +132,22 @@ def get_account(
 	user_id: str,
 	*,
 	collection_name: str = Collections.ACCOUNT
-) -> dict[str, Any] | None:
-	"""Retrieves an account by ID. Returns None if not found, raises ActionFailed on error."""
+) -> Account | None:
+	"""Retrieves an account by ID. Returns a Pydantic Account object or None."""
 	try:
 		obj_user_id = ObjectId(user_id)
 		collection = get_collection(collection_name)
 		now = datetime.now(timezone.utc)
 
-		account = collection.find_one_and_update(
+		account_dict = collection.find_one_and_update(
 			{"_id": obj_user_id},
 			{"$set": {"last_seen": now}},
 			return_document=True
 		)
-		if account:
-			account["_id"] = str(account["_id"])
-		return account
+
+		if account_dict:
+			return Account.model_validate(account_dict)
+		return None
 	except InvalidId as e:
 		logger().error(f"Invalid user_id format for get: '{user_id}'")
 		raise ActionFailed(f"The provided user ID '{user_id}' is not a valid format.") from e
@@ -154,24 +160,23 @@ def get_account_by_name(
 	name: str,
 	*,
 	collection_name: str = Collections.ACCOUNT
-) -> dict[str, Any] | None:
+) -> Account | None:
 	"""
-	Gets an account by name. Returns None if not found, raises ActionFailed on error.
-
-	@depreciated
+	Gets an account by name. Returns a Pydantic Account object or None.
+	@deprecated Use search_accounts instead for more flexibility.
 	"""
 	logger().info(f"Trying to retrieve account: {name}")
 	try:
 		collection = get_collection(collection_name)
 		now = datetime.now(timezone.utc)
-		account = collection.find_one_and_update(
+		account_dict = collection.find_one_and_update(
 			{"name": name},
 			{"$set": {"last_seen": now}},
 			return_document=True
 		)
-		if account:
-			account["_id"] = str(account["_id"])
-		return account
+		if account_dict:
+			return Account.model_validate(account_dict)
+		return None
 	except (ConnectionFailure, PyMongoError) as e:
 		logger().error(f"Database error while getting account by name '{name}': {e}")
 		raise ActionFailed(f"A database error occurred while retrieving the account by name.") from e
@@ -181,8 +186,8 @@ def search_accounts(
 	limit: int = 10,
 	*,
 	collection_name: str = Collections.ACCOUNT
-) -> list[dict[str, Any]]:
-	"""Searches accounts by name, raising ActionFailed on error."""
+) -> list[Account]:
+	"""Searches accounts by name, returning a list of Pydantic Account objects."""
 	if not query:
 		return []
 
@@ -195,12 +200,9 @@ def search_accounts(
 			"name": {"$regex": pattern}
 		}).sort("name", ASCENDING).limit(limit)
 
-		results = [
-			{**account, "_id": str(account["_id"])} for account in cursor
-		]
-
-		logger().info(f"Found {len(results)} accounts matching query")
-		return results
+		accounts = [Account.model_validate(doc) for doc in cursor]
+		logger().info(f"Found {len(accounts)} accounts matching query")
+		return accounts
 	except (ConnectionFailure, PyMongoError) as e:
 		logger().error(f"Database error during account search for query '{query}': {e}")
 		raise ActionFailed(f"A database error occurred during the account search.") from e
@@ -209,18 +211,15 @@ def get_all_accounts(
 	limit: int = 50,
 	*,
 	collection_name: str = Collections.ACCOUNT
-) -> list[dict[str, Any]]:
-	"""Gets all accounts, raising ActionFailed on error."""
+) -> list[Account]:
+	"""Gets all accounts, returning a list of Pydantic Account objects."""
 	try:
 		collection = get_collection(collection_name)
 		cursor = collection.find().sort("name", ASCENDING).limit(limit)
 
-		results = [
-			{**account, "_id": str(account["_id"])} for account in cursor
-		]
-
-		logger().info(f"Retrieved {len(results)} accounts")
-		return results
+		accounts = [Account.model_validate(doc) for doc in cursor]
+		logger().info(f"Retrieved {len(accounts)} accounts")
+		return accounts
 	except (ConnectionFailure, PyMongoError) as e:
 		logger().error(f"Database error while getting all accounts: {e}")
 		raise ActionFailed(f"A database error occurred while retrieving all accounts.") from e

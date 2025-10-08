@@ -1,4 +1,4 @@
-# data/repositories/patient.py
+# src/data/repositories/patient.py
 """
 Patient management operations for MongoDB.
 A patient is a person who has been assigned to a doctor for treatment.
@@ -30,6 +30,7 @@ from pymongo.errors import ConnectionFailure, PyMongoError, WriteError
 
 from src.data.connection import (ActionFailed, Collections, get_collection,
                                  setup_collection)
+from src.models.patient import Patient
 from src.utils.logger import logger
 
 
@@ -102,19 +103,17 @@ def get_patient_by_id(
 	patient_id: str,
 	*,
 	collection_name: str = Collections.PATIENT
-) -> dict[str, Any] | None:
-	"""Gets a patient by ID. Returns None if not found, raises ActionFailed on error."""
+) -> Patient | None:
+	"""Gets a patient by ID. Returns a Pydantic Patient object or None."""
 	logger().info(f"Searching for patient with id '{patient_id}'")
 	try:
 		obj_patient_id = ObjectId(patient_id)
 		collection = get_collection(collection_name)
-		patient = collection.find_one({"_id": obj_patient_id})
+		patient_dict = collection.find_one({"_id": obj_patient_id})
 
-		if patient:
-			patient["_id"] = str(patient["_id"])
-			if "assigned_doctor_id" in patient:
-				patient["assigned_doctor_id"] = str(patient["assigned_doctor_id"])
-		return patient
+		if patient_dict:
+			return Patient.model_validate(patient_dict)
+		return None
 	except InvalidId as e:
 		logger().error(f"Invalid patient_id format for get: '{patient_id}'")
 		raise ActionFailed(f"The provided patient ID '{patient_id}' is not a valid format.") from e
@@ -155,8 +154,8 @@ def search_patients(
 	limit: int = 10,
 	*,
 	collection_name: str = Collections.PATIENT
-) -> list[dict[str, Any]]:
-	"""Searches patients by name, raising ActionFailed on error."""
+) -> list[Patient]:
+	"""Searches patients by name, returning a list of Pydantic Patient objects."""
 	if not query:
 		return []
 
@@ -169,15 +168,9 @@ def search_patients(
 			"name": {"$regex": pattern}
 		}).sort("name", ASCENDING).limit(limit)
 
-		results = []
-		for patient in cursor:
-			patient["_id"] = str(patient["_id"])
-			if "assigned_doctor_id" in patient:
-				patient["assigned_doctor_id"] = str(patient["assigned_doctor_id"])
-			results.append(patient)
-
-		logger().info(f"Found {len(results)} patients matching query")
-		return results
+		patients = [Patient.model_validate(doc) for doc in cursor]
+		logger().info(f"Found {len(patients)} patients matching query")
+		return patients
 	except (ConnectionFailure, PyMongoError) as e:
 		logger().error(f"Database error during patient search for query '{query}': {e}")
 		raise ActionFailed(f"A database error occurred during the patient search.") from e
