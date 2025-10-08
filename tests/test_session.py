@@ -6,8 +6,7 @@ from unittest.mock import patch
 from bson import ObjectId
 from pymongo.errors import ConnectionFailure, WriteError
 
-from src.data.connection import (ActionFailed, Collections, close_connection,
-                                 get_collection)
+from src.data.connection import ActionFailed, Collections, get_collection
 from src.data.repositories import session as session_repo
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
