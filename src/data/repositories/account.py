@@ -28,10 +28,6 @@ from src.data.connection import (ActionFailed, Collections, get_collection,
 from src.models.account import Account
 from src.utils.logger import logger
 
-#from warnings import deprecated
-
-
-
 VALID_ROLES = [
 	"Doctor",
 	"Healthcare Prof",
@@ -155,7 +151,6 @@ def get_account(
 		logger().error(f"Database error while getting account '{user_id}': {e}")
 		raise ActionFailed(f"A database error occurred while retrieving the account.") from e
 
-#@deprecated("Inferior to search_accounts")
 def get_account_by_name(
 	name: str,
 	*,
