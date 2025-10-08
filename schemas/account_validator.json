@@ -6,7 +6,8 @@
 			"name",
 			"role",
 			"created_at",
-			"updated_at"
+			"updated_at",
+			"last_seen"
 		],
 		"properties": {
 			"name": {
@@ -19,7 +20,7 @@
 					"Healthcare Prof",
 					"Nurse",
 					"Caregiver",
-					"Physicion",
+					"Physician",
 					"Medical Student",
 					"Other"
 				],
@@ -36,6 +37,10 @@
 			"updated_at": {
 				"bsonType": "date",
 				"description": "'updated_at' must be a date and is required."
+			},
+			"last_seen": {
+				"bsonType": "date",
+				"description": "'last_seen' must be a date and is optional."
 			}
 		}
 	}

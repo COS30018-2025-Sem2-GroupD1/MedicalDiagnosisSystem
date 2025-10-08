@@ -77,7 +77,8 @@ def create_account(
 		"name": name,
 		"role" : role,
 		"created_at": now,
-		"updated_at": now
+		"updated_at": now,
+		"last_seen": now
 	}
 	if specialty:
 		user_data["specialty"] = specialty
@@ -162,7 +163,12 @@ def get_account_by_name(
 	logger().info(f"Trying to retrieve account: {name}")
 	try:
 		collection = get_collection(collection_name)
-		account = collection.find_one({"name": name})
+		now = datetime.now(timezone.utc)
+		account = collection.find_one_and_update(
+			{"name": name},
+			{"$set": {"last_seen": now}},
+			return_document=True
+		)
 		if account:
 			account["_id"] = str(account["_id"])
 		return account
