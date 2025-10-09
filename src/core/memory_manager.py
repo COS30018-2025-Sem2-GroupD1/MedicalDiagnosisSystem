@@ -7,7 +7,7 @@ from src.data.repositories import patient as patient_repo
 from src.data.repositories import session as session_repo
 from src.models.account import Account
 from src.models.patient import Patient
-from src.models.session import Session
+from src.models.session import Message, Session
 from src.services import summariser
 from src.services.nvidia import nvidia_chat
 from src.utils.embeddings import EmbeddingClient
@@ -62,6 +62,7 @@ class MemoryManager:
 		except ActionFailed as e:
 			logger().error(f"Failed to search accounts in MemoryManager: {e}")
 			return []
+
 	# --- Patient Management Facade ---
 
 	def create_patient(self, **kwargs) -> str | None:
@@ -136,6 +137,22 @@ class MemoryManager:
 			return session_repo.list_patient_sessions(patient_id, limit=self.max_sessions_per_user)
 		except ActionFailed as e:
 			logger().error(f"Failed to get sessions for patient '{patient_id}': {e}")
+			return []
+
+	def delete_session(self, session_id: str) -> bool:
+		"""Deletes a chat session."""
+		try:
+			return session_repo.delete_session(session_id)
+		except ActionFailed as e:
+			logger().error(f"Failed to delete session '{session_id}' in MemoryManager: {e}")
+			return False
+
+	def get_session_messages(self, session_id: str, limit: int | None = None) -> list[Message]:
+		"""Gets messages from a specific chat session."""
+		try:
+			return session_repo.get_session_messages(session_id, limit)
+		except ActionFailed as e:
+			logger().error(f"Failed to get messages for session '{session_id}': {e}")
 			return []
 
 	# --- Core Business Logic ---

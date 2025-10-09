@@ -1,87 +1,132 @@
-# api/routes/session.py
+# src/api/routes/chat.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.core.state import MedicalState, get_state
-from src.data.repositories.session import delete_session, get_session_messages
-from src.models.chat import SessionRequest
+from src.core.state import AppState, get_state
+from src.models.session import (ChatRequest, ChatResponse, Message, Session,
+                                SessionCreateRequest)
+from src.services.medical_response import generate_medical_response
 from src.utils.logger import logger
 
-router = APIRouter(prefix="/session", tags=["Session"])
+router = APIRouter(prefix="/session", tags=["Session & Chat"])
 
-@router.post("")
+
+@router.post("", response_model=Session, status_code=status.HTTP_201_CREATED)
 async def create_chat_session(
-	request: SessionRequest,
-	state: MedicalState = Depends(get_state)
+	req: SessionCreateRequest,
+	state: AppState = Depends(get_state)
 ):
-	"""Create a new chat session (cache + Mongo)"""
-	try:
-		logger().info(f"POST /session user_id={request.account_id} patient_id={request.patient_id}")
-		session_id = state.memory_system.create_session(request.account_id, request.title or "New Chat")
-		# Also ensure in Mongo with patient/doctor
-		#ensure_session(session_id=session_id, patient_id=request.patient_id, doctor_id=request.doctor_id, title=request.title or "New Chat")
-		return {"session_id": session_id, "message": "Session created successfully"}
-	except Exception as e:
-		logger().error(f"Error creating session: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
+	"""Creates a new, empty chat session."""
+	logger().info(f"POST /session for patient_id={req.patient_id}")
+	session = state.memory_manager.create_session(
+		user_id=req.account_id,
+		patient_id=req.patient_id,
+		title=req.title or "New Chat"
+	)
+	if not session:
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create session.")
+	return session
 
-@router.get("/{session_id}")
+
+@router.get("/{session_id}", response_model=Session)
 async def get_chat_session(
 	session_id: str,
-	state: MedicalState = Depends(get_state)
+	state: AppState = Depends(get_state)
 ):
-	"""Get session from cache (for quick preview)"""
-	try:
-		session = state.memory_system.get_session(session_id)
-		if not session:
-			raise HTTPException(status_code=404, detail="Session not found")
+	"""Retrieves a session's metadata and all its messages."""
+	logger().info(f"GET /session/{session_id}")
+	session = state.memory_manager.get_session(session_id)
+	if not session:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+	return session
 
-		return session.to_dict()
-	except HTTPException:
-		raise
-	except Exception as e:
-		logger().error(f"Error getting session: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{session_id}/messages")
-async def list_messages_for_session(session_id: str, limit: int | None = None):
-	"""List messages for a session from Mongo, verified to belong to the patient"""
-	try:
-		logger().info(f"GET /session/{session_id}/messages limit={limit}")
-		msgs = get_session_messages(session_id, limit)
-		# ensure JSON-friendly timestamps
-		for m in msgs:
-			if isinstance(m.get("timestamp"), datetime):
-				m["timestamp"] = m["timestamp"].isoformat()
-			m["_id"] = str(m["_id"]) if "_id" in m else None
-		return {"messages": msgs}
-	except Exception as e:
-		logger().error(f"Error listing messages: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
-
-@router.delete("/{session_id}")
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_chat_session(
 	session_id: str,
-	state: MedicalState = Depends(get_state)
+	state: AppState = Depends(get_state)
 ):
-	"""Delete a chat session from both memory system and MongoDB"""
+	"""Deletes a chat session permanently."""
+	logger().info(f"DELETE /session/{session_id}")
+	# UPDATED CALL
+	success = state.memory_manager.delete_session(session_id)
+	if not success:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found or already deleted")
+	return None
+
+
+@router.get("/{session_id}/messages", response_model=list[Message])
+async def list_messages_for_session(
+	session_id: str,
+	limit: int | None = None,
+	state: AppState = Depends(get_state)
+):
+	"""Lists all messages for a specific session from the database."""
+	logger().info(f"GET /session/{session_id}/messages limit={limit}")
+	if not state.memory_manager.get_session(session_id):
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+	# UPDATED CALL
+	messages = state.memory_manager.get_session_messages(session_id, limit)
+	return messages
+
+
+@router.post("/{session_id}/messages", response_model=ChatResponse)
+async def post_chat_message(
+	session_id: str,
+	req: ChatRequest,
+	state: AppState = Depends(get_state)
+):
+	"""
+	Posts a message to a session, gets a generated medical response,
+	and persists the full exchange to long-term memory.
+	"""
+	logger().info(f"POST /session/{session_id}/messages")
+
+	# 1. Get Enhanced Context
 	try:
-		logger().info(f"DELETE /session/{session_id}")
-
-		# Delete from memory system
-		state.memory_system.delete_session(session_id)
-
-		# Delete from MongoDB
-		session_deleted = delete_session(session_id)
-
-		logger().info(f"Deleted session {session_id}: session={session_deleted}")
-
-		return {
-			"message": "Session deleted successfully",
-			"session_deleted": session_deleted
-		}
+		medical_context = await state.memory_manager.get_enhanced_context(
+			session_id=session_id,
+			patient_id=req.patient_id,
+			question=req.message,
+			nvidia_rotator=state.nvidia_rotator
+		)
 	except Exception as e:
-		logger().error(f"Error deleting session: {e}")
-		raise HTTPException(status_code=500, detail=str(e))
+		logger().error(f"Error getting medical context: {e}")
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to build medical context.")
+
+	# 2. Generate AI Response
+	try:
+		# In a real app, user role/specialty would come from the authenticated user
+		response_text = await generate_medical_response(
+			user_message=req.message,
+			user_role="Medical Professional",
+			user_specialty="",
+			rotator=state.gemini_rotator,
+			medical_context=medical_context
+		)
+	except Exception as e:
+		logger().error(f"Error generating medical response: {e}")
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate AI response.")
+
+	# 3. Process and Store the Exchange
+	summary = await state.memory_manager.process_medical_exchange(
+		session_id=session_id,
+		patient_id=req.patient_id,
+		doctor_id=req.account_id,
+		question=req.message,
+		answer=response_text,
+		gemini_rotator=state.gemini_rotator,
+		nvidia_rotator=state.nvidia_rotator
+	)
+	if not summary:
+		logger().warning(f"Failed to process and store medical exchange for session {session_id}")
+
+	return ChatResponse(
+		response=response_text,
+		session_id=session_id,
+		timestamp=datetime.now(timezone.utc),
+		medical_context=medical_context
+	)

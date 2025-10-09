@@ -26,11 +26,11 @@ except Exception as e:
 # Import project modules after trying to load environment variables
 from src.api.routes import account as account_route
 from src.api.routes import audio as audio_route
-from src.api.routes import chat as chat_route
 from src.api.routes import patient as patients_route
 from src.api.routes import session as session_route
 from src.api.routes import static as static_route
 from src.api.routes import system as system_route
+from src.api.routes import summarise as summarise_route
 from src.core.state import AppState, get_state
 from src.data.repositories import account as account_repo
 from src.data.repositories import medical_memory as medical_memory_repo
@@ -125,12 +125,12 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
-app.include_router(chat_route.router)
+app.include_router(static_route.router)
 app.include_router(session_route.router)
 app.include_router(patients_route.router)
 app.include_router(account_route.router)
+app.include_router(summarise_route.router)
 app.include_router(system_route.router)
-app.include_router(static_route.router)
 app.include_router(audio_route.router)
 app.include_router(emr_route.router)
 

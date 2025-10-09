@@ -26,3 +26,26 @@ class Session(BaseMongoModel):
 	created_at: datetime
 	updated_at: datetime
 	messages: list[Message] = Field(default_factory=list)
+
+# --- API Request Models ---
+
+class SessionCreateRequest(BaseModel):
+	account_id: str
+	patient_id: str
+	title: str | None = "New Chat"
+
+
+class ChatRequest(BaseModel):
+	"""Request model for sending a message to a session."""
+	account_id: str # For context, though session_id implies this
+	patient_id: str # For context, though session_id implies this
+	message: str
+
+# --- API Response Models ---
+
+class ChatResponse(BaseModel):
+	"""Response model for a chat interaction."""
+	response: str
+	session_id: str
+	timestamp: datetime
+	medical_context: str | None = None

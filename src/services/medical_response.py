@@ -1,4 +1,4 @@
-# services/medical_response.py
+# src/services/medical_response.py
 
 from src.core import prompt_builder
 from src.data.medical_kb import search_medical_kb
