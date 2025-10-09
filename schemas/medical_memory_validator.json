@@ -1,0 +1,41 @@
+{
+	"$jsonSchema": {
+		"bsonType": "object",
+		"title": "Medical Memory validator",
+		"required": [
+			"patient_id",
+			"doctor_id",
+			"summary",
+			"created_at"
+		],
+		"properties": {
+			"patient_id": {
+				"bsonType": "objectId",
+				"description": "'patient_id' must be an objectId and is required."
+			},
+			"doctor_id": {
+				"bsonType": "objectId",
+				"description": "'doctor_id' must be an objectId and is required."
+			},
+			"session_id": {
+				"bsonType": "objectId",
+				"description": "'session_id' must be an objectId and is optional."
+			},
+			"summary": {
+				"bsonType": "string",
+				"description": "'summary' must be a string and is required."
+			},
+			"embedding": {
+				"bsonType": "array",
+				"description": "'embedding' must be an array of floats and is optional.",
+				"items": {
+					"bsonType": "double"
+				}
+			},
+			"created_at": {
+				"bsonType": "date",
+				"description": "'created_at' must be a date and is required."
+			}
+		}
+	}
+}

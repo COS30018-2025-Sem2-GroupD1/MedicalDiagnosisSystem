@@ -1,0 +1,40 @@
+{
+	"$jsonSchema": {
+		"bsonType": "object",
+		"title": "Medical Record validator",
+		"required": [
+			"patient_id",
+			"doctor_id",
+			"record_type",
+			"details",
+			"created_at",
+			"updated_at"
+		],
+		"properties": {
+			"patient_id": {
+				"bsonType": "objectId",
+				"description": "'patient_id' must be an objectId and is required."
+			},
+			"doctor_id": {
+				"bsonType": "objectId",
+				"description": "'doctor_id' must be an objectId and is required."
+			},
+			"record_type": {
+				"bsonType": "string",
+				"description": "'record_type' must be a string and is required."
+			},
+			"details": {
+				"bsonType": "object",
+				"description": "'details' must be an object and is required."
+			},
+			"created_at": {
+				"bsonType": "date",
+				"description": "'created_at' must be a date and is required."
+			},
+			"updated_at": {
+				"bsonType": "date",
+				"description": "'updated_at' must be a date and is required."
+			}
+		}
+	}
+}
