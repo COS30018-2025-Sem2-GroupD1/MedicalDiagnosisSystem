@@ -1,4 +1,4 @@
-# services/summariser.py
+# src/services/summariser.py
 
 from src.core import prompt_builder
 from src.services.gemini import gemini_chat

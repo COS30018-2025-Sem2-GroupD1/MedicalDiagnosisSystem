@@ -1,4 +1,4 @@
-# services/nvidia.py
+# src/services/nvidia.py
 
 import os
 

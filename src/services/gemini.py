@@ -1,4 +1,4 @@
-# services/gemini.py
+# src/services/gemini.py
 
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator

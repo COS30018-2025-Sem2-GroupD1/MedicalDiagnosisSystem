@@ -1,4 +1,4 @@
-# utils/embeddings.py
+# src/utils/embeddings.py
 
 import numpy as np
 from numpy.typing import NDArray

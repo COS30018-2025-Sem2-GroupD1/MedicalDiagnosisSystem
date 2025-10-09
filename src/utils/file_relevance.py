@@ -1,4 +1,4 @@
-# utils/file_relevance.py
+# src/utils/file_relevance.py
 
 import json
 from dataclasses import dataclass

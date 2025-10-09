@@ -1,4 +1,4 @@
-# config/settings.py
+# src/config/settings.py
 
 class Settings:
 	"""Application-wide settings."""

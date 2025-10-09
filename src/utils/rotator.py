@@ -1,4 +1,4 @@
-# utils/rotator.py
+# src/utils/rotator.py
 
 import itertools
 import os

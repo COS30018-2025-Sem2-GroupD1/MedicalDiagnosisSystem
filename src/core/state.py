@@ -1,4 +1,4 @@
-# core/state.py
+# src/core/state.py
 
 from src.core.memory_manager import MemoryManager
 from src.utils.embeddings import EmbeddingClient
