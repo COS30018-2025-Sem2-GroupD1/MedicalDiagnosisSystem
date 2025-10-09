@@ -1,53 +1,53 @@
-# emr/services/extractor.py
+# src/services/extractor.py
 
 import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.emr.models.emr import ExtractedData, Medication, VitalSigns, LabResult
+from src.models.emr import ExtractedData, LabResult, Medication, VitalSigns
 from src.services.gemini import gemini_chat
-from src.utils.rotator import APIKeyRotator
 from src.utils.logger import logger
+from src.utils.rotator import APIKeyRotator
 
 
 class EMRExtractor:
     """Service for extracting structured medical data from chat messages using Gemini AI."""
-    
+
     def __init__(self, gemini_rotator: APIKeyRotator):
         self.gemini_rotator = gemini_rotator
-    
+
     async def extract_medical_data(self, message: str, patient_context: Optional[Dict[str, Any]] = None) -> Tuple[ExtractedData, float]:
         """
         Extract structured medical data from a chat message using Gemini AI.
-        
+
         Args:
             message: The chat message to analyze
             patient_context: Optional patient context information
-            
+
         Returns:
             Tuple of (ExtractedData, confidence_score)
         """
         try:
             # Prepare the prompt for Gemini
             prompt = self._build_extraction_prompt(message, patient_context)
-            
+
             # Get response from Gemini
             response = await self._call_gemini_api(prompt)
-            
+
             # Parse the response
             extracted_data, confidence = self._parse_gemini_response(response)
-            
+
             logger().info(f"Successfully extracted medical data with confidence {confidence:.2f}")
             return extracted_data, confidence
-            
+
         except Exception as e:
             logger().error(f"Error extracting medical data: {e}")
             # Return empty data with low confidence
             return ExtractedData(), 0.0
-    
+
     def _build_extraction_prompt(self, message: str, patient_context: Optional[Dict[str, Any]] = None) -> str:
         """Build the prompt for Gemini AI to extract medical data."""
-        
+
         context_info = ""
         if patient_context:
             context_info = f"""
@@ -58,8 +58,8 @@ Patient Context:
 - Current Medications: {', '.join(patient_context.get('medications', []))}
 - Past Assessment Summary: {patient_context.get('past_assessment_summary', 'None')}
 """
-        
-        prompt = f"""You are a medical AI assistant specialized in extracting structured medical data from clinical conversations. 
+
+        prompt = f"""You are a medical AI assistant specialized in extracting structured medical data from clinical conversations.
 
 {context_info}
 
@@ -76,7 +76,7 @@ Extract the following information and return ONLY a valid JSON object with this 
         {{
             "name": "medication name",
             "dosage": "dosage if mentioned",
-            "frequency": "frequency if mentioned", 
+            "frequency": "frequency if mentioned",
             "duration": "duration if mentioned"
         }}
     ],
@@ -121,7 +121,7 @@ Format: CONFIDENCE: 0.85
 Return the JSON followed by the confidence score on a new line."""
 
         return prompt
-    
+
     async def _call_gemini_api(self, prompt: str) -> str:
         """Call the Gemini API with the extraction prompt."""
         try:
@@ -131,7 +131,7 @@ Return the JSON followed by the confidence score on a new line."""
         except Exception as e:
             logger().error(f"Error calling Gemini API: {e}")
             raise
-    
+
     def _parse_gemini_response(self, response: str) -> Tuple[ExtractedData, float]:
         """Parse the Gemini response to extract structured data and confidence score."""
         try:
@@ -140,16 +140,16 @@ Return the JSON followed by the confidence score on a new line."""
             confidence_match = re.search(r'CONFIDENCE:\s*([0-9.]+)', response)
             if confidence_match:
                 confidence = float(confidence_match.group(1))
-            
+
             # Extract JSON from response
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if not json_match:
                 logger().warning("No JSON found in Gemini response")
                 return ExtractedData(), confidence
-            
+
             json_str = json_match.group(0)
             data = json.loads(json_str)
-            
+
             # Parse medications
             medications = []
             for med_data in data.get('medications', []):
@@ -160,7 +160,7 @@ Return the JSON followed by the confidence score on a new line."""
                         frequency=med_data.get('frequency'),
                         duration=med_data.get('duration')
                     ))
-            
+
             # Parse vital signs
             vital_signs_data = data.get('vital_signs', {})
             vital_signs = None
@@ -172,7 +172,7 @@ Return the JSON followed by the confidence score on a new line."""
                     respiratory_rate=vital_signs_data.get('respiratory_rate'),
                     oxygen_saturation=vital_signs_data.get('oxygen_saturation')
                 )
-            
+
             # Parse lab results
             lab_results = []
             for lab_data in data.get('lab_results', []):
@@ -183,7 +183,7 @@ Return the JSON followed by the confidence score on a new line."""
                         unit=lab_data.get('unit'),
                         reference_range=lab_data.get('reference_range')
                     ))
-            
+
             # Create ExtractedData object
             extracted_data = ExtractedData(
                 diagnosis=data.get('diagnosis', []),
@@ -194,16 +194,16 @@ Return the JSON followed by the confidence score on a new line."""
                 procedures=data.get('procedures', []),
                 notes=data.get('notes')
             )
-            
+
             return extracted_data, confidence
-            
+
         except json.JSONDecodeError as e:
             logger().error(f"Error parsing JSON from Gemini response: {e}")
             return ExtractedData(), 0.0
         except Exception as e:
             logger().error(f"Error parsing Gemini response: {e}")
             return ExtractedData(), 0.0
-    
+
     def extract_medications_from_text(self, text: str) -> List[str]:
         """Extract medication names from text using pattern matching."""
         # Common medication patterns
@@ -215,46 +215,46 @@ Return the JSON followed by the confidence score on a new line."""
             r'\b(?:warfarin|heparin|clopidogrel|aspirin)\b',
             r'\b(?:furosemide|hydrochlorothiazide|spironolactone|triamterene)\b'
         ]
-        
+
         medications = set()
         for pattern in medication_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             medications.update(matches)
-        
+
         return list(medications)
-    
+
     def extract_vital_signs_from_text(self, text: str) -> Dict[str, str]:
         """Extract vital signs from text using pattern matching."""
         vital_signs = {}
-        
+
         # Blood pressure patterns
         bp_pattern = r'(?:blood pressure|bp|pressure)\s*:?\s*(\d{2,3}/\d{2,3})'
         bp_match = re.search(bp_pattern, text, re.IGNORECASE)
         if bp_match:
             vital_signs['blood_pressure'] = bp_match.group(1)
-        
+
         # Heart rate patterns
         hr_pattern = r'(?:heart rate|hr|pulse)\s*:?\s*(\d{2,3})\s*(?:bpm|beats per minute)?'
         hr_match = re.search(hr_pattern, text, re.IGNORECASE)
         if hr_match:
             vital_signs['heart_rate'] = hr_match.group(1)
-        
+
         # Temperature patterns
         temp_pattern = r'(?:temperature|temp|fever)\s*:?\s*(\d{2,3}(?:\.\d)?)\s*(?:°?[fc])?'
         temp_match = re.search(temp_pattern, text, re.IGNORECASE)
         if temp_match:
             vital_signs['temperature'] = temp_match.group(1)
-        
+
         # Respiratory rate patterns
         rr_pattern = r'(?:respiratory rate|rr|breathing rate)\s*:?\s*(\d{1,2})\s*(?:breaths per minute|bpm)?'
         rr_match = re.search(rr_pattern, text, re.IGNORECASE)
         if rr_match:
             vital_signs['respiratory_rate'] = rr_match.group(1)
-        
+
         # Oxygen saturation patterns
         o2_pattern = r'(?:oxygen saturation|o2 sat|spo2)\s*:?\s*(\d{2,3})\s*%?'
         o2_match = re.search(o2_pattern, text, re.IGNORECASE)
         if o2_match:
             vital_signs['oxygen_saturation'] = o2_match.group(1)
-        
+
         return vital_signs

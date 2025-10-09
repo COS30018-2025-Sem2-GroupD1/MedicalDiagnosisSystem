@@ -1,13 +1,13 @@
-# emr/routes/emr.py
+# src/api/routes/emr.py
 
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
-from src.core.state import MedicalState, get_state
-from src.emr.models.emr import EMRResponse, EMRSearchRequest, EMRUpdateRequest
-from src.emr.services.service import EMRService
+from src.models.emr import EMRResponse, EMRSearchRequest, EMRUpdateRequest
+from src.services.service import EMRService
+from src.core.state import AppState, get_state
 from src.utils.logger import logger
 
 router = APIRouter(prefix="/emr", tags=["EMR"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/emr", tags=["EMR"])
 async def check_emr_exists(message_id: str):
     """Check if EMR extraction has already been done for a message."""
     try:
-        from src.emr.repositories.emr import check_emr_exists
+        from data.repositories.emr import check_emr_exists
         exists = check_emr_exists(message_id)
         return {
             "message_id": message_id,
@@ -51,7 +51,7 @@ async def emr_health_check():
         }
 
 
-def get_emr_service(state: MedicalState = Depends(get_state)) -> EMRService:
+def get_emr_service(state: AppState = Depends(get_state)) -> EMRService:
     """Get EMR service instance."""
     return EMRService(state.gemini_rotator, state.embedding_client)
 
@@ -78,9 +78,9 @@ async def extract_emr_from_message(
             raise HTTPException(status_code=400, detail="Session ID is required")
         if not message or not message.strip():
             raise HTTPException(status_code=400, detail="Message content is required")
-        
+
         logger().info(f"EMR extraction requested for patient {patient_id}, message {message_id}")
-        
+
         # Get patient context if available
         patient_context = None
         try:
@@ -96,7 +96,7 @@ async def extract_emr_from_message(
                 }
         except Exception as e:
             logger().warning(f"Could not fetch patient context: {e}")
-        
+
         # Extract and store EMR data
         emr_id = await emr_service.extract_and_store_emr(
             patient_id=patient_id,
@@ -106,12 +106,12 @@ async def extract_emr_from_message(
             message=message,
             patient_context=patient_context
         )
-        
+
         return {
             "emr_id": emr_id,
             "message": "EMR data extracted and stored successfully"
         }
-        
+
     except Exception as e:
         logger().error(f"Error in EMR extraction endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -127,10 +127,10 @@ async def get_patient_emr(
     """Get EMR entries for a specific patient."""
     try:
         logger().info(f"Getting EMR entries for patient {patient_id}")
-        
+
         entries = await emr_service.get_patient_emr(patient_id, limit, offset)
         return entries
-        
+
     except Exception as e:
         logger().error(f"Error getting patient EMR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -146,10 +146,10 @@ async def search_patient_emr(
     """Search EMR entries for a patient using semantic similarity."""
     try:
         logger().info(f"Searching EMR for patient {patient_id} with query: {query}")
-        
+
         entries = await emr_service.search_emr_semantic(patient_id, query, limit)
         return entries
-        
+
     except Exception as e:
         logger().error(f"Error searching patient EMR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -163,13 +163,13 @@ async def get_emr_by_id(
     """Get a specific EMR entry by ID."""
     try:
         logger().info(f"Getting EMR entry {emr_id}")
-        
+
         entry = await emr_service.get_emr_by_id(emr_id)
         if not entry:
             raise HTTPException(status_code=404, detail="EMR entry not found")
-        
+
         return entry
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -186,19 +186,19 @@ async def update_emr(
     """Update an EMR entry."""
     try:
         logger().info(f"Updating EMR entry {emr_id}")
-        
+
         updates = {}
         if request.extracted_data:
             updates["extracted_data"] = request.extracted_data.model_dump()
         if request.confidence_score is not None:
             updates["confidence_score"] = request.confidence_score
-        
+
         success = await emr_service.update_emr(emr_id, updates)
         if not success:
             raise HTTPException(status_code=404, detail="EMR entry not found")
-        
+
         return {"message": "EMR entry updated successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -214,13 +214,13 @@ async def delete_emr(
     """Delete an EMR entry."""
     try:
         logger().info(f"Deleting EMR entry {emr_id}")
-        
+
         success = await emr_service.delete_emr(emr_id)
         if not success:
             raise HTTPException(status_code=404, detail="EMR entry not found")
-        
+
         return {"message": "EMR entry deleted successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -236,10 +236,10 @@ async def get_emr_statistics(
     """Get EMR statistics for a patient."""
     try:
         logger().info(f"Getting EMR statistics for patient {patient_id}")
-        
+
         stats = await emr_service.get_emr_statistics(patient_id)
         return stats
-        
+
     except Exception as e:
         logger().error(f"Error getting EMR statistics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -254,15 +254,15 @@ async def bulk_extract_emr(
     try:
         if not extractions or len(extractions) == 0:
             raise HTTPException(status_code=400, detail="No extractions provided")
-        
+
         if len(extractions) > 10:
             raise HTTPException(status_code=400, detail="Maximum 10 extractions allowed per request")
-        
+
         logger().info(f"Bulk EMR extraction requested for {len(extractions)} messages")
-        
+
         results = []
         errors = []
-        
+
         for i, extraction in enumerate(extractions):
             try:
                 # Validate required fields
@@ -270,7 +270,7 @@ async def bulk_extract_emr(
                 for field in required_fields:
                     if field not in extraction or not extraction[field]:
                         raise ValueError(f"Missing or empty {field}")
-                
+
                 # Get patient context
                 patient_context = None
                 try:
@@ -286,7 +286,7 @@ async def bulk_extract_emr(
                         }
                 except Exception as e:
                     logger().warning(f"Could not fetch patient context for extraction {i}: {e}")
-                
+
                 # Extract and store EMR data
                 emr_id = await emr_service.extract_and_store_emr(
                     patient_id=extraction['patient_id'],
@@ -296,14 +296,14 @@ async def bulk_extract_emr(
                     message=extraction['message'],
                     patient_context=patient_context
                 )
-                
+
                 results.append({
                     "index": i,
                     "message_id": extraction['message_id'],
                     "emr_id": emr_id,
                     "status": "success"
                 })
-                
+
             except Exception as e:
                 logger().error(f"Error in bulk extraction {i}: {e}")
                 errors.append({
@@ -312,13 +312,13 @@ async def bulk_extract_emr(
                     "error": str(e),
                     "status": "failed"
                 })
-        
+
         return {
             "message": f"Bulk extraction completed. {len(results)} successful, {len(errors)} failed.",
             "results": results,
             "errors": errors
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

@@ -26,19 +26,19 @@ except Exception as e:
 # Import project modules after trying to load environment variables
 from src.api.routes import account as account_route
 from src.api.routes import audio as audio_route
+from src.api.routes import emr as emr_route
 from src.api.routes import patient as patients_route
 from src.api.routes import session as session_route
 from src.api.routes import static as static_route
-from src.api.routes import system as system_route
 from src.api.routes import summarise as summarise_route
+from src.api.routes import system as system_route
 from src.core.state import AppState, get_state
 from src.data.repositories import account as account_repo
+from src.data.repositories import emr as emr_repo
 from src.data.repositories import medical_memory as medical_memory_repo
 from src.data.repositories import medical_record as medical_record_repo
 from src.data.repositories import patient as patient_repo
 from src.data.repositories import session as session_repo
-from src.emr.repositories import emr as emr_repo
-from src.emr.routes import emr as emr_route
 
 
 def startup_event(state: AppState):

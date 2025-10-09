@@ -1,4 +1,4 @@
-# emr/repositories/emr.py
+# src/data/repositories/emr.py
 
 import json
 from datetime import datetime, timezone
@@ -8,9 +8,9 @@ from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import ConnectionFailure, OperationFailure, PyMongoError
 
-from src.data.connection import ActionFailed, setup_collection, get_collection
+from src.data.connection import ActionFailed, get_collection, setup_collection
+from src.models.emr import EMRCreateRequest, EMRResponse, ExtractedData
 from src.utils.logger import logger
-from src.emr.models.emr import EMRCreateRequest, EMRResponse, ExtractedData
 
 EMR_COLLECTION = "emr"
 
