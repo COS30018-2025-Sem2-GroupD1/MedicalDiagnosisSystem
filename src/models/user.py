@@ -1,12 +1,7 @@
-# model/user.py
+# src/model/user.py
 
 from pydantic import BaseModel
 
-
-class AccountCreateRequest(BaseModel):
-	name: str
-	role: str
-	specialty: str | None = None
 
 class PatientCreateRequest(BaseModel):
 	name: str
