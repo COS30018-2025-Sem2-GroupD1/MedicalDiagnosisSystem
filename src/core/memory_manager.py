@@ -45,6 +45,22 @@ class MemoryManager:
 			logger().error(f"Failed to get account '{user_id}' in MemoryManager: {e}")
 			return None
 
+	def get_all_accounts(self, limit: int = 50) -> list[Account]:
+		"""Retrieves a list of all accounts."""
+		try:
+			return account_repo.get_all_accounts(limit=limit)
+		except ActionFailed as e:
+			logger().error(f"Failed to get all accounts in MemoryManager: {e}")
+			return []
+
+	def search_accounts(self, query: str, limit: int = 10) -> list[Account]:
+		"""Searches for accounts by name."""
+		try:
+			return account_repo.search_accounts(query, limit=limit)
+		except ActionFailed as e:
+			logger().error(f"Failed to search accounts in MemoryManager: {e}")
+			return []
+
 	# --- Session Management Facade ---
 
 	def create_session(self, user_id: str, patient_id: str, title: str = "New Chat") -> Session | None:
