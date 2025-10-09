@@ -1,4 +1,9 @@
-# core/prompts.py
+# src/core/prompts.py
+
+import json
+
+from src.models.repositories import MedicalMemory
+
 
 def medical_response_prompt(user_role: str, user_specialty: str, medical_context: str, user_message: str) -> str:
 	"""Generates the prompt for creating a medical response."""
@@ -24,7 +29,6 @@ Remember: This is for educational purposes only. Always emphasize consulting hea
 
 def qa_summary_gemini_prompt(question: str, answer: str) -> str:
 	"""Generates the prompt for summarizing a Q&A pair with Gemini."""
-
 	return f"""You are a medical summariser. Create a concise summary of this Q&A exchange.
 
 Question: {question}
@@ -42,4 +46,24 @@ def title_summary_nvidia_prompt(text: str) -> str:
 	return (
 		"Summarise the user's first chat message into a very short title of 3-5 words. "
 		"Only return the title text without quotes or punctuation. Message: " + (text or "New Chat")
+	)
+
+def relevance_selection_prompt(question: str, memories: list[MedicalMemory]) -> str:
+	"""
+	Creates a prompt for an LLM to select relevant text from a list of memories.
+	(Formerly _get_recent_related_prompt from context_utils.py)
+	"""
+	if not memories:
+		return ""
+
+	# The LLM works with the text, not the full object, so we extract the summary.
+	numbered_items = [
+		{"id": i + 1, "text": memory.summary}
+		for i, memory in enumerate(memories)
+	]
+
+	return (
+		f"Question: {question}\n"
+		f"Candidates:\n{json.dumps(numbered_items, ensure_ascii=False)}\n"
+		"Select any related items and output ONLY their 'text' lines concatenated."
 	)
