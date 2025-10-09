@@ -80,7 +80,6 @@ def startup_event(state: AppState):
 
 	logger(tag="startup").info("Medical AI Assistant startup complete")
 
-	# TODO On startup initialise all repositories, creating them if they don't exist
 	account_repo.init()
 	patient_repo.init()
 	session_repo.init()
