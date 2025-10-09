@@ -6,7 +6,7 @@ from pymongo.errors import ConnectionFailure
 
 from src.data.connection import ActionFailed, Collections, get_collection
 from src.data.repositories import patient as patient_repo
-from src.models.patient import Patient
+from src.models.repositories import Patient
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
 
