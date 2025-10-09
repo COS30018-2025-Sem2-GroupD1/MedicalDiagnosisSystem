@@ -9,9 +9,6 @@ from pymongo.database import Database as pym_db
 
 from src.utils.logger import logger
 
-# TODO (Across all database files)
-# Handle exceptions: `pymongo.errors.ConnectionFailure`, `pymongo.errors.OperationFailure`
-# Handle cases where _id is not found
 
 class Collections:
 	ACCOUNT = "accounts"
