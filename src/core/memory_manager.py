@@ -286,18 +286,21 @@ class MemoryManager:
 		answer: str,
 		gemini_rotator: APIKeyRotator,
 		nvidia_rotator: APIKeyRotator
-	) -> str | None:
-		"""Generates a summary of a Q&A exchange using the best available AI model."""
+	) -> str:
+		"""Generates a summary of a Q&A exchange, falling back to a basic format if AI fails."""
 		try:
 			summary = await summariser.summarise_qa_with_gemini(question, answer, gemini_rotator)
 			if summary:
 				return summary
 			# Fallback to NVIDIA if Gemini fails
 			summary = await summariser.summarise_qa_with_nvidia(question, answer, nvidia_rotator)
-			return summary
+			if summary:
+				return summary
 		except Exception as e:
 			logger().warning(f"Failed to generate AI summary: {e}")
-			return f"Question: {question}\nAnswer: {answer}" # Basic fallback
+
+		# Fallback for both exceptions and cases where services return None
+		return f"Question: {question}\nAnswer: {answer}"
 
 	async def _filter_summaries_for_relevance(
 		self,
