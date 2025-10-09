@@ -1,16 +1,16 @@
-# api/routes/system.py
+# src/api/routes/system.py
 
 import time
 
 from fastapi import APIRouter, Depends
 
-from src.core.state import MedicalState, get_state
+from src.core.state import AppState, get_state
 from src.data.connection import Collections
 
 router = APIRouter(prefix="/system", tags=["System"])
 
 @router.get("/health")
-async def health_check(state: MedicalState = Depends(get_state)):
+async def health_check(state: AppState = Depends(get_state)):
 	"""Health check endpoint"""
 	return {
 		"status": "healthy",

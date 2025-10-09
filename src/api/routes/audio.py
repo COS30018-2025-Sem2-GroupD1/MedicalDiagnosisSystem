@@ -1,9 +1,9 @@
-# api/routes/audio.py
+# src/api/routes/audio.py
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
-from src.core.state import MedicalState, get_state
+from src.core.state import AppState, get_state
 from src.services.audio_transcription import (get_supported_formats,
 											  transcribe_audio_bytes,
 											  validate_audio_format)
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/audio", tags=["Audio"])
 async def transcribe_audio(
 	file: UploadFile = File(...),
 	language_code: str = Form(default="en"),
-	state: MedicalState = Depends(get_state)
+	state: AppState = Depends(get_state)
 ) -> JSONResponse:
 	"""
 	Transcribe audio file to text using NVIDIA Riva API.
@@ -105,7 +105,7 @@ async def get_audio_formats() -> JSONResponse:
 	)
 
 @router.get("/health")
-async def audio_health_check(state: MedicalState = Depends(get_state)) -> JSONResponse:
+async def audio_health_check(state: AppState = Depends(get_state)) -> JSONResponse:
 	"""
 	Check if audio transcription service is available.
 
