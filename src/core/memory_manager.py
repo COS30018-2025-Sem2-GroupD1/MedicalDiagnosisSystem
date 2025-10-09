@@ -3,8 +3,10 @@
 from src.data.connection import ActionFailed
 from src.data.repositories import account as account_repo
 from src.data.repositories import medical_memory as memory_repo
+from src.data.repositories import patient as patient_repo
 from src.data.repositories import session as session_repo
 from src.models.account import Account
+from src.models.patient import Patient
 from src.models.session import Session
 from src.services import summariser
 from src.services.nvidia import nvidia_chat
@@ -60,6 +62,39 @@ class MemoryManager:
 		except ActionFailed as e:
 			logger().error(f"Failed to search accounts in MemoryManager: {e}")
 			return []
+	# --- Patient Management Facade ---
+
+	def create_patient(self, **kwargs) -> str | None:
+		"""Creates a new patient record."""
+		try:
+			return patient_repo.create_patient(**kwargs)
+		except ActionFailed as e:
+			logger().error(f"Failed to create patient in MemoryManager: {e}")
+			return None
+
+	def get_patient_by_id(self, patient_id: str) -> Patient | None:
+		"""Retrieves a patient by their unique ID."""
+		try:
+			return patient_repo.get_patient_by_id(patient_id)
+		except ActionFailed as e:
+			logger().error(f"Failed to get patient '{patient_id}' in MemoryManager: {e}")
+			return None
+
+	def update_patient_profile(self, patient_id: str, updates: dict) -> int:
+		"""Updates a patient's profile."""
+		try:
+			return patient_repo.update_patient_profile(patient_id, updates)
+		except ActionFailed as e:
+			logger().error(f"Failed to update patient '{patient_id}' in MemoryManager: {e}")
+			return 0
+
+	def search_patients(self, query: str, limit: int = 10) -> list[Patient]:
+		"""Searches for patients by name."""
+		try:
+			return patient_repo.search_patients(query, limit=limit)
+		except ActionFailed as e:
+			logger().error(f"Failed to search patients in MemoryManager: {e}")
+			return []
 
 	# --- Session Management Facade ---
 
@@ -94,6 +129,14 @@ class MemoryManager:
 		except ActionFailed as e:
 			logger().error(f"Failed to update title for session '{session_id}': {e}")
 			return False
+
+	def list_patient_sessions(self, patient_id: str) -> list[Session]:
+		"""Retrieves all sessions for a specific patient."""
+		try:
+			return session_repo.list_patient_sessions(patient_id, limit=self.max_sessions_per_user)
+		except ActionFailed as e:
+			logger().error(f"Failed to get sessions for patient '{patient_id}': {e}")
+			return []
 
 	# --- Core Business Logic ---
 
