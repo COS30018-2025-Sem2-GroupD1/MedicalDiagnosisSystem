@@ -6,7 +6,7 @@ from pymongo.errors import ConnectionFailure
 
 from src.data.connection import ActionFailed, Collections
 from src.data.repositories import medical_memory as medical_memory_repo
-from src.models.repositories import MedicalMemory, SemanticSearchResult
+from src.models.medical import MedicalMemory, SemanticSearchResult
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
 

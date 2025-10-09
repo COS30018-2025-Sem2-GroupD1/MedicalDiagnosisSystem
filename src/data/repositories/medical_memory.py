@@ -22,7 +22,7 @@ from pymongo.errors import ConnectionFailure, PyMongoError, WriteError
 
 from src.data.connection import (ActionFailed, Collections, get_collection,
                                  setup_collection)
-from src.models.repositories import MedicalMemory, SemanticSearchResult
+from src.models.medical import MedicalMemory, SemanticSearchResult
 from src.utils.logger import logger
 
 

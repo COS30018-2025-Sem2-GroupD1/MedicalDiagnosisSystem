@@ -4,7 +4,8 @@ from src.data.connection import ActionFailed
 from src.data.repositories import account as account_repo
 from src.data.repositories import medical_memory as memory_repo
 from src.data.repositories import session as session_repo
-from src.models.repositories import Account, Session
+from src.models.account import Account
+from src.models.session import Session
 from src.services import summariser
 from src.services.nvidia import nvidia_chat
 from src.utils.embeddings import EmbeddingClient

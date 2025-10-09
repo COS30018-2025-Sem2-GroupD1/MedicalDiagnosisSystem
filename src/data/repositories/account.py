@@ -25,7 +25,7 @@ from pymongo.errors import ConnectionFailure, PyMongoError, WriteError
 
 from src.data.connection import (ActionFailed, Collections, get_collection,
                                  setup_collection)
-from src.models.repositories import Account
+from src.models.account import Account
 from src.utils.logger import logger
 
 VALID_ROLES = [

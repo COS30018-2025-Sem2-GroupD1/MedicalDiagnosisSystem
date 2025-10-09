@@ -2,7 +2,7 @@
 
 import json
 
-from src.models.repositories import MedicalMemory
+from src.models.medical import MedicalMemory
 
 
 def medical_response_prompt(user_role: str, user_specialty: str, medical_context: str, user_message: str) -> str:

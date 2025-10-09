@@ -28,7 +28,7 @@ from pymongo.errors import ConnectionFailure, PyMongoError, WriteError
 
 from src.data.connection import (ActionFailed, Collections, get_collection,
                                  setup_collection)
-from src.models.repositories import Message, Session
+from src.models.session import Message, Session
 from src.utils.logger import logger
 
 

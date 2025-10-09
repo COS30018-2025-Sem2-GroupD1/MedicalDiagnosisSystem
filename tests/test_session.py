@@ -8,7 +8,7 @@ from pymongo.errors import ConnectionFailure, WriteError
 
 from src.data.connection import ActionFailed, Collections, get_collection
 from src.data.repositories import session as session_repo
-from src.models.repositories import Message, Session
+from src.models.session import Message, Session
 from src.utils.logger import logger
 from tests.base_test import BaseMongoTest
 
