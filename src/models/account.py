@@ -14,7 +14,7 @@ class Account(BaseMongoModel):
 	specialty: str | None = None
 	created_at: datetime
 	updated_at: datetime
-	last_seen: datetime
+	last_seen: datetime | None = None
 
 class AccountCreateRequest(BaseModel):
 	"""A Pydantic model for an account creation request from the API."""

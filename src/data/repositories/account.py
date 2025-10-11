@@ -191,11 +191,23 @@ def search_accounts(
 
 	try:
 		collection = get_collection(collection_name)
+		now = datetime.now(timezone.utc)
+		
 		cursor = collection.find({
 			"name": {"$regex": pattern}
 		}).sort("name", ASCENDING).limit(limit)
 
-		accounts = [Account.model_validate(doc) for doc in cursor]
+		accounts = []
+		for doc in cursor:
+			# Update last_seen for this account
+			collection.update_one(
+				{"_id": doc["_id"]},
+				{"$set": {"last_seen": now}}
+			)
+			# Add the updated timestamp to the document for validation
+			doc["last_seen"] = now
+			accounts.append(Account.model_validate(doc))
+		
 		logger().info(f"Found {len(accounts)} accounts matching query")
 		return accounts
 	except (ConnectionFailure, PyMongoError) as e:
@@ -210,9 +222,25 @@ def get_all_accounts(
 	"""Gets all accounts, returning a list of Pydantic Account objects."""
 	try:
 		collection = get_collection(collection_name)
-		cursor = collection.find().sort("name", ASCENDING).limit(limit)
-
-		accounts = [Account.model_validate(doc) for doc in cursor]
+		now = datetime.now(timezone.utc)
+		
+		# Update last_seen for all accounts and retrieve them
+		cursor = collection.find()
+		accounts = []
+		for doc in cursor:
+			# Update last_seen for this account
+			collection.update_one(
+				{"_id": doc["_id"]},
+				{"$set": {"last_seen": now}}
+			)
+			# Add the updated timestamp to the document for validation
+			doc["last_seen"] = now
+			accounts.append(Account.model_validate(doc))
+		
+		# Sort by name and limit
+		accounts.sort(key=lambda x: x.name)
+		accounts = accounts[:limit]
+		
 		logger().info(f"Retrieved {len(accounts)} accounts")
 		return accounts
 	except (ConnectionFailure, PyMongoError) as e:
