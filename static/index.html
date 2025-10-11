@@ -1,317 +1,317 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical AI Assistant</title>
-    <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Medical AI Assistant</title>
+	<link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+	<link rel="stylesheet" href="/static/css/styles.css">
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-        <div class="app-overlay" id="appOverlay"></div>
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <button class="new-chat-btn" id="newChatBtn">
-                    <i class="fas fa-plus"></i>
-                    New Chat
-                </button>
-            </div>
+	<div class="app-container">
+		<div class="app-overlay" id="appOverlay"></div>
+		<!-- Sidebar -->
+		<div class="sidebar" id="sidebar">
+			<div class="sidebar-header">
+				<button class="new-chat-btn" id="newChatBtn">
+					<i class="fas fa-plus"></i>
+					New Chat
+				</button>
+			</div>
 
-            <div class="user-section">
-                <div class="user-profile" id="userProfile">
-                    <div class="user-avatar">
-                        <i class="fas fa-user-md"></i>
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name" id="userName">Anonymous</div>
-                        <div class="user-status" id="userStatus">Medical Professional</div>
-                    </div>
-                    <button class="user-menu-btn" id="userMenuBtn">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                </div>
-            </div>
+			<div class="user-section">
+				<div class="user-profile" id="userProfile">
+					<div class="user-avatar">
+						<i class="fas fa-user-md"></i>
+					</div>
+					<div class="user-info">
+						<div class="user-name" id="userName">Anonymous</div>
+						<div class="user-status" id="userStatus">Medical Professional</div>
+					</div>
+					<button class="user-menu-btn" id="userMenuBtn">
+						<i class="fas fa-ellipsis-v"></i>
+					</button>
+				</div>
+			</div>
 
-            <!-- Patient Login Section -->
-            <div class="patient-section">
-                <div class="patient-header">Patient</div>
-                <div class="patient-input-group patient-typeahead">
-                    <input type="text" id="patientIdInput" class="patient-input" placeholder="Search patient by name or ID">
-                    <div id="patientSuggestions" class="patient-suggestions" style="display:none;"></div>
-                    <button class="patient-load-btn" id="loadPatientBtn" title="Load Patient">
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                    <a class="patient-create-link" id="createPatientLink" href="/static/patient.html" title="Create new patient">
-                        <i class="fas fa-user-plus"></i>
-                    </a>
-                </div>
-                <div class="patient-status" id="patientStatus">No patient selected</div>
-                <div class="patient-actions" id="patientActions" style="display: none;">
-                    <a href="/static/emr.html" id="emrLink" class="emr-link">
-                        <i class="fas fa-file-medical"></i> EMR
-                    </a>
-                </div>
-            </div>
+			<!-- Patient Login Section -->
+			<div class="patient-section">
+				<div class="patient-header">Patient</div>
+				<div class="patient-input-group patient-typeahead">
+					<input type="text" id="patientIdInput" class="patient-input" placeholder="Search patient by name or ID">
+					<div id="patientSuggestions" class="patient-suggestions" style="display:none;"></div>
+					<button class="patient-load-btn" id="loadPatientBtn" title="Load Patient">
+						<i class="fas fa-arrow-right"></i>
+					</button>
+					<a class="patient-create-link" id="createPatientLink" href="/static/patient.html" title="Create new patient">
+						<i class="fas fa-user-plus"></i>
+					</a>
+				</div>
+				<div class="patient-status" id="patientStatus">No patient selected</div>
+				<div class="patient-actions" id="patientActions" style="display: none;">
+					<a href="/static/emr.html" id="emrLink" class="emr-link">
+						<i class="fas fa-file-medical"></i> EMR
+					</a>
+				</div>
+			</div>
 
-            <div class="chat-sessions" id="chatSessions">
-                <!-- Chat sessions will be populated here -->
-            </div>
+			<div class="chat-sessions" id="chatSessions">
+				<!-- Chat sessions will be populated here -->
+			</div>
 
-            <div class="sidebar-footer">
-                <button class="settings-btn" id="settingsBtn">
-                    <i class="fas fa-cog"></i>
-                    Settings
-                </button>
-            </div>
-        </div>
+			<div class="sidebar-footer">
+				<button class="settings-btn" id="settingsBtn">
+					<i class="fas fa-cog"></i>
+					Settings
+				</button>
+			</div>
+		</div>
 
-        <!-- Main Chat Area -->
-        <div class="main-content">
-            <div class="chat-header">
-                <button class="sidebar-toggle" id="sidebarToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="chat-title" id="chatTitle">Medical AI Assistant</div>
-                <div class="chat-actions">
-                    <button class="action-btn" id="exportBtn" title="Export Chat">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="action-btn" id="clearBtn" title="Clear Chat">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+		<!-- Main Chat Area -->
+		<div class="main-content">
+			<div class="chat-header">
+				<button class="sidebar-toggle" id="sidebarToggle">
+					<i class="fas fa-bars"></i>
+				</button>
+				<div class="chat-title" id="chatTitle">Medical AI Assistant</div>
+				<div class="chat-actions">
+					<button class="action-btn" id="exportBtn" title="Export Chat">
+						<i class="fas fa-download"></i>
+					</button>
+					<button class="action-btn" id="clearBtn" title="Clear Chat">
+						<i class="fas fa-trash"></i>
+					</button>
+				</div>
+			</div>
 
-            <div class="chat-messages" id="chatMessages">
-                <!-- Welcome message -->
-                <div class="message assistant-message">
-                    <div class="message-avatar">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="message-content">
-                        <div class="message-text">
-                            <h3>👋 Welcome to Medical AI Assistant</h3>
-                            <p>I'm here to help you with medical questions, diagnosis assistance, and healthcare information. I can:</p>
-                            <ul>
-                                <li>🔍 Answer medical questions and provide information</li>
-                                <li>📋 Help with symptom analysis and differential diagnosis</li>
-                                <li>💊 Provide medication and treatment information</li>
-                                <li>📚 Explain medical procedures and conditions</li>
-                                <li>⚠️ Offer general health advice (not medical diagnosis)</li>
-                            </ul>
-                            <p><strong>Important:</strong> This is for informational purposes only. Always consult with qualified healthcare professionals for medical advice.</p>
-                            <p>How can I assist you today?</p>
-                        </div>
-                        <div class="message-time">Just now</div>
-                    </div>
-                </div>
-            </div>
+			<div class="chat-messages" id="chatMessages">
+				<!-- Welcome message -->
+				<div class="message assistant-message">
+					<div class="message-avatar">
+						<i class="fas fa-robot"></i>
+					</div>
+					<div class="message-content">
+						<div class="message-text">
+							<h3>👋 Welcome to Medical AI Assistant</h3>
+							<p>I'm here to help you with medical questions, diagnosis assistance, and healthcare information. I can:</p>
+							<ul>
+								<li>🔍 Answer medical questions and provide information</li>
+								<li>📋 Help with symptom analysis and differential diagnosis</li>
+								<li>💊 Provide medication and treatment information</li>
+								<li>📚 Explain medical procedures and conditions</li>
+								<li>⚠️ Offer general health advice (not medical diagnosis)</li>
+							</ul>
+							<p><strong>Important:</strong> This is for informational purposes only. Always consult with qualified healthcare professionals for medical advice.</p>
+							<p>How can I assist you today?</p>
+						</div>
+						<div class="message-time">Just now</div>
+					</div>
+				</div>
+			</div>
 
-            <div class="chat-input-container">
-                <div class="input-wrapper">
-                    <textarea
-                        class="chat-input"
-                        id="chatInput"
-                        placeholder="Ask me about any medical topic..."
-                        rows="1"
-                    ></textarea>
-                    <button class="send-btn" id="sendBtn">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-                <div class="input-footer">
-                    <div class="disclaimer">
-                        <i class="fas fa-info-circle"></i>
-                        AI-powered medical information. Not a substitute for professional medical advice.
-                    </div>
-                    <div class="input-actions">
-                        <button class="microphone-btn" id="microphoneBtn" title="Voice Input">
-                            <i class="fas fa-microphone"></i>
-                        </button>
-                        <button class="attachment-btn" id="attachmentBtn" title="Attach Files">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+			<div class="chat-input-container">
+				<div class="input-wrapper">
+					<textarea
+						class="chat-input"
+						id="chatInput"
+						placeholder="Ask me about any medical topic..."
+						rows="1"
+					></textarea>
+					<button class="send-btn" id="sendBtn">
+						<i class="fas fa-paper-plane"></i>
+					</button>
+				</div>
+				<div class="input-footer">
+					<div class="disclaimer">
+						<i class="fas fa-info-circle"></i>
+						AI-powered medical information. Not a substitute for professional medical advice.
+					</div>
+					<div class="input-actions">
+						<button class="microphone-btn" id="microphoneBtn" title="Voice Input">
+							<i class="fas fa-microphone"></i>
+						</button>
+						<button class="attachment-btn" id="attachmentBtn" title="Attach Files">
+							<i class="fas fa-paperclip"></i>
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 
-    <!-- Modals -->
-    <div class="modal" id="userModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Doctor Profile</h3>
-                <button class="modal-close" id="userModalClose">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="profileNameSelect">Name:</label>
-                    <select id="profileNameSelect"></select>
-                </div>
-                <div class="form-group" id="newDoctorSection" style="display:none;">
-                    <label for="newDoctorName">Doctor name</label>
-                    <input type="text" id="newDoctorName" placeholder="Enter doctor name">
-                    <div style="display:flex; gap:8px; margin-top:8px;">
-                        <button type="button" class="btn btn-secondary" id="cancelNewDoctor">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="confirmNewDoctor">Confirm</button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="profileRole">Medical Role:</label>
-                    <select id="profileRole">
-                        <option value="Doctor">Doctor</option>
-                        <option value="Healthcare Prof">Healthcare Prof</option>
-                        <option value="Nurse">Nurse</option>
-                        <option value="Caregiver">Caregiver</option>
-                        <option value="Physician">Physician</option>
-                        <option value="Medical Student">Medical Student</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="profileSpecialty">Specialty (Optional):</label>
-                    <input type="text" id="profileSpecialty" placeholder="e.g., Cardiology, Pediatrics">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="userModalCancel">Cancel</button>
-                <button class="btn btn-primary" id="userModalSave">Save</button>
-            </div>
-        </div>
-    </div>
+	<!-- Modals -->
+	<div class="modal" id="userModal">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3>Doctor Profile</h3>
+				<button class="modal-close" id="userModalClose">&times;</button>
+			</div>
+			<div class="modal-body">
+				<div class="form-group">
+					<label for="profileNameSelect">Name:</label>
+					<select id="profileNameSelect"></select>
+				</div>
+				<div class="form-group" id="newDoctorSection" style="display:none;">
+					<label for="newDoctorName">Doctor name</label>
+					<input type="text" id="newDoctorName" placeholder="Enter doctor name">
+					<div style="display:flex; gap:8px; margin-top:8px;">
+						<button type="button" class="btn btn-secondary" id="cancelNewDoctor">Cancel</button>
+						<button type="button" class="btn btn-primary" id="confirmNewDoctor">Confirm</button>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="profileRole">Medical Role:</label>
+					<select id="profileRole">
+						<option value="Doctor">Doctor</option>
+						<option value="Healthcare Prof">Healthcare Prof</option>
+						<option value="Nurse">Nurse</option>
+						<option value="Caregiver">Caregiver</option>
+						<option value="Physician">Physician</option>
+						<option value="Medical Student">Medical Student</option>
+						<option value="Other">Other</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label for="profileSpecialty">Specialty (Optional):</label>
+					<input type="text" id="profileSpecialty" placeholder="e.g., Cardiology, Pediatrics">
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-secondary" id="userModalCancel">Cancel</button>
+				<button class="btn btn-primary" id="userModalSave">Save</button>
+			</div>
+		</div>
+	</div>
 
-    <div class="modal" id="settingsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Settings</h3>
-                <button class="modal-close" id="settingsModalClose">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="themeSelect">Theme:</label>
-                    <select id="themeSelect">
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                        <option value="auto">Auto</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="fontSize">Font Size:</label>
-                    <select id="fontSize">
-                        <option value="small">Small</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="large">Large</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="autoSave"> Auto-save conversations
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="notifications"> Enable notifications
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="settingsModalCancel">Cancel</button>
-                <button class="btn btn-primary" id="settingsModalSave">Save</button>
-            </div>
-            <div class="system-access">
-                <button class="system-access-btn" id="systemAccessBtn">System status</button>
-            </div>
-        </div>
-    </div>
+	<div class="modal" id="settingsModal">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3>Settings</h3>
+				<button class="modal-close" id="settingsModalClose">&times;</button>
+			</div>
+			<div class="modal-body">
+				<div class="form-group">
+					<label for="themeSelect">Theme:</label>
+					<select id="themeSelect">
+						<option value="light">Light</option>
+						<option value="dark">Dark</option>
+						<option value="auto">Auto</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label for="fontSize">Font Size:</label>
+					<select id="fontSize">
+						<option value="small">Small</option>
+						<option value="medium" selected>Medium</option>
+						<option value="large">Large</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label>
+						<input type="checkbox" id="autoSave"> Auto-save conversations
+					</label>
+				</div>
+				<div class="form-group">
+					<label>
+						<input type="checkbox" id="notifications"> Enable notifications
+					</label>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-secondary" id="settingsModalCancel">Cancel</button>
+				<button class="btn btn-primary" id="settingsModalSave">Save</button>
+			</div>
+			<div class="system-access">
+				<button class="system-access-btn" id="systemAccessBtn">System status</button>
+			</div>
+		</div>
+	</div>
 
-    <!-- Edit Session Title Modal -->
-    <div class="modal" id="editTitleModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Chat Name</h3>
-                <button class="modal-close" id="editTitleModalClose">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="editSessionTitleInput">New name</label>
-                    <input type="text" id="editSessionTitleInput" placeholder="Enter new chat name">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="editTitleModalCancel">Cancel</button>
-                <button class="btn btn-primary" id="editTitleModalSave">Save</button>
-            </div>
-        </div>
-    </div>
+	<!-- Edit Session Title Modal -->
+	<div class="modal" id="editTitleModal">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3>Edit Chat Name</h3>
+				<button class="modal-close" id="editTitleModalClose">&times;</button>
+			</div>
+			<div class="modal-body">
+				<div class="form-group">
+					<label for="editSessionTitleInput">New name</label>
+					<input type="text" id="editSessionTitleInput" placeholder="Enter new chat name">
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-secondary" id="editTitleModalCancel">Cancel</button>
+				<button class="btn btn-primary" id="editTitleModalSave">Save</button>
+			</div>
+		</div>
+	</div>
 
-    <!-- Patient Modal -->
-    <div class="modal" id="patientModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Patient Profile</h3>
-                <button class="modal-close" id="patientModalClose">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="patient-summary" id="patientSummary"></div>
-                <div class="patient-details">
-                    <div><strong>Medications:</strong> <span id="patientMedications">-</span></div>
-                    <div><strong>Past Assessment:</strong> <span id="patientAssessment">-</span></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="patientLogoutBtn" class="btn-danger">Log out patient</button>
-                <a id="patientCreateBtn" class="btn-primary" href="/static/patient.html">Create new patient</a>
-            </div>
-        </div>
-    </div>
+	<!-- Patient Modal -->
+	<div class="modal" id="patientModal">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3>Patient Profile</h3>
+				<button class="modal-close" id="patientModalClose">&times;</button>
+			</div>
+			<div class="modal-body">
+				<div class="patient-summary" id="patientSummary"></div>
+				<div class="patient-details">
+					<div><strong>Medications:</strong> <span id="patientMedications">-</span></div>
+					<div><strong>Past Assessment:</strong> <span id="patientAssessment">-</span></div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button id="patientLogoutBtn" class="btn-danger">Log out patient</button>
+				<a id="patientCreateBtn" class="btn-primary" href="/static/patient.html">Create new patient</a>
+			</div>
+		</div>
+	</div>
 
-    <!-- Audio Recording Modal -->
-    <div class="modal" id="audioRecordingModal">
-        <div class="modal-content audio-recording-modal">
-            <div class="modal-header">
-                <h3>Voice Recording</h3>
-                <button class="modal-close" id="audioRecordingModalClose">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="recording-container">
-                    <div class="microphone-icon">
-                        <i class="fas fa-microphone"></i>
-                    </div>
-                    <div class="wave-animation" id="waveAnimation">
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                    </div>
-                    <div class="recording-status" id="recordingStatus">Listening...</div>
-                    <div class="recording-timer" id="recordingTimer">00:00</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="stopRecordingBtn">Stop Recording</button>
-            </div>
-        </div>
-    </div>
+	<!-- Audio Recording Modal -->
+	<div class="modal" id="audioRecordingModal">
+		<div class="modal-content audio-recording-modal">
+			<div class="modal-header">
+				<h3>Voice Recording</h3>
+				<button class="modal-close" id="audioRecordingModalClose">&times;</button>
+			</div>
+			<div class="modal-body">
+				<div class="recording-container">
+					<div class="microphone-icon">
+						<i class="fas fa-microphone"></i>
+					</div>
+					<div class="wave-animation" id="waveAnimation">
+						<div class="wave-bar"></div>
+						<div class="wave-bar"></div>
+						<div class="wave-bar"></div>
+						<div class="wave-bar"></div>
+						<div class="wave-bar"></div>
+						<div class="wave-bar"></div>
+						<div class="wave-bar"></div>
+						<div class="wave-bar"></div>
+					</div>
+					<div class="recording-status" id="recordingStatus">Listening...</div>
+					<div class="recording-timer" id="recordingTimer">00:00</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-secondary" id="stopRecordingBtn">Stop Recording</button>
+			</div>
+		</div>
+	</div>
 
-    <!-- Loading overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner">
-            <i class="fas fa-heartbeat fa-spin"></i>
-            <div class="loading-text">Processing your medical query...</div>
-        </div>
-    </div>
+	<!-- Loading overlay -->
+	<div class="loading-overlay" id="loadingOverlay">
+		<div class="loading-spinner">
+			<i class="fas fa-heartbeat fa-spin"></i>
+			<div class="loading-text">Processing your medical query...</div>
+		</div>
+	</div>
 
-    <!-- Sidebar overlay for outside-click close -->
-    <div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:900;"></div>
+	<!-- Sidebar overlay for outside-click close -->
+	<div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:900;"></div>
 
-    <script type="module" src="/static/js/app.js"></script>
+	<script type="module" src="/static/js/app.js"></script>
 </body>
 </html>
