@@ -1709,24 +1709,7 @@ How can I assist you today?`;
         this.addMessage('user', message);
         this.showLoading(true);
         try {
-            const isNewSession = this.currentSession && this.currentSession.id === 'default';
             const responseData = await this.callMedicalAPI(message);
-
-            if (isNewSession && responseData.session_id) {
-                console.log(`[DEBUG] New session created on backend. Updating session ID from 'default' to '${responseData.session_id}'`);
-                const oldId = this.currentSession.id;
-                this.currentSession.id = responseData.session_id;
-
-                // Update the session ID in the locally stored array
-                const sessions = this.getChatSessions();
-                const sessionIndex = sessions.findIndex(s => s.id === oldId);
-                if (sessionIndex !== -1) {
-                    sessions[sessionIndex].id = this.currentSession.id;
-                    localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
-                }
-                // Re-render the session list to reflect the new ID
-                this.loadChatSessions();
-            }
 
             this.addMessage('assistant', responseData.response || 'I apologize, but I received an empty response. Please try again.');
             this.updateCurrentSession();
@@ -1750,18 +1733,24 @@ How can I assist you today?`;
 
     callMedicalAPI = async function (message) {
         try {
+            let sessionId = this.currentSession?.id;
+            
+            // If no session or default session, create a new one first
+            if (!sessionId || sessionId === 'default') {
+                console.log('[DEBUG] Creating new session before sending message');
+                sessionId = await this.createNewSession();
+                if (!sessionId) {
+                    throw new Error('Failed to create new session');
+                }
+            }
+
             const payload = {
                 account_id: this.currentUser.id,
                 patient_id: this.currentPatientId,
                 message: message
             };
 
-            // Only include session_id if it's not the default placeholder
-            if (this.currentSession?.id && this.currentSession.id !== 'default') {
-                payload.session_id = this.currentSession.id;
-            }
-
-            const response = await fetch('/chat', {
+            const response = await fetch(`/session/${sessionId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1781,6 +1770,44 @@ How can I assist you today?`;
             if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 return { response: this.generateMockResponse(message) };
             }
+            throw error;
+        }
+    }
+
+    createNewSession = async function () {
+        try {
+            const payload = {
+                account_id: this.currentUser.id,
+                patient_id: this.currentPatientId,
+                title: "New Chat"
+            };
+
+            const response = await fetch('/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const session = await response.json();
+            console.log('[DEBUG] Created new session:', session);
+            
+            // Update current session with the new session data
+            this.currentSession = {
+                id: session.id,
+                title: session.title,
+                messages: [],
+                createdAt: session.created_at,
+                lastActivity: new Date().toISOString(),
+                source: 'backend'
+            };
+            
+            return session.id;
+        } catch (error) {
+            console.error('Failed to create new session:', error);
             throw error;
         }
     }

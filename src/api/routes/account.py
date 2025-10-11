@@ -11,27 +11,39 @@ router = APIRouter(prefix="/account", tags=["Account"])
 
 
 @router.get("", response_model=list[Account])
-async def search_or_get_all_accounts(
-	q: str | None = None,
+async def get_all_accounts(
 	limit: int = 50,
 	state: AppState = Depends(get_state)
 ):
 	"""
 	Retrieves a list of all accounts.
-	Optionally, filters accounts by a search query 'q'.
 	"""
 	try:
-		if q:
-			logger().info(f"GET /account?q='{q}' limit={limit}")
-			accounts = state.memory_manager.search_accounts(q, limit=limit)
-		else:
-			logger().info(f"GET /account limit={limit}")
-			accounts = state.memory_manager.get_all_accounts(limit=limit)
-
+		logger().info(f"GET /account limit={limit}")
+		accounts = state.memory_manager.get_all_accounts(limit=limit)
 		logger().info(f"Retrieved {len(accounts)} accounts")
 		return accounts
 	except ActionFailed as e:
 		logger().error(f"Database error while getting accounts: {e}")
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="A database error occurred.")
+
+
+@router.get("/search", response_model=list[Account])
+async def search_accounts(
+	q: str,
+	limit: int = 50,
+	state: AppState = Depends(get_state)
+):
+	"""
+	Searches for accounts by name.
+	"""
+	try:
+		logger().info(f"GET /account/search?q='{q}' limit={limit}")
+		accounts = state.memory_manager.search_accounts(q, limit=limit)
+		logger().info(f"Retrieved {len(accounts)} accounts")
+		return accounts
+	except ActionFailed as e:
+		logger().error(f"Database error while searching accounts: {e}")
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="A database error occurred.")
 
 
