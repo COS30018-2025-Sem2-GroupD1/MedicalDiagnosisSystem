@@ -16,7 +16,11 @@ class Message(BaseModel):
 	timestamp: datetime
 
 	# Use a standard config for this sub-model
-	model_config = ConfigDict(frozen=True, from_attributes=True)
+	model_config = ConfigDict(
+		frozen=True,
+		from_attributes=True,
+		populate_by_name=True
+	)
 
 class Session(BaseMongoModel):
 	"""A Pydantic model for a chat session, including nested messages."""

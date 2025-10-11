@@ -15,9 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function getPatientIdFromUrl() {
 		const urlParams = new URLSearchParams(window.location.search);
+		// The API uses a generic string 'id', but we'll keep the client-side validation for now.
 		const pidFromUrl = urlParams.get('patient_id');
-		if (pidFromUrl && /^\d{8}$/.test(pidFromUrl)) return pidFromUrl;
-		return null;
+		return pidFromUrl;
 	}
 
 	async function loadPatientIntoForm(patientId) {
@@ -90,19 +90,19 @@ document.addEventListener('DOMContentLoaded', () => {
 				});
 				if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 				const data = await resp.json();
-				const pid = data.patient_id;
+				const pid = data.id;
 				localStorage.setItem('medicalChatbotPatientId', pid);
 
 				// Add to localStorage for future suggestions
 				const existingPatients = JSON.parse(localStorage.getItem('medicalChatbotPatients') || '[]');
 				const newPatient = {
-					patient_id: pid,
+					id: pid,
 					name: payload.name,
 					age: payload.age,
 					sex: payload.sex
 				};
 				// Check if patient already exists to avoid duplicates
-				const exists = existingPatients.some(p => p.patient_id === pid);
+				const exists = existingPatients.some(p => p.id === pid);
 				if (!exists) {
 					existingPatients.push(newPatient);
 					localStorage.setItem('medicalChatbotPatients', JSON.stringify(existingPatients));
@@ -125,7 +125,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	if (successEdit) successEdit.addEventListener('click', () => {
 		successModal.classList.remove('show');
 		const pid = createdIdEl?.textContent?.trim() || localStorage.getItem('medicalChatbotPatientId');
-		if (pid && /^\d{8}$/.test(pid)) {
+		if (pid) {
+			// Update URL to reflect edit mode for clarity and reload safety
+			const newUrl = new URL(window.location.href);
+			newUrl.searchParams.set('patient_id', pid);
+			window.history.pushState({ path: newUrl.href }, '', newUrl.href);
+
 			enableEditMode(pid);
 			loadPatientIntoForm(pid);
 		}
