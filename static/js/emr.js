@@ -49,6 +49,13 @@ class EMRPage {
             this.applyFilters();
         });
 
+        // Tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.switchTab(e.target.dataset.tab);
+            });
+        });
+
         // Modal handlers
         this.setupModalHandlers();
     }
@@ -559,6 +566,217 @@ class EMRPage {
 
         emptyState.style.display = 'block';
         tableContainer.style.display = 'none';
+    }
+
+    switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+
+        // Load specific tab data
+        switch (tabName) {
+            case 'diagnosis':
+                this.renderDiagnosisTab();
+                break;
+            case 'medications':
+                this.renderMedicationsTab();
+                break;
+            case 'vitals':
+                this.renderVitalsTab();
+                break;
+            case 'lab':
+                this.renderLabTab();
+                break;
+            case 'procedures':
+                this.renderProceduresTab();
+                break;
+        }
+    }
+
+    renderDiagnosisTab() {
+        const timeline = document.getElementById('diagnosisTimeline');
+        const diagnoses = [];
+
+        this.emrEntries.forEach(entry => {
+            if (entry.extracted_data.diagnosis && entry.extracted_data.diagnosis.length > 0) {
+                entry.extracted_data.diagnosis.forEach(diagnosis => {
+                    diagnoses.push({
+                        name: diagnosis,
+                        date: new Date(entry.created_at).toLocaleDateString(),
+                        confidence: Math.round(entry.confidence_score * 100)
+                    });
+                });
+            }
+        });
+
+        if (diagnoses.length === 0) {
+            timeline.innerHTML = '<p class="no-data">No diagnoses found in EMR entries.</p>';
+            return;
+        }
+
+        timeline.innerHTML = diagnoses.map(diagnosis => `
+            <div class="diagnosis-item">
+                <div class="diagnosis-date">${diagnosis.date}</div>
+                <div class="diagnosis-name">${diagnosis.name}</div>
+                <div class="diagnosis-confidence">${diagnosis.confidence}%</div>
+            </div>
+        `).join('');
+    }
+
+    renderMedicationsTab() {
+        const grid = document.getElementById('medicationsGrid');
+        const medications = [];
+
+        this.emrEntries.forEach(entry => {
+            if (entry.extracted_data.medications && entry.extracted_data.medications.length > 0) {
+                entry.extracted_data.medications.forEach(med => {
+                    medications.push({
+                        name: med.name,
+                        dosage: med.dosage || 'Not specified',
+                        frequency: med.frequency || 'Not specified',
+                        duration: med.duration || 'Not specified',
+                        date: new Date(entry.created_at).toLocaleDateString()
+                    });
+                });
+            }
+        });
+
+        if (medications.length === 0) {
+            grid.innerHTML = '<p class="no-data">No medications found in EMR entries.</p>';
+            return;
+        }
+
+        grid.innerHTML = medications.map(med => `
+            <div class="medication-card">
+                <div class="medication-name">${med.name}</div>
+                <div class="medication-details">
+                    <div class="medication-detail">
+                        <strong>Dosage:</strong> <span>${med.dosage}</span>
+                    </div>
+                    <div class="medication-detail">
+                        <strong>Frequency:</strong> <span>${med.frequency}</span>
+                    </div>
+                    <div class="medication-detail">
+                        <strong>Duration:</strong> <span>${med.duration}</span>
+                    </div>
+                    <div class="medication-detail">
+                        <strong>Date:</strong> <span>${med.date}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    renderVitalsTab() {
+        const tableBody = document.getElementById('vitalsTableBody');
+        const vitalsData = [];
+
+        this.emrEntries.forEach(entry => {
+            if (entry.extracted_data.vital_signs) {
+                const vitals = entry.extracted_data.vital_signs;
+                if (Object.values(vitals).some(v => v)) {
+                    vitalsData.push({
+                        date: new Date(entry.created_at).toLocaleDateString(),
+                        blood_pressure: vitals.blood_pressure || '-',
+                        heart_rate: vitals.heart_rate || '-',
+                        temperature: vitals.temperature || '-',
+                        respiratory_rate: vitals.respiratory_rate || '-',
+                        oxygen_saturation: vitals.oxygen_saturation || '-'
+                    });
+                }
+            }
+        });
+
+        if (vitalsData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="no-data">No vital signs found in EMR entries.</td></tr>';
+            return;
+        }
+
+        tableBody.innerHTML = vitalsData.map(vitals => `
+            <tr>
+                <td>${vitals.date}</td>
+                <td>${vitals.blood_pressure}</td>
+                <td>${vitals.heart_rate}</td>
+                <td>${vitals.temperature}</td>
+                <td>${vitals.respiratory_rate}</td>
+                <td>${vitals.oxygen_saturation}</td>
+            </tr>
+        `).join('');
+    }
+
+    renderLabTab() {
+        const container = document.getElementById('labResultsContainer');
+        const labResults = [];
+
+        this.emrEntries.forEach(entry => {
+            if (entry.extracted_data.lab_results && entry.extracted_data.lab_results.length > 0) {
+                entry.extracted_data.lab_results.forEach(lab => {
+                    labResults.push({
+                        test_name: lab.test_name,
+                        value: lab.value,
+                        unit: lab.unit || '',
+                        reference_range: lab.reference_range || 'Not specified',
+                        date: new Date(entry.created_at).toLocaleDateString()
+                    });
+                });
+            }
+        });
+
+        if (labResults.length === 0) {
+            container.innerHTML = '<p class="no-data">No lab results found in EMR entries.</p>';
+            return;
+        }
+
+        container.innerHTML = labResults.map(lab => `
+            <div class="lab-result-item">
+                <div class="lab-result-header">
+                    <div class="lab-test-name">${lab.test_name}</div>
+                    <div class="lab-test-value">${lab.value} ${lab.unit}</div>
+                </div>
+                <div class="lab-test-details">
+                    <span><strong>Date:</strong> ${lab.date}</span>
+                    <span><strong>Reference Range:</strong> ${lab.reference_range}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    renderProceduresTab() {
+        const timeline = document.getElementById('proceduresTimeline');
+        const procedures = [];
+
+        this.emrEntries.forEach(entry => {
+            if (entry.extracted_data.procedures && entry.extracted_data.procedures.length > 0) {
+                entry.extracted_data.procedures.forEach(procedure => {
+                    procedures.push({
+                        name: procedure,
+                        date: new Date(entry.created_at).toLocaleDateString(),
+                        confidence: Math.round(entry.confidence_score * 100)
+                    });
+                });
+            }
+        });
+
+        if (procedures.length === 0) {
+            timeline.innerHTML = '<p class="no-data">No procedures found in EMR entries.</p>';
+            return;
+        }
+
+        timeline.innerHTML = procedures.map(procedure => `
+            <div class="procedure-item">
+                <div class="procedure-date">${procedure.date}</div>
+                <div class="procedure-name">${procedure.name}</div>
+                <div class="procedure-status">${procedure.confidence}%</div>
+            </div>
+        `).join('');
     }
 }
 

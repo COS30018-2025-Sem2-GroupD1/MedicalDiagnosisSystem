@@ -3,6 +3,7 @@
 from src.core import prompt_builder
 from src.data.medical_kb import search_medical_kb
 from src.services.gemini import gemini_chat
+from src.services.guard import SafetyGuard
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
@@ -12,7 +13,8 @@ async def generate_medical_response(
 	user_role: str,
 	user_specialty: str,
 	rotator: APIKeyRotator,
-	medical_context: str = ""
+	medical_context: str = "",
+	nvidia_rotator: APIKeyRotator = None
 ) -> str:
 	"""Generates an intelligent, contextual medical response using Gemini AI."""
 	prompt = prompt_builder.medical_response_prompt(user_role, user_specialty, medical_context, user_message)
@@ -24,6 +26,22 @@ async def generate_medical_response(
 		# Add medical disclaimer if not already present
 		if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
 			response_text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
+
+		# Safety Guard: Validate the generated response
+		if nvidia_rotator:
+			try:
+				safety_guard = SafetyGuard(nvidia_rotator)
+				is_safe, safety_reason = safety_guard.check_model_answer(user_message, response_text)
+				if not is_safe:
+					logger().warning(f"Safety guard blocked generated response: {safety_reason}")
+					# Return safe fallback response
+					return "I apologize, but I cannot provide a response to that query as it may contain unsafe content. Please consult with a qualified healthcare professional for medical advice."
+				else:
+					logger().info(f"Generated response passed safety validation: {safety_reason}")
+			except Exception as e:
+				logger().error(f"Safety guard error in medical response: {e}")
+				# Fail open for now - allow response through if guard fails
+				logger().warning("Safety guard failed, allowing generated response through")
 
 		logger().info(f"Gemini response generated, length: {len(response_text)} chars")
 		return response_text
