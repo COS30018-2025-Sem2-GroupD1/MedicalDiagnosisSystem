@@ -17,7 +17,7 @@ router = APIRouter(prefix="/emr", tags=["EMR"])
 async def check_emr_exists(message_id: str):
     """Check if EMR extraction has already been done for a message."""
     try:
-        from data.repositories.emr import check_emr_exists
+        from src.data.repositories.emr import check_emr_exists
         exists = check_emr_exists(message_id)
         return {
             "message_id": message_id,
