@@ -599,10 +599,10 @@ How can I assist you today?`;
             } else {
                 // If doctor not found in local list, try to fetch from backend
                 try {
-                    const resp = await fetch(`/account/search?q=${encodeURIComponent(selectedName)}&limit=1`);
+                    const resp = await fetch(`/account?q=${encodeURIComponent(selectedName)}&limit=1`);
                     if (resp.ok) {
                         const data = await resp.json();
-                        const doctor = data.results && data.results[0];
+                        const doctor = data && data[0];
                         if (doctor) {
                             if (doctor.role) {
                                 roleEl.value = doctor.role;
@@ -730,12 +730,10 @@ How can I assist you today?`;
             const sessionElement = document.createElement('div');
             sessionElement.className = `chat-session ${session.id === this.currentSession?.id ? 'active' : ''}`;
             sessionElement.addEventListener('click', async () => {
-                if (session.source === 'backend') {
-                    this.currentSession = { ...session };
-                    await this.hydrateMessagesForSession(session.id);
-                } else {
-                this.loadChatSession(session.id);
-                }
+                // Avoid re-loading if the session is already active
+                if (session.id === this.currentSession?.id) return;
+
+                await this.switchToSession(session);
             });
             const time = this.formatTime(session.lastActivity);
             sessionElement.innerHTML = `
@@ -853,9 +851,6 @@ How can I assist you today?`;
                     throw new Error(`HTTP ${resp.status}`);
                 }
 
-                const result = await resp.json();
-                console.log('[DEBUG] Backend deletion result:', result);
-
                 // Remove from backend sessions
                 this.backendSessions = this.backendSessions.filter(s => s.id !== sessionId);
 
@@ -971,13 +966,13 @@ How can I assist you today?`;
             const resp = await fetch('/account');
             if (resp.ok) {
                 const data = await resp.json();
-                this.doctors = data.results || [];
+                this.doctors = data || [];
                 // Ensure each doctor has role and specialty information
                 this.doctors = this.doctors.map(doctor => ({
                     name: doctor.name,
                     role: doctor.role || 'Medical Professional',
                     specialty: doctor.specialty || '',
-                    _id: doctor._id // API returns _id, not doctor_id
+                    id: doctor.id
                 }));
                 // Also save to localStorage for offline access
                 localStorage.setItem('medicalChatbotDoctors', JSON.stringify(this.doctors));
@@ -1004,10 +999,10 @@ How can I assist you today?`;
 
     async searchDoctors(query) {
         try {
-            const resp = await fetch(`/account/search?q=${encodeURIComponent(query)}&limit=10`);
+            const resp = await fetch(`/account?q=${encodeURIComponent(query)}&limit=10`);
             if (resp.ok) {
                 const data = await resp.json();
-                return data.results || [];
+                return data || [];
             }
         } catch (e) {
             console.warn('Doctor search failed:', e);
@@ -1025,8 +1020,7 @@ How can I assist you today?`;
             if (resp.ok) {
                 const data = await resp.json();
                 // Add to local doctors list
-                // FIX: Use account_id from the response
-                this.doctors.push({ name: data.name, _id: data.account_id });
+                this.doctors.push({ name: data.name, id: data.id });
                 this.saveDoctors();
                 return data;
             }
@@ -1089,26 +1083,25 @@ How can I assist you today?`;
             if (!this.doctors.find(d => d.name === name)) {
                 // Get current role and specialty from the form
                 const role = document.getElementById('profileRole').value || 'Medical Professional';
-                const specialty = document.getElementById('profileSpecialty').value.trim() || '';
+                const specialty = document.getElementById('profileSpecialty').value.trim() || null;
 
                 // Create doctor in MongoDB
                 const result = await this.createDoctor({
                     name,
                     role,
-                    specialty,
-                    medical_roles: [role]
+                    specialty
                 });
-                if (result && result.account_id) {
+                if (result && result.id) {
                     this.doctors.unshift({
                         name,
                         role,
                         specialty,
-                        _id: result.account_id // FIX: Use account_id from response
+                        id: result.id
                     });
                     this.saveDoctors();
 
                     // Update current user profile
-                    this.currentUser.id = result.account_id; // FIX: CRITICAL - Update the user ID
+                    this.currentUser.id = result.id;
                     this.currentUser.name = name;
                     this.currentUser.role = role;
                     this.currentUser.specialty = specialty;
@@ -1134,10 +1127,13 @@ How can I assist you today?`;
         }
 
         // Check if doctor exists in MongoDB first
-        let doctorExists = false;
+        let existingDoctor = null;
         try {
-            const resp = await fetch(`/account/${encodeURIComponent(name)}`);
-            doctorExists = resp.ok;
+            const resp = await fetch(`/account?q=${encodeURIComponent(name)}`);
+            if(resp.ok) {
+                const accounts = await resp.json();
+                existingDoctor = accounts.find(acc => acc.name === name);
+            }
         } catch (e) {
             console.warn('Failed to check doctor existence:', e);
         }
@@ -1148,12 +1144,11 @@ How can I assist you today?`;
         this.currentUser.specialty = specialty;
 
         // Only create new doctor in MongoDB if it doesn't exist
-        if (!doctorExists) {
+        if (!existingDoctor) {
             const doctorPayload = {
                 name: name,
                 role: role,
-                specialty: specialty || null,
-                medical_roles: [role]
+                specialty: specialty || null
             };
 
             try {
@@ -1167,17 +1162,16 @@ How can I assist you today?`;
                 const data = await resp.json();
                 console.log('[Doctor] Created new doctor in backend:', data);
 
-                // FIX: CRITICAL - Update the current user's ID with the one from the database
-                if (data.account_id) {
-                    this.currentUser.id = data.account_id;
+                if (data.id) {
+                    this.currentUser.id = data.id;
                 }
 
                 // Update local doctor list with the ID from backend
                 const existingDoctorIndex = this.doctors.findIndex(d => d.name === name);
                 if (existingDoctorIndex === -1) {
-                    this.doctors.unshift({ name, role, specialty, _id: data.account_id });
+                    this.doctors.unshift({ name, role, specialty, id: data.id });
                 } else {
-                    this.doctors[existingDoctorIndex]._id = data.account_id;
+                    this.doctors[existingDoctorIndex].id = data.id;
                 }
 
             } catch (err) {
@@ -1185,9 +1179,8 @@ How can I assist you today?`;
             }
         } else {
              // If doctor exists, find their ID and update currentUser
-            const existingDoctor = this.doctors.find(d => d.name === name);
-            if (existingDoctor && existingDoctor._id) {
-                this.currentUser.id = existingDoctor._id;
+            if (existingDoctor && existingDoctor.id) {
+                this.currentUser.id = existingDoctor.id;
             }
             console.log('[Doctor] Doctor already exists in backend, no creation needed');
         }
@@ -1208,8 +1201,7 @@ How can I assist you today?`;
             const storedPatients = JSON.parse(localStorage.getItem('medicalChatbotPatients') || '[]');
             return storedPatients.filter(p => {
                 const nameMatch = p.name.toLowerCase().includes(query.toLowerCase());
-                // FIX: Check _id field which is what the API returns
-                const idMatch = p._id && p._id.includes(query);
+                const idMatch = p.id && p.id.includes(query);
                 return nameMatch || idMatch;
             });
         } catch (e) {
@@ -1222,14 +1214,12 @@ How can I assist you today?`;
         const resultMap = new Map();
         // Add MongoDB results first (they take priority)
         mongoResults.forEach(patient => {
-            // FIX: Use _id as the unique key
-            if(patient._id) resultMap.set(patient._id, patient);
+            if(patient.id) resultMap.set(patient.id, patient);
         });
         // Add localStorage results only if not already present
         localResults.forEach(patient => {
-            // FIX: Use _id as the unique key
-            if (patient._id && !resultMap.has(patient._id)) {
-                resultMap.set(patient._id, patient);
+            if (patient.id && !resultMap.has(patient.id)) {
+                resultMap.set(patient.id, patient);
             }
         });
         return Array.from(resultMap.values());
@@ -1265,7 +1255,7 @@ How can I assist you today?`;
                     const resp = await fetch(`/patient/${pid}`);
                     if (resp.ok) {
                         const patient = await resp.json();
-                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${patient._id})`;
+                        status.textContent = `Patient: ${patient.name || 'Unknown'} (${patient.id})`;
                     } else {
                         status.textContent = `Patient: ${pid}`;
                     }
@@ -1324,18 +1314,18 @@ How can I assist you today?`;
         // Search for patient by name or ID
         console.log('[DEBUG] Searching for patient');
         try {
-            const resp = await fetch(`/patient/search?q=${encodeURIComponent(value)}&limit=1`);
+            const resp = await fetch(`/patient?q=${encodeURIComponent(value)}&limit=1`);
             console.log('[DEBUG] Search response status:', resp.status);
             if (resp.ok) {
                 const data = await resp.json();
                 console.log('[DEBUG] Search results:', data);
-                const first = (data.results || [])[0];
-                if (first && first._id) { // FIX: Check for _id
+                const first = (data || [])[0];
+                if (first && first.id) {
                     console.log('[DEBUG] Found patient, setting as current:', first);
-                    this.currentPatientId = first._id; // FIX: Use _id from search result
+                    this.currentPatientId = first.id;
                     this.savePatientId();
-                    input.value = first._id;
-                    this.updatePatientDisplay(first._id, first.name || 'Unknown');
+                    input.value = first.id;
+                    this.updatePatientDisplay(first.id, first.name || 'Unknown');
                     await this.fetchAndRenderPatientSessions();
                     return;
                 }
@@ -1378,7 +1368,7 @@ How can I assist you today?`;
                 const resp = await fetch(`/patient/${this.currentPatientId}/session`);
                 if (resp.ok) {
                     const data = await resp.json();
-                    sessions = Array.isArray(data.sessions) ? data.sessions : [];
+                    sessions = Array.isArray(data) ? data : [];
 
                     // Cache the sessions
                     localStorage.setItem(cacheKey, JSON.stringify({
@@ -1396,12 +1386,11 @@ How can I assist you today?`;
 
         // Process sessions
         this.backendSessions = sessions.map(s => ({
-            // FIX: Add a fallback to _id to make the frontend more robust
-            id: s.session_id || s._id,
+            id: s.id,
             title: s.title || 'New Chat',
             messages: [],
             createdAt: s.created_at || new Date().toISOString(),
-            lastActivity: s.last_activity || new Date().toISOString(),
+            lastActivity: s.updated_at || new Date().toISOString(),
             source: 'backend'
         }));
 
@@ -1414,7 +1403,6 @@ How can I assist you today?`;
     }
 
     hydrateMessagesForSession = async function (sessionId) {
-        // FIX: Add a guard clause to prevent calling the API with an invalid ID
         if (!sessionId || sessionId === 'undefined') {
             console.error('[DEBUG] hydrateMessagesForSession was called with an invalid session ID:', sessionId);
             return;
@@ -1442,16 +1430,16 @@ How can I assist you today?`;
 
             // If no cache or cache is stale, fetch from backend
             if (messages.length === 0) {
-                const resp = await fetch(`/session/${sessionId}/messages?limit=1000`);
+                const resp = await fetch(`/session/${sessionId}/messages`);
                 if (!resp.ok) {
                     console.warn(`Failed to fetch messages for session ${sessionId}:`, resp.status);
                     return;
                 }
                 const data = await resp.json();
-                const msgs = Array.isArray(data.messages) ? data.messages : [];
+                const msgs = Array.isArray(data) ? data : [];
                 messages = msgs.map(m => ({
-                    id: m._id || this.generateId(),
-                    role: m.role,
+                    id: m.id || this.generateId(),
+                    role: m.sent_by_user ? 'user' : 'assistant',
                     content: m.content,
                     timestamp: m.timestamp
                 }));
@@ -1506,15 +1494,13 @@ How can I assist you today?`;
             items.forEach(p => {
                 const div = document.createElement('div');
                 div.className = 'patient-suggestion';
-                // FIX: Use _id for display as it's the consistent identifier
-                div.textContent = `${p.name || 'Unknown'} (${p._id})`;
+                div.textContent = `${p.name || 'Unknown'} (${p.id})`;
                 div.addEventListener('click', async () => {
-                    // FIX: Use _id from the patient object
-                    this.currentPatientId = p._id;
+                    this.currentPatientId = p.id;
                     this.savePatientId();
-                    patientInput.value = p._id;
+                    patientInput.value = p.id;
                     hideSuggestions();
-                    this.updatePatientDisplay(p._id, p.name || 'Unknown');
+                    this.updatePatientDisplay(p.id, p.name || 'Unknown');
                     await this.fetchAndRenderPatientSessions();
                 });
                 suggestionsEl.appendChild(div);
@@ -1529,7 +1515,7 @@ How can I assist you today?`;
             debounceTimer = setTimeout(async () => {
                 try {
                     console.log('[DEBUG] Searching patients with query:', q);
-                    const url = `/patient/search?q=${encodeURIComponent(q)}&limit=8`;
+                    const url = `/patient?q=${encodeURIComponent(q)}&limit=8`;
                     console.log('[DEBUG] Search URL:', url);
                     const resp = await fetch(url);
                     console.log('[DEBUG] Search response status:', resp.status);
@@ -1537,7 +1523,7 @@ How can I assist you today?`;
                     let mongoResults = [];
                     if (resp.ok) {
                         const data = await resp.json();
-                        mongoResults = data.results || [];
+                        mongoResults = data || [];
                         console.log('[DEBUG] MongoDB search results:', mongoResults);
                     } else {
                         console.warn('MongoDB search request failed', resp.status);
@@ -1689,23 +1675,25 @@ How can I assist you today?`;
         this.addMessage('user', message);
         this.showLoading(true);
         try {
-            const isNewSession = this.currentSession && this.currentSession.id === 'default';
-            const responseData = await this.callMedicalAPI(message);
+            const isNewSession = !this.currentSession || this.currentSession.id === 'default' || this.currentSession.source !== 'backend';
+            const responseData = await this.callMedicalAPI(message, isNewSession);
 
             if (isNewSession && responseData.session_id) {
-                console.log(`[DEBUG] New session created on backend. Updating session ID from 'default' to '${responseData.session_id}'`);
-                const oldId = this.currentSession.id;
-                this.currentSession.id = responseData.session_id;
+                console.log(`[DEBUG] New session created on backend. Updating session ID to '${responseData.session_id}'`);
 
-                // Update the session ID in the locally stored array
-                const sessions = this.getChatSessions();
-                const sessionIndex = sessions.findIndex(s => s.id === oldId);
-                if (sessionIndex !== -1) {
-                    sessions[sessionIndex].id = this.currentSession.id;
-                    localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
+                // If it was a local session, remove it
+                if (this.currentSession.id !== 'default' && this.currentSession.source !== 'backend') {
+                    const localSessions = this.getChatSessions();
+                    const updatedLocalSessions = localSessions.filter(s => s.id !== this.currentSession.id);
+                    localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(updatedLocalSessions));
                 }
-                // Re-render the session list to reflect the new ID
-                this.loadChatSessions();
+
+                // Update current session to reflect backend reality
+                this.currentSession.id = responseData.session_id;
+                this.currentSession.source = 'backend';
+
+                // Add to backend sessions list and re-render
+                await this.fetchAndRenderPatientSessions();
             }
 
             this.addMessage('assistant', responseData.response || 'I apologize, but I received an empty response. Please try again.');
@@ -1728,27 +1716,46 @@ How can I assist you today?`;
         }
     }
 
-    callMedicalAPI = async function (message) {
+    callMedicalAPI = async function (message, isNewSession) {
         try {
-            const payload = {
+            let sessionId = this.currentSession?.id;
+
+            // Step 1: Create a new session if required
+            if (isNewSession) {
+                const createSessionPayload = {
+                    account_id: this.currentUser.id,
+                    patient_id: this.currentPatientId,
+                    title: "New Chat" // Title can be updated later
+                };
+                const sessionResponse = await fetch('/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(createSessionPayload)
+                });
+                if (!sessionResponse.ok) throw new Error(`HTTP error! status: ${sessionResponse.status}`);
+                const newSessionData = await sessionResponse.json();
+                sessionId = newSessionData.id;
+                this.currentSession.id = sessionId; // Update current session immediately
+                this.currentSession.source = 'backend';
+            }
+
+            // Step 2: Post the message to the (potentially new) session
+            const messagePayload = {
                 account_id: this.currentUser.id,
                 patient_id: this.currentPatientId,
                 message: message
             };
 
-            // Only include session_id if it's not the default placeholder
-            if (this.currentSession?.id && this.currentSession.id !== 'default') {
-                payload.session_id = this.currentSession.id;
-            }
-
-            const response = await fetch('/chat', {
+            const messageResponse = await fetch(`/session/${sessionId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(messagePayload)
             });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
+
+            if (!messageResponse.ok) throw new Error(`HTTP error! status: ${messageResponse.status}`);
+            const data = await messageResponse.json();
             return data;
+
         } catch (error) {
             console.error('API call failed:', error);
             console.error('Error details:', {
@@ -1830,15 +1837,15 @@ How can I assist you today?`;
         messageElement.id = `message-${message.id}`;
         const avatar = message.role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
         const time = this.formatTime(message.timestamp);
-        
+
         // Add EMR icon for assistant messages (system-generated)
-        const emrIcon = message.role === 'assistant' ? 
+        const emrIcon = message.role === 'assistant' ?
             `<div class="message-actions">
                 <button class="emr-extract-btn" onclick="app.extractEMR('${message.id}')" title="Extract to EMR" data-message-id="${message.id}">
                     <i class="fas fa-file-medical"></i>
                 </button>
             </div>` : '';
-        
+
         messageElement.innerHTML = `
             <div class="message-avatar">${avatar}</div>
             <div class="message-content">
@@ -1849,11 +1856,6 @@ How can I assist you today?`;
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         if (this.currentSession) this.currentSession.lastActivity = new Date().toISOString();
-        
-        // Check EMR status for assistant messages
-        if (message.role === 'assistant' && this.currentPatientId) {
-            this.checkEMRStatus(message.id);
-        }
     }
 
     formatMessageContent(content) {
@@ -1915,25 +1917,28 @@ How can I assist you today?`;
                 button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             }
 
+            // Build URL with query parameters
+            const params = new URLSearchParams({
+                patient_id: this.currentPatientId,
+                doctor_id: this.currentUser.id || 'default-doctor',
+                message_id: messageId,
+                session_id: this.currentSession?.id || 'default-session',
+                message: message.content
+            });
+            const url = `/emr/extract?${params.toString()}`;
+
             // Call EMR extraction API
-            const response = await fetch('/emr/extract', {
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    patient_id: this.currentPatientId,
-                    doctor_id: this.currentUser.id || 'default-doctor',
-                    message_id: messageId,
-                    session_id: this.currentSession?.id || 'default-session',
-                    message: message.content
-                })
+                    'Content-Type': 'application/json', // Header might still be needed by middleware
+                }
             });
 
             if (response.ok) {
                 const result = await response.json();
                 console.log('EMR extraction successful:', result);
-                
+
                 // Show success message
                 if (button) {
                     button.innerHTML = '<i class="fas fa-check"></i>';
@@ -1944,7 +1949,7 @@ How can I assist you today?`;
                         button.disabled = false;
                     }, 2000);
                 }
-                
+
                 // Show notification
                 this.showNotification('EMR data extracted successfully!', 'success');
             } else {
@@ -1955,34 +1960,16 @@ How can I assist you today?`;
 
         } catch (error) {
             console.error('Error extracting EMR:', error);
-            
+
             // Reset button state
             const button = document.querySelector(`[onclick="app.extractEMR('${messageId}')"]`);
             if (button) {
                 button.innerHTML = '<i class="fas fa-file-medical"></i>';
                 button.disabled = false;
             }
-            
+
             // Show error message
             this.showNotification('Failed to extract EMR data. Please try again.', 'error');
-        }
-    }
-
-    async checkEMRStatus(messageId) {
-        try {
-            const response = await fetch(`/emr/check/${messageId}`);
-            if (response.ok) {
-                const result = await response.json();
-                const button = document.querySelector(`[data-message-id="${messageId}"]`);
-                if (button && result.emr_exists) {
-                    button.innerHTML = '<i class="fas fa-check"></i>';
-                    button.style.color = 'var(--success-color)';
-                    button.title = 'EMR data already extracted';
-                    button.disabled = true;
-                }
-            }
-        } catch (error) {
-            console.warn('Could not check EMR status:', error);
         }
     }
 
@@ -1996,13 +1983,13 @@ How can I assist you today?`;
                 <span>${message}</span>
             </div>
         `;
-        
+
         // Add to page
         document.body.appendChild(notification);
-        
+
         // Show notification
         setTimeout(() => notification.classList.add('show'), 100);
-        
+
         // Remove after 3 seconds
         setTimeout(() => {
             notification.classList.remove('show');
