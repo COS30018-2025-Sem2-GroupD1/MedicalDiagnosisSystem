@@ -1290,6 +1290,12 @@ How can I assist you today?`;
     }
 
     updatePatientDisplay(patientId, patientName = null) {
+        // Safety check: don't update display if patientId is undefined or null
+        if (!patientId || patientId === 'undefined' || patientId === 'null') {
+            console.warn('updatePatientDisplay called with invalid patientId:', patientId);
+            return;
+        }
+
         const status = document.getElementById('patientStatus');
         const actions = document.getElementById('patientActions');
         const emrLink = document.getElementById('emrLink');

@@ -101,15 +101,19 @@ class EMRPage {
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('patient_id');
 
-        if (patientId) {
+        // Check if patientId is valid (not undefined, null, or empty)
+        if (patientId && patientId !== 'undefined' && patientId !== 'null' && patientId.trim() !== '') {
             this.currentPatientId = patientId;
             await this.loadPatientInfo();
         } else {
             // Try to get from localStorage
             const savedPatientId = localStorage.getItem('medicalChatbotPatientId');
-            if (savedPatientId) {
+            if (savedPatientId && savedPatientId !== 'undefined' && savedPatientId !== 'null' && savedPatientId.trim() !== '') {
                 this.currentPatientId = savedPatientId;
                 await this.loadPatientInfo();
+            } else {
+                console.warn('No valid patient ID found in URL or localStorage');
+                this.showEmptyState();
             }
         }
     }
