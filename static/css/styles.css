@@ -462,6 +462,7 @@ body {
     align-items: center;
     margin: var(--spacing-lg) 0;
     position: relative;
+    width: 100%;
 }
 
 .tagged-title-bar {
@@ -511,6 +512,8 @@ body {
     margin: 0 2px;
     white-space: nowrap;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.2;
+    vertical-align: baseline;
 }
 
 /* Dark theme adjustments */
@@ -529,6 +532,46 @@ body {
 
 [data-theme="dark"] .blue-bubble {
     background-color: #5ba0f2; /* Slightly lighter blue for dark theme */
+}
+
+/* Ensure proper spacing and layout within message content */
+.message-text .tagged-title {
+    margin: var(--spacing-md) 0;
+}
+
+.message-text .tagged-title:first-child {
+    margin-top: 0;
+}
+
+.message-text .tagged-title:last-child {
+    margin-bottom: 0;
+}
+
+/* Ensure blue bubbles work well within paragraphs */
+.message-text p .blue-bubble {
+    margin: 0 4px;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .tagged-title-content {
+        padding: var(--spacing-sm) var(--spacing-md);
+        min-height: 36px;
+    }
+    
+    .tagged-title-content h1,
+    .tagged-title-content h2,
+    .tagged-title-content h3,
+    .tagged-title-content h4,
+    .tagged-title-content h5,
+    .tagged-title-content h6 {
+        font-size: 0.8rem;
+    }
+    
+    .blue-bubble {
+        font-size: 0.8rem;
+        padding: 3px 6px;
+    }
 }
 
 .message-text p {

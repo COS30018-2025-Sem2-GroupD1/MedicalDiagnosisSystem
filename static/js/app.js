@@ -1888,10 +1888,10 @@ How can I assist you today?`;
                     </div>
                 </div>`;
             })
-            // Handle bold text - create blue bubbles
-            .replace(/\*\*(.*?)\*\*/g, '<span class="blue-bubble">$1</span>')
-            // Handle italic text
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Handle bold text - create blue bubbles (improved regex to handle edge cases)
+            .replace(/\*\*([^*]+)\*\*/g, '<span class="blue-bubble">$1</span>')
+            // Handle italic text (only if not already processed as bold)
+            .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
             // Handle line breaks
             .replace(/\n/g, '<br>')
             // Handle emojis with colors
