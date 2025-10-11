@@ -9,7 +9,7 @@ from src.data.connection import ActionFailed, Collections
 from src.data.repositories import medical_record as medical_record_repo
 from src.models.medical import MedicalRecord
 from src.utils.logger import logger
-from tests.base_test import BaseMongoTest
+from ..base_test import BaseMongoTest
 
 
 class TestMedicalRecordRepository(BaseMongoTest):
