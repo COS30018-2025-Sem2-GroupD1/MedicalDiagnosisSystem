@@ -10,3 +10,4 @@ python-dotenv
 pymongo
 pandas
 python-multipart
+pytest
