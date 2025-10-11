@@ -856,6 +856,439 @@ class EMRPage {
             </div>
         `).join('');
     }
+
+    async handleFileUpload(files) {
+        if (!this.currentPatientId) {
+            alert('Please select a patient first');
+            return;
+        }
+
+        const file = files[0]; // Handle only the first file for now
+        
+        // Validate file type
+        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png', 'image/tiff'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Unsupported file type. Please upload PDF, DOC, DOCX, JPG, PNG, or TIFF files.');
+            return;
+        }
+
+        // Validate file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size exceeds 10MB limit.');
+            return;
+        }
+
+        this.showUploadProgress(true);
+        
+        try {
+            // Create FormData
+            const formData = new FormData();
+            formData.append('patient_id', this.currentPatientId);
+            formData.append('file', file);
+
+            // Upload and analyze document
+            const response = await fetch('/emr/preview-document', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to analyze document');
+            }
+
+            const result = await response.json();
+            this.showDocumentPreview(result);
+
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert(`Error analyzing document: ${error.message}`);
+        } finally {
+            this.showUploadProgress(false);
+        }
+    }
+
+    showUploadProgress(show) {
+        const uploadProgress = document.getElementById('uploadProgress');
+        const uploadArea = document.getElementById('uploadArea');
+        
+        if (show) {
+            uploadProgress.style.display = 'block';
+            uploadArea.style.display = 'none';
+        } else {
+            uploadProgress.style.display = 'none';
+            uploadArea.style.display = 'block';
+        }
+    }
+
+    showDocumentPreview(analysisResult) {
+        const modal = document.getElementById('documentPreviewModal');
+        const content = document.getElementById('documentPreviewContent');
+        
+        // Store the analysis result for saving
+        this.currentDocumentAnalysis = analysisResult;
+
+        content.innerHTML = this.renderDocumentPreview(analysisResult);
+        modal.classList.add('show');
+    }
+
+    renderDocumentPreview(data) {
+        const { filename, confidence_score, extracted_data } = data;
+        
+        return `
+            <div class="document-preview-section">
+                <h4><i class="fas fa-file"></i> Document Information</h4>
+                <p><strong>Filename:</strong> ${filename}</p>
+                <p><strong>Confidence Score:</strong> ${Math.round(confidence_score * 100)}%</p>
+            </div>
+
+            ${extracted_data.overview ? `
+                <div class="document-preview-section">
+                    <h4><i class="fas fa-eye"></i> Overview</h4>
+                    <textarea class="editable-field" id="overviewField" rows="3">${extracted_data.overview}</textarea>
+                </div>
+            ` : ''}
+
+            <div class="document-preview-section">
+                <h4><i class="fas fa-stethoscope"></i> Diagnoses</h4>
+                <ul class="editable-list" id="diagnosisList">
+                    ${(extracted_data.diagnosis || []).map(diagnosis => `
+                        <li>
+                            <input type="text" value="${diagnosis}" class="diagnosis-input">
+                            <button type="button" onclick="emrPage.removeListItem(this)"><i class="fas fa-trash"></i></button>
+                        </li>
+                    `).join('')}
+                </ul>
+                <button type="button" class="add-item-btn" onclick="emrPage.addDiagnosis()">
+                    <i class="fas fa-plus"></i> Add Diagnosis
+                </button>
+            </div>
+
+            <div class="document-preview-section">
+                <h4><i class="fas fa-exclamation-triangle"></i> Symptoms</h4>
+                <ul class="editable-list" id="symptomsList">
+                    ${(extracted_data.symptoms || []).map(symptom => `
+                        <li>
+                            <input type="text" value="${symptom}" class="symptom-input">
+                            <button type="button" onclick="emrPage.removeListItem(this)"><i class="fas fa-trash"></i></button>
+                        </li>
+                    `).join('')}
+                </ul>
+                <button type="button" class="add-item-btn" onclick="emrPage.addSymptom()">
+                    <i class="fas fa-plus"></i> Add Symptom
+                </button>
+            </div>
+
+            <div class="document-preview-section">
+                <h4><i class="fas fa-pills"></i> Medications</h4>
+                <div id="medicationsList">
+                    ${(extracted_data.medications || []).map((med, index) => `
+                        <div class="medication-preview-item">
+                            <h5>Medication ${index + 1}</h5>
+                            <div class="medication-detail-row">
+                                <div>
+                                    <label>Name</label>
+                                    <input type="text" value="${med.name || ''}" class="med-name-input">
+                                </div>
+                                <div>
+                                    <label>Dosage</label>
+                                    <input type="text" value="${med.dosage || ''}" class="med-dosage-input">
+                                </div>
+                            </div>
+                            <div class="medication-detail-row">
+                                <div>
+                                    <label>Frequency</label>
+                                    <input type="text" value="${med.frequency || ''}" class="med-frequency-input">
+                                </div>
+                                <div>
+                                    <label>Duration</label>
+                                    <input type="text" value="${med.duration || ''}" class="med-duration-input">
+                                </div>
+                            </div>
+                            <button type="button" onclick="emrPage.removeMedication(this)" style="margin-top: 10px; background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" class="add-item-btn" onclick="emrPage.addMedication()">
+                    <i class="fas fa-plus"></i> Add Medication
+                </button>
+            </div>
+
+            ${extracted_data.vital_signs ? `
+                <div class="document-preview-section">
+                    <h4><i class="fas fa-heartbeat"></i> Vital Signs</h4>
+                    <div class="vital-signs-preview-grid">
+                        <div class="vital-sign-preview-item">
+                            <label>Blood Pressure</label>
+                            <input type="text" value="${extracted_data.vital_signs.blood_pressure || ''}" id="bpInput">
+                        </div>
+                        <div class="vital-sign-preview-item">
+                            <label>Heart Rate</label>
+                            <input type="text" value="${extracted_data.vital_signs.heart_rate || ''}" id="hrInput">
+                        </div>
+                        <div class="vital-sign-preview-item">
+                            <label>Temperature</label>
+                            <input type="text" value="${extracted_data.vital_signs.temperature || ''}" id="tempInput">
+                        </div>
+                        <div class="vital-sign-preview-item">
+                            <label>Respiratory Rate</label>
+                            <input type="text" value="${extracted_data.vital_signs.respiratory_rate || ''}" id="rrInput">
+                        </div>
+                        <div class="vital-sign-preview-item">
+                            <label>Oxygen Saturation</label>
+                            <input type="text" value="${extracted_data.vital_signs.oxygen_saturation || ''}" id="o2Input">
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+
+            <div class="document-preview-section">
+                <h4><i class="fas fa-flask"></i> Lab Results</h4>
+                <div id="labResultsList">
+                    ${(extracted_data.lab_results || []).map((lab, index) => `
+                        <div class="lab-result-preview-item">
+                            <h5>Lab Test ${index + 1}</h5>
+                            <div class="lab-result-detail-row">
+                                <div>
+                                    <label>Test Name</label>
+                                    <input type="text" value="${lab.test_name || ''}" class="lab-name-input">
+                                </div>
+                                <div>
+                                    <label>Value</label>
+                                    <input type="text" value="${lab.value || ''}" class="lab-value-input">
+                                </div>
+                                <div>
+                                    <label>Unit</label>
+                                    <input type="text" value="${lab.unit || ''}" class="lab-unit-input">
+                                </div>
+                            </div>
+                            <div class="lab-result-detail-row">
+                                <div>
+                                    <label>Reference Range</label>
+                                    <input type="text" value="${lab.reference_range || ''}" class="lab-range-input">
+                                </div>
+                            </div>
+                            <button type="button" onclick="emrPage.removeLabResult(this)" style="margin-top: 10px; background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" class="add-item-btn" onclick="emrPage.addLabResult()">
+                    <i class="fas fa-plus"></i> Add Lab Result
+                </button>
+            </div>
+
+            <div class="document-preview-section">
+                <h4><i class="fas fa-procedures"></i> Procedures</h4>
+                <ul class="editable-list" id="proceduresList">
+                    ${(extracted_data.procedures || []).map(procedure => `
+                        <li>
+                            <input type="text" value="${procedure}" class="procedure-input">
+                            <button type="button" onclick="emrPage.removeListItem(this)"><i class="fas fa-trash"></i></button>
+                        </li>
+                    `).join('')}
+                </ul>
+                <button type="button" class="add-item-btn" onclick="emrPage.addProcedure()">
+                    <i class="fas fa-plus"></i> Add Procedure
+                </button>
+            </div>
+
+            <div class="document-preview-section">
+                <h4><i class="fas fa-sticky-note"></i> Notes</h4>
+                <textarea class="editable-field" id="notesField" rows="4">${extracted_data.notes || ''}</textarea>
+            </div>
+        `;
+    }
+
+    addDiagnosis() {
+        const list = document.getElementById('diagnosisList');
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <input type="text" value="" class="diagnosis-input" placeholder="Enter diagnosis">
+            <button type="button" onclick="emrPage.removeListItem(this)"><i class="fas fa-trash"></i></button>
+        `;
+        list.appendChild(li);
+    }
+
+    addSymptom() {
+        const list = document.getElementById('symptomsList');
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <input type="text" value="" class="symptom-input" placeholder="Enter symptom">
+            <button type="button" onclick="emrPage.removeListItem(this)"><i class="fas fa-trash"></i></button>
+        `;
+        list.appendChild(li);
+    }
+
+    addMedication() {
+        const list = document.getElementById('medicationsList');
+        const index = list.children.length;
+        const div = document.createElement('div');
+        div.className = 'medication-preview-item';
+        div.innerHTML = `
+            <h5>Medication ${index + 1}</h5>
+            <div class="medication-detail-row">
+                <div>
+                    <label>Name</label>
+                    <input type="text" value="" class="med-name-input" placeholder="Medication name">
+                </div>
+                <div>
+                    <label>Dosage</label>
+                    <input type="text" value="" class="med-dosage-input" placeholder="Dosage">
+                </div>
+            </div>
+            <div class="medication-detail-row">
+                <div>
+                    <label>Frequency</label>
+                    <input type="text" value="" class="med-frequency-input" placeholder="Frequency">
+                </div>
+                <div>
+                    <label>Duration</label>
+                    <input type="text" value="" class="med-duration-input" placeholder="Duration">
+                </div>
+            </div>
+            <button type="button" onclick="emrPage.removeMedication(this)" style="margin-top: 10px; background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                <i class="fas fa-trash"></i> Remove
+            </button>
+        `;
+        list.appendChild(div);
+    }
+
+    addLabResult() {
+        const list = document.getElementById('labResultsList');
+        const index = list.children.length;
+        const div = document.createElement('div');
+        div.className = 'lab-result-preview-item';
+        div.innerHTML = `
+            <h5>Lab Test ${index + 1}</h5>
+            <div class="lab-result-detail-row">
+                <div>
+                    <label>Test Name</label>
+                    <input type="text" value="" class="lab-name-input" placeholder="Test name">
+                </div>
+                <div>
+                    <label>Value</label>
+                    <input type="text" value="" class="lab-value-input" placeholder="Test value">
+                </div>
+                <div>
+                    <label>Unit</label>
+                    <input type="text" value="" class="lab-unit-input" placeholder="Unit">
+                </div>
+            </div>
+            <div class="lab-result-detail-row">
+                <div>
+                    <label>Reference Range</label>
+                    <input type="text" value="" class="lab-range-input" placeholder="Normal range">
+                </div>
+            </div>
+            <button type="button" onclick="emrPage.removeLabResult(this)" style="margin-top: 10px; background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                <i class="fas fa-trash"></i> Remove
+            </button>
+        `;
+        list.appendChild(div);
+    }
+
+    addProcedure() {
+        const list = document.getElementById('proceduresList');
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <input type="text" value="" class="procedure-input" placeholder="Enter procedure">
+            <button type="button" onclick="emrPage.removeListItem(this)"><i class="fas fa-trash"></i></button>
+        `;
+        list.appendChild(li);
+    }
+
+    removeListItem(button) {
+        button.parentElement.remove();
+    }
+
+    removeMedication(button) {
+        button.parentElement.remove();
+    }
+
+    removeLabResult(button) {
+        button.parentElement.remove();
+    }
+
+    async saveDocumentAnalysis() {
+        if (!this.currentDocumentAnalysis) {
+            alert('No document analysis to save');
+            return;
+        }
+
+        try {
+            // Collect all the edited data
+            const extractedData = this.collectEditedData();
+            
+            const formData = new FormData();
+            formData.append('patient_id', this.currentPatientId);
+            formData.append('filename', this.currentDocumentAnalysis.filename);
+            formData.append('extracted_data', JSON.stringify(extractedData));
+            formData.append('confidence_score', this.currentDocumentAnalysis.confidence_score);
+
+            const response = await fetch('/emr/save-document-analysis', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to save document analysis');
+            }
+
+            const result = await response.json();
+            
+            // Close modal and refresh EMR data
+            document.getElementById('documentPreviewModal').classList.remove('show');
+            this.loadEMRData();
+            this.loadPatientStats();
+            
+            alert('Document analysis saved successfully!');
+
+        } catch (error) {
+            console.error('Error saving document analysis:', error);
+            alert(`Error saving document analysis: ${error.message}`);
+        }
+    }
+
+    collectEditedData() {
+        const data = {
+            overview: document.getElementById('overviewField')?.value || '',
+            diagnosis: Array.from(document.querySelectorAll('.diagnosis-input')).map(input => input.value).filter(val => val.trim()),
+            symptoms: Array.from(document.querySelectorAll('.symptom-input')).map(input => input.value).filter(val => val.trim()),
+            medications: Array.from(document.querySelectorAll('.medication-preview-item')).map(item => ({
+                name: item.querySelector('.med-name-input')?.value || '',
+                dosage: item.querySelector('.med-dosage-input')?.value || '',
+                frequency: item.querySelector('.med-frequency-input')?.value || '',
+                duration: item.querySelector('.med-duration-input')?.value || ''
+            })).filter(med => med.name.trim()),
+            vital_signs: {
+                blood_pressure: document.getElementById('bpInput')?.value || null,
+                heart_rate: document.getElementById('hrInput')?.value || null,
+                temperature: document.getElementById('tempInput')?.value || null,
+                respiratory_rate: document.getElementById('rrInput')?.value || null,
+                oxygen_saturation: document.getElementById('o2Input')?.value || null
+            },
+            lab_results: Array.from(document.querySelectorAll('.lab-result-preview-item')).map(item => ({
+                test_name: item.querySelector('.lab-name-input')?.value || '',
+                value: item.querySelector('.lab-value-input')?.value || '',
+                unit: item.querySelector('.lab-unit-input')?.value || '',
+                reference_range: item.querySelector('.lab-range-input')?.value || ''
+            })).filter(lab => lab.test_name.trim()),
+            procedures: Array.from(document.querySelectorAll('.procedure-input')).map(input => input.value).filter(val => val.trim()),
+            notes: document.getElementById('notesField')?.value || ''
+        };
+
+        // Clean up empty vital signs
+        if (Object.values(data.vital_signs).every(val => !val)) {
+            data.vital_signs = null;
+        }
+
+        return data;
+    }
 }
 
 // Initialize the EMR page when DOM is loaded
