@@ -6,7 +6,6 @@
 			"name",
 			"age",
 			"sex",
-			"ethnicity",
 			"created_at",
 			"updated_at"
 		],
@@ -31,7 +30,7 @@
 			},
 			"ethnicity": {
 				"bsonType": "string",
-				"description": "'ethnicity' must be a string and is required"
+				"description": "'ethnicity' must be a string and is optional"
 			},
 			"address": {
 				"bsonType": "string",

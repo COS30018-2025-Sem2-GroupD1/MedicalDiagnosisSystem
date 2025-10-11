@@ -88,11 +88,11 @@ async def extract_emr_from_message(
             patient = get_patient_by_id(patient_id)
             if patient:
                 patient_context = {
-                    "name": patient.get("name"),
-                    "age": patient.get("age"),
-                    "sex": patient.get("sex"),
-                    "medications": patient.get("medications", []),
-                    "past_assessment_summary": patient.get("past_assessment_summary")
+                    "name": patient.name,
+                    "age": patient.age,
+                    "sex": patient.sex,
+                    "medications": patient.medications or [],
+                    "past_assessment_summary": patient.past_assessment_summary
                 }
         except Exception as e:
             logger().warning(f"Could not fetch patient context: {e}")
@@ -278,11 +278,11 @@ async def bulk_extract_emr(
                     patient = get_patient_by_id(extraction['patient_id'])
                     if patient:
                         patient_context = {
-                            "name": patient.get("name"),
-                            "age": patient.get("age"),
-                            "sex": patient.get("sex"),
-                            "medications": patient.get("medications", []),
-                            "past_assessment_summary": patient.get("past_assessment_summary")
+                            "name": patient.name,
+                            "age": patient.age,
+                            "sex": patient.sex,
+                            "medications": patient.medications or [],
+                            "past_assessment_summary": patient.past_assessment_summary
                         }
                 except Exception as e:
                     logger().warning(f"Could not fetch patient context for extraction {i}: {e}")

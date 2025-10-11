@@ -12,7 +12,7 @@ class Patient(BaseMongoModel):
 	name: str
 	age: int
 	sex: str
-	ethnicity: str
+	ethnicity: str | None = None
 	created_at: datetime
 	updated_at: datetime
 	address: str | None = None
@@ -26,7 +26,7 @@ class PatientCreateRequest(BaseModel):
 	name: str
 	age: int
 	sex: str
-	ethnicity: str
+	ethnicity: str | None = None
 	address: str | None = None
 	phone: str | None = None
 	email: str | None = None
