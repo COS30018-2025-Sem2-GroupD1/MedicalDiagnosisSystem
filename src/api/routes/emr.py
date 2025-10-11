@@ -3,10 +3,13 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 
-from src.models.emr import EMRResponse, EMRSearchRequest, EMRUpdateRequest
+from src.models.emr import EMRResponse, EMRSearchRequest, EMRUpdateRequest, ExtractedData
 from src.services.service import EMRService
+from src.services.extractor import EMRExtractor
+from src.data.emr_update import EMRUpdateService
 from src.core.state import AppState, get_state
 from src.utils.logger import logger
 
@@ -323,4 +326,301 @@ async def bulk_extract_emr(
         raise
     except Exception as e:
         logger().error(f"Error in bulk EMR extraction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def get_emr_extractor(state: AppState = Depends(get_state)) -> EMRExtractor:
+    """Get EMR extractor instance."""
+    return EMRExtractor(state.gemini_rotator)
+
+
+def get_emr_update_service() -> EMRUpdateService:
+    """Get EMR update service instance."""
+    return EMRUpdateService()
+
+
+@router.post("/upload-document", response_model=dict)
+async def upload_and_analyze_document(
+    patient_id: str = Form(...),
+    file: UploadFile = File(...),
+    emr_extractor: EMRExtractor = Depends(get_emr_extractor),
+    emr_update_service: EMRUpdateService = Depends(get_emr_update_service)
+):
+    """Upload and analyze a medical document to extract EMR data."""
+    try:
+        # Validate patient ID
+        if not patient_id or not patient_id.strip():
+            raise HTTPException(status_code=400, detail="Patient ID is required")
+
+        # Validate file
+        if not file or not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+
+        # Check file size (limit to 10MB)
+        file_content = await file.read()
+        if len(file_content) > 10 * 1024 * 1024:  # 10MB
+            raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+
+        # Check file type
+        allowed_extensions = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.tiff'}
+        file_extension = '.' + file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+        if file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file type. Allowed types: {', '.join(allowed_extensions)}"
+            )
+
+        logger().info(f"Document upload requested for patient {patient_id}, file: {file.filename}")
+
+        # Get patient context if available
+        patient_context = None
+        try:
+            from src.data.repositories.patient import get_patient_by_id
+            patient = get_patient_by_id(patient_id)
+            if patient:
+                patient_context = {
+                    "name": patient.name,
+                    "age": patient.age,
+                    "sex": patient.sex,
+                    "medications": patient.medications or [],
+                    "past_assessment_summary": patient.past_assessment_summary
+                }
+        except Exception as e:
+            logger().warning(f"Could not fetch patient context: {e}")
+
+        # Analyze the document
+        extracted_data, confidence_score = await emr_extractor.analyze_document(
+            file_content=file_content,
+            filename=file.filename,
+            patient_context=patient_context
+        )
+
+        # Save to database
+        emr_id = await emr_update_service.save_document_analysis(
+            patient_id=patient_id,
+            filename=file.filename,
+            file_content=file_content,
+            extracted_data=extracted_data,
+            confidence_score=confidence_score
+        )
+
+        return {
+            "emr_id": emr_id,
+            "filename": file.filename,
+            "confidence_score": confidence_score,
+            "extracted_data": {
+                "overview": extracted_data.notes.split("Document Overview: ")[-1] if "Document Overview:" in extracted_data.notes else "",
+                "diagnosis": extracted_data.diagnosis or [],
+                "symptoms": extracted_data.symptoms or [],
+                "medications": [
+                    {
+                        "name": med.name,
+                        "dosage": med.dosage,
+                        "frequency": med.frequency,
+                        "duration": med.duration
+                    }
+                    for med in extracted_data.medications or []
+                ],
+                "vital_signs": {
+                    "blood_pressure": extracted_data.vital_signs.blood_pressure if extracted_data.vital_signs else None,
+                    "heart_rate": extracted_data.vital_signs.heart_rate if extracted_data.vital_signs else None,
+                    "temperature": extracted_data.vital_signs.temperature if extracted_data.vital_signs else None,
+                    "respiratory_rate": extracted_data.vital_signs.respiratory_rate if extracted_data.vital_signs else None,
+                    "oxygen_saturation": extracted_data.vital_signs.oxygen_saturation if extracted_data.vital_signs else None
+                } if extracted_data.vital_signs else None,
+                "lab_results": [
+                    {
+                        "test_name": lab.test_name,
+                        "value": lab.value,
+                        "unit": lab.unit,
+                        "reference_range": lab.reference_range
+                    }
+                    for lab in extracted_data.lab_results or []
+                ],
+                "procedures": extracted_data.procedures or [],
+                "notes": extracted_data.notes or ""
+            },
+            "message": "Document analyzed and EMR data extracted successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger().error(f"Error in document upload and analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/preview-document", response_model=dict)
+async def preview_document_analysis(
+    patient_id: str = Form(...),
+    file: UploadFile = File(...),
+    emr_extractor: EMRExtractor = Depends(get_emr_extractor)
+):
+    """Upload and analyze a medical document to preview extracted data before saving."""
+    try:
+        # Validate patient ID
+        if not patient_id or not patient_id.strip():
+            raise HTTPException(status_code=400, detail="Patient ID is required")
+
+        # Validate file
+        if not file or not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+
+        # Check file size (limit to 10MB)
+        file_content = await file.read()
+        if len(file_content) > 10 * 1024 * 1024:  # 10MB
+            raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+
+        # Check file type
+        allowed_extensions = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.tiff'}
+        file_extension = '.' + file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+        if file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file type. Allowed types: {', '.join(allowed_extensions)}"
+            )
+
+        logger().info(f"Document preview requested for patient {patient_id}, file: {file.filename}")
+
+        # Get patient context if available
+        patient_context = None
+        try:
+            from src.data.repositories.patient import get_patient_by_id
+            patient = get_patient_by_id(patient_id)
+            if patient:
+                patient_context = {
+                    "name": patient.name,
+                    "age": patient.age,
+                    "sex": patient.sex,
+                    "medications": patient.medications or [],
+                    "past_assessment_summary": patient.past_assessment_summary
+                }
+        except Exception as e:
+            logger().warning(f"Could not fetch patient context: {e}")
+
+        # Analyze the document
+        extracted_data, confidence_score = await emr_extractor.analyze_document(
+            file_content=file_content,
+            filename=file.filename,
+            patient_context=patient_context
+        )
+
+        return {
+            "filename": file.filename,
+            "confidence_score": confidence_score,
+            "extracted_data": {
+                "overview": extracted_data.notes.split("Document Overview: ")[-1] if "Document Overview:" in extracted_data.notes else "",
+                "diagnosis": extracted_data.diagnosis or [],
+                "symptoms": extracted_data.symptoms or [],
+                "medications": [
+                    {
+                        "name": med.name,
+                        "dosage": med.dosage,
+                        "frequency": med.frequency,
+                        "duration": med.duration
+                    }
+                    for med in extracted_data.medications or []
+                ],
+                "vital_signs": {
+                    "blood_pressure": extracted_data.vital_signs.blood_pressure if extracted_data.vital_signs else None,
+                    "heart_rate": extracted_data.vital_signs.heart_rate if extracted_data.vital_signs else None,
+                    "temperature": extracted_data.vital_signs.temperature if extracted_data.vital_signs else None,
+                    "respiratory_rate": extracted_data.vital_signs.respiratory_rate if extracted_data.vital_signs else None,
+                    "oxygen_saturation": extracted_data.vital_signs.oxygen_saturation if extracted_data.vital_signs else None
+                } if extracted_data.vital_signs else None,
+                "lab_results": [
+                    {
+                        "test_name": lab.test_name,
+                        "value": lab.value,
+                        "unit": lab.unit,
+                        "reference_range": lab.reference_range
+                    }
+                    for lab in extracted_data.lab_results or []
+                ],
+                "procedures": extracted_data.procedures or [],
+                "notes": extracted_data.notes or ""
+            },
+            "message": "Document analyzed successfully. Review the data before saving."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger().error(f"Error in document preview: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/save-document-analysis", response_model=dict)
+async def save_document_analysis(
+    patient_id: str = Form(...),
+    filename: str = Form(...),
+    extracted_data: str = Form(...),  # JSON string
+    confidence_score: float = Form(...),
+    emr_update_service: EMRUpdateService = Depends(get_emr_update_service)
+):
+    """Save document analysis results to EMR database."""
+    try:
+        import json
+        
+        # Validate inputs
+        if not patient_id or not patient_id.strip():
+            raise HTTPException(status_code=400, detail="Patient ID is required")
+        if not filename or not filename.strip():
+            raise HTTPException(status_code=400, detail="Filename is required")
+        if not extracted_data or not extracted_data.strip():
+            raise HTTPException(status_code=400, detail="Extracted data is required")
+
+        # Parse extracted data
+        try:
+            data_dict = json.loads(extracted_data)
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON in extracted data: {e}")
+
+        # Convert to ExtractedData object
+        extracted_data_obj = ExtractedData(
+            diagnosis=data_dict.get('diagnosis', []),
+            symptoms=data_dict.get('symptoms', []),
+            medications=[
+                {
+                    "name": med.get('name', ''),
+                    "dosage": med.get('dosage'),
+                    "frequency": med.get('frequency'),
+                    "duration": med.get('duration')
+                }
+                for med in data_dict.get('medications', [])
+            ],
+            vital_signs=data_dict.get('vital_signs'),
+            lab_results=[
+                {
+                    "test_name": lab.get('test_name', ''),
+                    "value": lab.get('value', ''),
+                    "unit": lab.get('unit'),
+                    "reference_range": lab.get('reference_range')
+                }
+                for lab in data_dict.get('lab_results', [])
+            ],
+            procedures=data_dict.get('procedures', []),
+            notes=data_dict.get('notes', '') + (f"\n\nDocument Overview: {data_dict.get('overview', '')}" if data_dict.get('overview') else '')
+        )
+
+        logger().info(f"Saving document analysis for patient {patient_id}, file: {filename}")
+
+        # Save to database (without file content for preview saves)
+        emr_id = await emr_update_service.save_document_analysis(
+            patient_id=patient_id,
+            filename=filename,
+            file_content=b"",  # Empty for preview saves
+            extracted_data=extracted_data_obj,
+            confidence_score=confidence_score
+        )
+
+        return {
+            "emr_id": emr_id,
+            "message": "Document analysis saved to EMR successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger().error(f"Error saving document analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))

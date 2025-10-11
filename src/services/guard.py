@@ -19,13 +19,14 @@ class SafetyGuard:
       - user input safety
       - model output safety (in context of the user question)
     """
+    NVIDIA_GUARD = os.getenv("NVIDIA_GUARD", "meta/llama-guard-4-12b")
 
     def __init__(self, nvidia_rotator: APIKeyRotator = None):
         self.nvidia_rotator = nvidia_rotator or APIKeyRotator("NVIDIA_API_", max_slots=5)
         if not self.nvidia_rotator.get_key():
             raise ValueError("No NVIDIA API keys found. Set NVIDIA_API_1, NVIDIA_API_2, etc. environment variables")
         self.base_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-        self.model = "meta/llama-guard-4-12b"
+        self.model = NVIDIA_GUARD
         self.timeout_s = settings.SAFETY_GUARD_TIMEOUT
         self.enabled = settings.SAFETY_GUARD_ENABLED
         self.fail_open = settings.SAFETY_GUARD_FAIL_OPEN

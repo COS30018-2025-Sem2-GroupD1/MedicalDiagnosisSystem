@@ -58,6 +58,9 @@ class EMRPage {
 
         // Modal handlers
         this.setupModalHandlers();
+        
+        // File upload handlers
+        this.setupFileUploadHandlers();
     }
 
     setupModalHandlers() {
@@ -100,6 +103,81 @@ class EMRPage {
             performSearchBtn.addEventListener('click', () => {
                 this.performAdvancedSearch();
                 searchModal.classList.remove('show');
+            });
+        }
+
+        // Document Preview Modal
+        const documentPreviewModal = document.getElementById('documentPreviewModal');
+        const documentPreviewModalClose = document.getElementById('documentPreviewModalClose');
+        const documentPreviewCancel = document.getElementById('documentPreviewCancel');
+        const saveDocumentAnalysis = document.getElementById('saveDocumentAnalysis');
+
+        if (documentPreviewModalClose) {
+            documentPreviewModalClose.addEventListener('click', () => {
+                documentPreviewModal.classList.remove('show');
+            });
+        }
+
+        if (documentPreviewCancel) {
+            documentPreviewCancel.addEventListener('click', () => {
+                documentPreviewModal.classList.remove('show');
+            });
+        }
+
+        if (saveDocumentAnalysis) {
+            saveDocumentAnalysis.addEventListener('click', () => {
+                this.saveDocumentAnalysis();
+            });
+        }
+    }
+
+    setupFileUploadHandlers() {
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadProgress = document.getElementById('uploadProgress');
+
+        // Click to upload
+        if (uploadBtn) {
+            uploadBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+
+        if (uploadArea) {
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+
+        // File input change
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.handleFileUpload(e.target.files);
+                }
+            });
+        }
+
+        // Drag and drop
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                if (e.dataTransfer.files.length > 0) {
+                    this.handleFileUpload(e.dataTransfer.files);
+                }
             });
         }
     }

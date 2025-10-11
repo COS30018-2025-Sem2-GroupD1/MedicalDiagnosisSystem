@@ -2,6 +2,8 @@
 
 import json
 import re
+import base64
+import mimetypes
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.models.emr import ExtractedData, LabResult, Medication, VitalSigns
@@ -192,7 +194,7 @@ Return the JSON followed by the confidence score on a new line."""
                 vital_signs=vital_signs,
                 lab_results=lab_results,
                 procedures=data.get('procedures', []),
-                notes=data.get('notes')
+                notes=data.get('notes', '') + (f"\n\nDocument Overview: {data.get('overview', '')}" if data.get('overview') else '')
             )
 
             return extracted_data, confidence
@@ -258,3 +260,141 @@ Return the JSON followed by the confidence score on a new line."""
             vital_signs['oxygen_saturation'] = o2_match.group(1)
 
         return vital_signs
+
+    async def analyze_document(self, file_content: bytes, filename: str, patient_context: Optional[Dict[str, Any]] = None) -> Tuple[ExtractedData, float]:
+        """
+        Analyze a medical document (PDF, image, or text) and extract structured medical data.
+
+        Args:
+            file_content: The binary content of the uploaded file
+            filename: The name of the uploaded file
+            patient_context: Optional patient context information
+
+        Returns:
+            Tuple of (ExtractedData, confidence_score)
+        """
+        try:
+            # Determine file type and prepare content for Gemini
+            mime_type, _ = mimetypes.guess_type(filename)
+            
+            if not mime_type:
+                logger().warning(f"Unknown file type for {filename}")
+                return ExtractedData(), 0.0
+
+            # Encode file content to base64
+            file_base64 = base64.b64encode(file_content).decode('utf-8')
+            
+            # Build the prompt for document analysis
+            prompt = self._build_document_analysis_prompt(file_base64, mime_type, filename, patient_context)
+
+            # Get response from Gemini
+            response = await self._call_gemini_api(prompt)
+
+            # Parse the response
+            extracted_data, confidence = self._parse_gemini_response(response)
+
+            logger().info(f"Successfully analyzed document {filename} with confidence {confidence:.2f}")
+            return extracted_data, confidence
+
+        except Exception as e:
+            logger().error(f"Error analyzing document {filename}: {e}")
+            # Return empty data with low confidence
+            return ExtractedData(), 0.0
+
+    def _build_document_analysis_prompt(self, file_base64: str, mime_type: str, filename: str, patient_context: Optional[Dict[str, Any]] = None) -> str:
+        """Build the prompt for Gemini AI to analyze medical documents."""
+        
+        context_info = ""
+        if patient_context:
+            context_info = f"""
+Patient Context:
+- Name: {patient_context.get('name', 'Unknown')}
+- Age: {patient_context.get('age', 'Unknown')}
+- Sex: {patient_context.get('sex', 'Unknown')}
+- Current Medications: {', '.join(patient_context.get('medications', []))}
+- Past Assessment Summary: {patient_context.get('past_assessment_summary', 'None')}
+"""
+
+        # Determine the content type for Gemini
+        if mime_type.startswith('image/'):
+            content_type = "image"
+        elif mime_type == 'application/pdf':
+            content_type = "pdf"
+        elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
+            content_type = "document"
+        else:
+            content_type = "text"
+
+        prompt = f"""You are a medical AI assistant specialized in analyzing medical documents and extracting structured clinical information.
+
+{context_info}
+
+Please analyze the following medical document and extract all relevant clinical information in the specified JSON format.
+
+Document Information:
+- Filename: {filename}
+- Content Type: {content_type}
+- MIME Type: {mime_type}
+
+Document Content (Base64 encoded):
+{file_base64}
+
+Extract the following information and return ONLY a valid JSON object with this exact structure:
+
+{{
+    "overview": "Brief summary of the document content and main findings",
+    "diagnosis": ["list of diagnoses mentioned or identified"],
+    "symptoms": ["list of symptoms described"],
+    "medications": [
+        {{
+            "name": "medication name",
+            "dosage": "dosage if mentioned",
+            "frequency": "frequency if mentioned",
+            "duration": "duration if mentioned"
+        }}
+    ],
+    "vital_signs": {{
+        "blood_pressure": "value if mentioned",
+        "heart_rate": "value if mentioned",
+        "temperature": "value if mentioned",
+        "respiratory_rate": "value if mentioned",
+        "oxygen_saturation": "value if mentioned"
+    }},
+    "lab_results": [
+        {{
+            "test_name": "test name",
+            "value": "test value",
+            "unit": "unit if mentioned",
+            "reference_range": "normal range if mentioned"
+        }}
+    ],
+    "procedures": ["list of procedures mentioned or performed"],
+    "notes": "additional clinical notes and observations"
+}}
+
+Guidelines for Document Analysis:
+1. Carefully read and analyze the entire document content
+2. Extract information that is explicitly mentioned or clearly documented
+3. Use medical terminology appropriately and maintain accuracy
+4. If a field has no relevant information, use an empty array [] or null
+5. For medications, include all prescribed, recommended, or mentioned medications
+6. Extract vital signs only if specific values are documented
+7. Include lab results only if specific test values are provided
+8. Be thorough but conservative - prioritize accuracy over completeness
+9. For images, focus on visible text, charts, and medical data
+10. For PDFs and documents, analyze all text content systematically
+11. Return ONLY the JSON object, no additional text or explanation
+
+Confidence Assessment:
+After the JSON, provide a confidence score (0.0-1.0) based on:
+- Document clarity and readability
+- Specificity of medical information
+- Presence of measurable values (vitals, lab results)
+- Overall clinical relevance and completeness
+- Document type and quality
+
+Format: CONFIDENCE: 0.85
+
+Return the JSON followed by the confidence score on a new line."""
+
+        return prompt
