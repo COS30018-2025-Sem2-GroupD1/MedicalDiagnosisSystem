@@ -456,9 +456,122 @@ body {
     border-color: var(--primary-color);
 }
 
-.message-text h3 {
-    margin-bottom: var(--spacing-md);
-    color: inherit;
+/* Tagged Title Styling */
+.tagged-title {
+    display: flex;
+    align-items: center;
+    margin: var(--spacing-lg) 0;
+    position: relative;
+    width: 100%;
+}
+
+.tagged-title-bar {
+    width: 4px;
+    height: 100%;
+    background-color: #20b2aa; /* Teal/green color */
+    border-radius: 2px;
+    margin-right: 0;
+    flex-shrink: 0;
+    min-height: 40px;
+}
+
+.tagged-title-content {
+    flex: 1;
+    background-color: #f5f5f5; /* Light gray background */
+    border-radius: 0 8px 8px 0;
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-left: 0;
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+}
+
+.tagged-title-content h1,
+.tagged-title-content h2,
+.tagged-title-content h3,
+.tagged-title-content h4,
+.tagged-title-content h5,
+.tagged-title-content h6 {
+    margin: 0;
+    color: #8b4513; /* Dark brown/maroon color */
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+/* Blue Bubble Styling */
+.blue-bubble {
+    display: inline-block;
+    background-color: #4a90e2; /* Medium blue */
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin: 0 2px;
+    white-space: nowrap;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.2;
+    vertical-align: baseline;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .tagged-title-content {
+    background-color: #2a2a2a; /* Darker gray for dark theme */
+}
+
+[data-theme="dark"] .tagged-title-content h1,
+[data-theme="dark"] .tagged-title-content h2,
+[data-theme="dark"] .tagged-title-content h3,
+[data-theme="dark"] .tagged-title-content h4,
+[data-theme="dark"] .tagged-title-content h5,
+[data-theme="dark"] .tagged-title-content h6 {
+    color: #d4a574; /* Lighter brown for dark theme */
+}
+
+[data-theme="dark"] .blue-bubble {
+    background-color: #5ba0f2; /* Slightly lighter blue for dark theme */
+}
+
+/* Ensure proper spacing and layout within message content */
+.message-text .tagged-title {
+    margin: var(--spacing-md) 0;
+}
+
+.message-text .tagged-title:first-child {
+    margin-top: 0;
+}
+
+.message-text .tagged-title:last-child {
+    margin-bottom: 0;
+}
+
+/* Ensure blue bubbles work well within paragraphs */
+.message-text p .blue-bubble {
+    margin: 0 4px;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .tagged-title-content {
+        padding: var(--spacing-sm) var(--spacing-md);
+        min-height: 36px;
+    }
+    
+    .tagged-title-content h1,
+    .tagged-title-content h2,
+    .tagged-title-content h3,
+    .tagged-title-content h4,
+    .tagged-title-content h5,
+    .tagged-title-content h6 {
+        font-size: 0.8rem;
+    }
+    
+    .blue-bubble {
+        font-size: 0.8rem;
+        padding: 3px 6px;
+    }
 }
 
 .message-text p {

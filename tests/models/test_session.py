@@ -10,7 +10,7 @@ from src.data.connection import ActionFailed, Collections, get_collection
 from src.data.repositories import session as session_repo
 from src.models.session import Message, Session
 from src.utils.logger import logger
-from tests.base_test import BaseMongoTest
+from ..base_test import BaseMongoTest
 
 
 class TestSessionRepository(BaseMongoTest):

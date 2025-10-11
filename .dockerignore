@@ -1,7 +1,14 @@
 .git
 .gitignore
+
 .env
 .venv
+
 __pycache__
 *.pyc
+
+*.md
+LICENSE
+
+tests
 key

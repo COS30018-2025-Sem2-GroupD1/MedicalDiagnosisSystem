@@ -27,6 +27,7 @@ except Exception as e:
 from src.api.routes import account as account_route
 from src.api.routes import audio as audio_route
 from src.api.routes import emr as emr_route
+from src.api.routes import migration as migration_route
 from src.api.routes import patient as patients_route
 from src.api.routes import session as session_route
 from src.api.routes import static as static_route
@@ -86,6 +87,18 @@ def startup_event(state: AppState):
 	medical_memory_repo.init()
 	medical_record_repo.init()
 	emr_repo.init()
+	
+	# Run database migration to fix any existing records with missing required fields
+	try:
+		from src.data.migration import run_database_migration
+		logger(tag="startup").info("Running database migration...")
+		migration_result = run_database_migration()
+		if migration_result['success']:
+			logger(tag="startup").info(f"Database migration completed: {migration_result['total_fixed']} records fixed")
+		else:
+			logger(tag="startup").warning(f"Database migration failed: {migration_result.get('error', 'Unknown error')}")
+	except Exception as e:
+		logger(tag="startup").warning(f"Database migration error: {e}")
 
 def shutdown_event():
 	"""Cleanup on shutdown"""
@@ -132,6 +145,7 @@ app.include_router(summarise_route.router)
 app.include_router(system_route.router)
 app.include_router(audio_route.router)
 app.include_router(emr_route.router)
+app.include_router(migration_route.router)
 
 @app.get("/api/info")
 async def get_api_info():

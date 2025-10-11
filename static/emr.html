@@ -51,6 +51,34 @@
             </div>
         </div>
 
+        <!-- File Upload Section -->
+        <div class="emr-upload-section">
+            <div class="upload-container">
+                <div class="upload-header">
+                    <h3><i class="fas fa-upload"></i> Upload Medical Document</h3>
+                    <p>Upload PDF, image, or document files to extract medical information</p>
+                </div>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h4>Drop files here or click to browse</h4>
+                        <p>Supported formats: PDF, DOC, DOCX, JPG, PNG, TIFF</p>
+                        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tiff" multiple style="display: none;">
+                        <button class="btn btn-primary" id="uploadBtn">
+                            <i class="fas fa-folder-open"></i>
+                            Choose Files
+                        </button>
+                    </div>
+                </div>
+                <div class="upload-progress" id="uploadProgress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">Uploading...</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Search and Filters -->
         <div class="emr-controls">
             <div class="search-container">
@@ -76,26 +104,106 @@
             </div>
         </div>
 
-        <!-- EMR Entries Table -->
+        <!-- EMR Content Tabs -->
         <div class="emr-content">
-            <div class="emr-table-container">
-                <table class="emr-table" id="emrTable">
-                    <thead>
-                        <tr>
-                            <th>Date & Time</th>
-                            <th>Type</th>
-                            <th>Diagnosis</th>
-                            <th>Medications</th>
-                            <th>Vital Signs</th>
-                            <th>Confidence</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="emrTableBody">
-                        <!-- EMR entries will be populated here -->
-                    </tbody>
-                </table>
+            <div class="emr-tabs">
+                <button class="tab-btn active" data-tab="overview">Overview</button>
+                <button class="tab-btn" data-tab="diagnosis">Diagnoses</button>
+                <button class="tab-btn" data-tab="medications">Medications</button>
+                <button class="tab-btn" data-tab="vitals">Vital Signs</button>
+                <button class="tab-btn" data-tab="lab">Lab Results</button>
+                <button class="tab-btn" data-tab="procedures">Procedures</button>
             </div>
+
+            <!-- Overview Tab -->
+            <div class="tab-content active" id="overview-tab">
+                <div class="emr-table-container">
+                    <table class="emr-table" id="emrTable">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Type</th>
+                                <th>Diagnosis</th>
+                                <th>Medications</th>
+                                <th>Vital Signs</th>
+                                <th>Confidence</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="emrTableBody">
+                            <!-- EMR entries will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Diagnosis Tab -->
+            <div class="tab-content" id="diagnosis-tab">
+                <div class="emr-section">
+                    <h3>Diagnosis History</h3>
+                    <div class="diagnosis-timeline" id="diagnosisTimeline">
+                        <!-- Diagnosis entries will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medications Tab -->
+            <div class="tab-content" id="medications-tab">
+                <div class="emr-section">
+                    <h3>Medication History</h3>
+                    <div class="medications-grid" id="medicationsGrid">
+                        <!-- Medication entries will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vital Signs Tab -->
+            <div class="tab-content" id="vitals-tab">
+                <div class="emr-section">
+                    <h3>Vital Signs Trends</h3>
+                    <div class="vitals-chart-container">
+                        <canvas id="vitalsChart" width="800" height="400"></canvas>
+                    </div>
+                    <div class="vitals-table-container">
+                        <table class="vitals-table" id="vitalsTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Blood Pressure</th>
+                                    <th>Heart Rate</th>
+                                    <th>Temperature</th>
+                                    <th>Respiratory Rate</th>
+                                    <th>Oxygen Saturation</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vitalsTableBody">
+                                <!-- Vital signs entries will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lab Results Tab -->
+            <div class="tab-content" id="lab-tab">
+                <div class="emr-section">
+                    <h3>Laboratory Results</h3>
+                    <div class="lab-results-container" id="labResultsContainer">
+                        <!-- Lab results will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Procedures Tab -->
+            <div class="tab-content" id="procedures-tab">
+                <div class="emr-section">
+                    <h3>Medical Procedures</h3>
+                    <div class="procedures-timeline" id="proceduresTimeline">
+                        <!-- Procedure entries will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
 
             <!-- Loading State -->
             <div class="loading-state" id="loadingState" style="display: none;">
@@ -156,6 +264,23 @@
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="searchModalCancel">Cancel</button>
                     <button class="btn btn-primary" id="performSearchBtn">Search</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Analysis Preview Modal -->
+        <div class="modal" id="documentPreviewModal">
+            <div class="modal-content document-preview-modal">
+                <div class="modal-header">
+                    <h3><i class="fas fa-file-medical"></i> Document Analysis Preview</h3>
+                    <button class="modal-close" id="documentPreviewModalClose">&times;</button>
+                </div>
+                <div class="modal-body" id="documentPreviewContent">
+                    <!-- Document analysis results will be populated here -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="documentPreviewCancel">Cancel</button>
+                    <button class="btn btn-primary" id="saveDocumentAnalysis">Save to EMR</button>
                 </div>
             </div>
         </div>

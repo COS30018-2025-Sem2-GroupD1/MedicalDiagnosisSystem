@@ -8,6 +8,7 @@ from src.core.state import AppState, get_state
 from src.models.session import (ChatRequest, ChatResponse, Message, Session,
                                 SessionCreateRequest)
 from src.services.medical_response import generate_medical_response
+from src.services.guard import SafetyGuard
 from src.utils.logger import logger
 
 router = APIRouter(prefix="/session", tags=["Session & Chat"])
@@ -85,6 +86,22 @@ async def post_chat_message(
 	"""
 	logger().info(f"POST /session/{session_id}/messages")
 
+	# 0. Safety Guard: Validate user query
+	try:
+		safety_guard = SafetyGuard(state.nvidia_rotator)
+		is_safe, safety_reason = safety_guard.check_user_query(req.message)
+		if not is_safe:
+			logger().warning(f"Safety guard blocked user query: {safety_reason}")
+			raise HTTPException(
+				status_code=status.HTTP_400_BAD_REQUEST, 
+				detail=f"Query blocked for safety reasons: {safety_reason}"
+			)
+		logger().info(f"User query passed safety validation: {safety_reason}")
+	except Exception as e:
+		logger().error(f"Safety guard error: {e}")
+		# Fail open for now - allow query through if guard fails
+		logger().warning("Safety guard failed, allowing query through")
+
 	# 1. Get Enhanced Context
 	try:
 		medical_context = await state.memory_manager.get_enhanced_context(
@@ -105,11 +122,26 @@ async def post_chat_message(
 			user_role="Medical Professional",
 			user_specialty="",
 			rotator=state.gemini_rotator,
-			medical_context=medical_context
+			medical_context=medical_context,
+			nvidia_rotator=state.nvidia_rotator
 		)
 	except Exception as e:
 		logger().error(f"Error generating medical response: {e}")
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate AI response.")
+
+	# 2.5. Safety Guard: Validate AI response
+	try:
+		is_safe, safety_reason = safety_guard.check_model_answer(req.message, response_text)
+		if not is_safe:
+			logger().warning(f"Safety guard blocked AI response: {safety_reason}")
+			# Replace with safe fallback response
+			response_text = "I apologize, but I cannot provide a response to that query as it may contain unsafe content. Please consult with a qualified healthcare professional for medical advice."
+		else:
+			logger().info(f"AI response passed safety validation: {safety_reason}")
+	except Exception as e:
+		logger().error(f"Safety guard error for response: {e}")
+		# Fail open for now - allow response through if guard fails
+		logger().warning("Safety guard failed for response, allowing through")
 
 	# 3. Process and Store the Exchange
 	summary = await state.memory_manager.process_medical_exchange(

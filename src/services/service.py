@@ -131,7 +131,7 @@ class EMRService:
 
             # Generate embeddings
             combined_text = " | ".join(text_parts)
-            embeddings = await self.embedding_client.generate_embeddings(combined_text)
+            embeddings = self.embedding_client.embed(combined_text)[0]
 
             return embeddings
 
@@ -181,7 +181,7 @@ class EMRService:
         """Search EMR entries using semantic similarity."""
         try:
             # Generate embeddings for the search query
-            query_embeddings = await self.embedding_client.generate_embeddings(query)
+            query_embeddings = self.embedding_client.embed(query)[0]
 
             # Search using semantic similarity
             entries = search_emr_by_semantic_similarity(

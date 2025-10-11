@@ -6,8 +6,7 @@
 			"name",
 			"role",
 			"created_at",
-			"updated_at",
-			"last_seen"
+			"updated_at"
 		],
 		"properties": {
 			"name": {

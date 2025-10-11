@@ -7,7 +7,7 @@ from pymongo.errors import ConnectionFailure
 from src.data import utils as db_utils
 from src.data.connection import ActionFailed, Collections, get_collection
 from src.utils.logger import logger
-from tests.base_test import BaseMongoTest
+from ..base_test import BaseMongoTest
 
 
 class TestDatabaseUtils(BaseMongoTest):
