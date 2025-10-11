@@ -55,7 +55,7 @@ def create_patient(
 	name: str,
 	age: int,
 	sex: str,
-	ethnicity: str | None = None,
+	ethnicity: str,
 	address: str | None = None,
 	phone: str | None = None,
 	email: str | None = None,
@@ -71,11 +71,11 @@ def create_patient(
 		"name": name,
 		"age": age,
 		"sex": sex,
+		"ethnicity": ethnicity,
 		"created_at": now,
 		"updated_at": now
 	}
 	# Add optional fields to the dictionary
-	if ethnicity: patient_data["ethnicity"] = ethnicity
 	if address: patient_data["address"] = address
 	if phone: patient_data["phone"] = phone
 	if email: patient_data["email"] = email

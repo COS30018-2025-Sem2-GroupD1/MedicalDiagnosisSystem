@@ -401,13 +401,27 @@ class MedicalChatbotApp {
 
     getWelcomeMessage() {
         return `👋 Welcome to Medical AI Assistant
+
+# Who am I, and what can I do?
+
 I'm here to help you with medical questions, diagnosis assistance, and healthcare information. I can:
+
 🔍 Answer medical questions and provide information
 📋 Help with symptom analysis and differential diagnosis
 💊 Provide medication and treatment information
 📚 Explain medical procedures and conditions
 ⚠️ Offer general health advice (not medical diagnosis)
+
+# Key Features
+
+**Medical Information:** I can provide evidence-based medical information and explanations.
+
+**Symptom Analysis:** I can help analyze symptoms and suggest possible conditions.
+
+**Treatment Guidance:** I can explain treatments, medications, and procedures.
+
 **Important:** This is for informational purposes only. Always consult with qualified healthcare professionals for medical advice.
+
 How can I assist you today?`;
     }
 
@@ -1864,13 +1878,18 @@ How can I assist you today?`;
 
     formatMessageContent(content) {
         return content
-            // Handle headers (1-6 # symbols)
+            // Handle headers (1-6 # symbols) - create tagged titles
             .replace(/^#{1,6}\s+(.+)$/gm, (match, text, offset, string) => {
                 const level = match.match(/^#+/)[0].length;
-                return `<h${level}>${text}</h${level}>`;
+                return `<div class="tagged-title">
+                    <div class="tagged-title-bar"></div>
+                    <div class="tagged-title-content">
+                        <h${level}>${text}</h${level}>
+                    </div>
+                </div>`;
             })
-            // Handle bold text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Handle bold text - create blue bubbles
+            .replace(/\*\*(.*?)\*\*/g, '<span class="blue-bubble">$1</span>')
             // Handle italic text
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             // Handle line breaks
