@@ -44,13 +44,9 @@ class ChatRequest(BaseModel):
 	account_id: str # For context, though session_id implies this
 	patient_id: str # For context, though session_id implies this
 	message: str
-	session_id: str | None = None # Optional session ID for continuing existing sessions
 
 # --- API Response Models ---
 
 class ChatResponse(BaseModel):
 	"""Response model for a chat interaction."""
 	response: str
-	session_id: str
-	timestamp: datetime
-	medical_context: str | None = None

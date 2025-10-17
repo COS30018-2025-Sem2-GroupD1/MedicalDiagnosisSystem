@@ -2,15 +2,20 @@
 
 import json
 
+from src.models.account import Account
 from src.models.medical import MedicalMemory
 
 
-def medical_response_prompt(user_role: str, user_specialty: str, medical_context: str, user_message: str) -> str:
+def medical_response_prompt(
+	account: Account,
+	user_message: str,
+	medical_context: str | None = None
+) -> str:
 	"""Generates the prompt for creating a medical response."""
 	return f"""You are a knowledgeable medical AI assistant. Provide a comprehensive, accurate, and helpful response to this medical question.
-**User Role:** {user_role}
-**User Specialty:** {user_specialty if user_specialty else 'General'}
-**Medical Context:** {medical_context if medical_context else 'No previous context'}
+**User Role:** {account.role}
+**User Specialty:** {account.specialty or "No specialty"}
+**Medical Context:** {medical_context or 'No previous context'}
 **Question:** {user_message}
 **Instructions:**
 1. Provide a detailed, medically accurate response.
