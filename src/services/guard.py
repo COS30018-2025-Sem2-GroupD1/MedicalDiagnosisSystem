@@ -2,7 +2,6 @@
 
 import os
 import re
-from typing import Dict, List, Tuple
 
 import requests
 
@@ -33,7 +32,7 @@ class SafetyGuard:
         self.fail_open = settings.SAFETY_GUARD_FAIL_OPEN
 
     @staticmethod
-    def _chunk_text(text: str, chunk_size: int = 2800, overlap: int = 200) -> List[str]:
+    def _chunk_text(text: str, chunk_size: int = 2800, overlap: int = 200) -> list[str]:
         """Chunk long text to keep request payloads small enough for the guard.
         Uses character-based approximation with small overlap.
         """
@@ -42,7 +41,7 @@ class SafetyGuard:
         n = len(text)
         if n <= chunk_size:
             return [text]
-        chunks: List[str] = []
+        chunks: list[str] = []
         start = 0
         while start < n:
             end = min(start + chunk_size, n)
@@ -52,7 +51,7 @@ class SafetyGuard:
             start = max(0, end - overlap)
         return chunks
 
-    def _call_guard(self, messages: List[Dict], max_tokens: int = 512) -> str:
+    def _call_guard(self, messages: list[dict], max_tokens: int = 512) -> str:
         # Enhance messages with medical context if detected
         enhanced_messages = self._enhance_messages_with_context(messages)
 
@@ -129,7 +128,7 @@ class SafetyGuard:
         return ""
 
     @staticmethod
-    def _parse_guard_reply(text: str) -> Tuple[bool, str]:
+    def _parse_guard_reply(text: str) -> tuple[bool, str]:
         """Parse guard reply; expect 'SAFE' or 'UNSAFE: <reason>' (case-insensitive)."""
         if not text:
             # Fail-open: treat as SAFE if guard unavailable to avoid false blocks
@@ -231,7 +230,7 @@ class SafetyGuard:
 
         return False
 
-    def check_user_query(self, user_query: str) -> Tuple[bool, str]:
+    def check_user_query(self, user_query: str) -> tuple[bool, str]:
         """Validate the user query is safe to process with medical context awareness."""
         if not self.enabled:
             logger().info("[SafetyGuard] Safety guard disabled, allowing query through")
@@ -253,7 +252,7 @@ class SafetyGuard:
                 return False, reason
         return True, ""
 
-    def _detect_harmful_content(self, text: str) -> Tuple[bool, str]:
+    def _detect_harmful_content(self, text: str) -> tuple[bool, str]:
         """Detect harmful content using sophisticated pattern matching."""
         if not text:
             return True, ""
@@ -339,7 +338,7 @@ class SafetyGuard:
 
         return True, ""
 
-    def _enhance_messages_with_context(self, messages: List[Dict]) -> List[Dict]:
+    def _enhance_messages_with_context(self, messages: list[dict]) -> list[dict]:
         """Enhance messages with medical context awareness for better guard performance."""
         if not messages:
             return messages
@@ -376,7 +375,7 @@ Please evaluate this message for safety, keeping in mind that:
 
         return messages
 
-    def _assess_risk_level(self, text: str) -> Tuple[str, float]:
+    def _assess_risk_level(self, text: str) -> tuple[str, float]:
         """Assess the risk level of content using multiple indicators."""
         if not text:
             return "low", 0.0
@@ -453,7 +452,7 @@ Please evaluate this message for safety, keeping in mind that:
         else:
             return "low", risk_score
 
-    def check_model_answer(self, user_query: str, model_answer: str) -> Tuple[bool, str]:
+    def check_model_answer(self, user_query: str, model_answer: str) -> tuple[bool, str]:
         """Validate the model's answer is safe with medical context awareness."""
         if not self.enabled:
             logger().info("[SafetyGuard] Safety guard disabled, allowing response through")
