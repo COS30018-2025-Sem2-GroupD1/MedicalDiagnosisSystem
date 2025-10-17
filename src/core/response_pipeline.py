@@ -11,6 +11,134 @@ from src.services.guard import SafetyGuard
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
+# --- Private Helper Functions ---
+
+def _validate_user_query(message: str, safety_guard: SafetyGuard | None):
+	"""
+	Checks the user's query against the safety guard.
+	Raises an HTTPException if the query is unsafe.
+	"""
+	if not safety_guard: return
+	try:
+		is_safe, reason = safety_guard.check_user_query(message)
+		if not is_safe:
+			logger().warning(f"Safety guard blocked user query: {reason}")
+			raise HTTPException(
+				status_code=status.HTTP_400_BAD_REQUEST,
+				detail=f"Query blocked for safety reasons: {reason}"
+			)
+		logger().info(f"User query passed safety validation: {reason}")
+	except Exception as e:
+		logger().error(f"Safety guard failed on user query: {e}")
+		# Re-raise to be caught by the main orchestrator
+		raise HTTPException(
+			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			detail="Failed to validate user query safety."
+		) from e
+
+def _validate_model_response(query: str, response: str, safety_guard: SafetyGuard | None) -> str:
+	"""
+	Checks the generated model response against the safety guard.
+	Returns a safe fallback message if the response is deemed unsafe.
+	"""
+	if not safety_guard: return response
+	safe_fallback = "I apologize, but I cannot provide a response to that query as it may contain unsafe content. Please consult with a qualified healthcare professional for medical advice."
+	try:
+		is_safe, reason = safety_guard.check_model_answer(query, response)
+		if not is_safe:
+			logger().warning(f"Safety guard blocked AI response: {reason}")
+			return safe_fallback
+		logger().info(f"AI response passed safety validation: {reason}")
+		return response
+	except Exception as e:
+		logger().error(f"Safety guard failed on model response: {e}")
+		logger().warning("Safety guard failed, allowing response through (fail-open)")
+		# Fail open: return the original response if the guard itself fails
+		return response
+
+async def _retrieve_context(
+	state: AppState, session_id: str, patient_id: str, message: str
+) -> str:
+	"""
+	Retrieves enhanced medical context. This is the entry point for RAG.
+
+	Future RAG Implementation:
+	1. Augment this function to query a vector database or knowledge base.
+	2. Combine the results with the existing memory manager context.
+	3. Return the consolidated context string.
+	"""
+	try:
+		return await state.memory_manager.get_enhanced_context(
+			session_id=session_id,
+			patient_id=patient_id,
+			question=message,
+			nvidia_rotator=state.nvidia_rotator
+		)
+	except Exception as e:
+		logger().error(f"Error getting medical context: {e}")
+		raise HTTPException(
+			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			detail="Failed to build medical context."
+		) from e
+
+def _add_disclaimer(response_text: str) -> str:
+	"""Adds a standard medical disclaimer if one is not already present."""
+	if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
+		disclaimer = "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
+		return response_text + disclaimer
+	return response_text
+
+async def _persist_exchange(
+	state: AppState,
+	session_id: str,
+	patient_id: str,
+	account_id: str,
+	question: str,
+	answer: str
+):
+	"""Processes and stores the full conversation exchange."""
+	summary = await state.memory_manager.process_medical_exchange(
+		session_id=session_id,
+		patient_id=patient_id,
+		doctor_id=account_id,
+		question=question,
+		answer=answer,
+		gemini_rotator=state.gemini_rotator,
+		nvidia_rotator=state.nvidia_rotator
+	)
+	if not summary:
+		logger().warning(f"Failed to process and store medical exchange for session {session_id}")
+
+
+# --- Core Response Generation Logic ---
+
+async def generate_llm_response(
+	account: Account,
+	message: str,
+	rotator: APIKeyRotator,
+	medical_context: str = ""
+) -> str | None:
+	"""
+	Generates an intelligent medical response using the LLM, adding a disclaimer.
+	This function is now purely for generation, with safety checks handled elsewhere.
+	"""
+	prompt = prompt_builder.medical_response_prompt(
+		account=account,
+		user_message=message,
+		medical_context=medical_context
+	)
+
+	response_text = await gemini_chat(prompt, rotator)
+
+	if not response_text:
+		return None
+
+	response_with_disclaimer = _add_disclaimer(response_text)
+	logger().info(f"Gemini response generated, length: {len(response_with_disclaimer)} chars")
+	return response_with_disclaimer
+
+
+# --- Main Pipeline Orchestrator ---
 
 async def generate_chat_response(
 	state: AppState,
@@ -20,128 +148,63 @@ async def generate_chat_response(
 	account_id: str
 ) -> str:
 	"""
-	Handles the pipeline for generating a chat response, including safety checks,
-	context retrieval, response generation, and memory persistence.
+	Orchestrates the pipeline for generating a chat response.
 	"""
 	logger().info(f"Starting response pipeline for session {session_id}")
+	safety_guard: SafetyGuard | None = None
 
-	# 0. Safety Guard: Validate user query
 	try:
 		safety_guard = SafetyGuard(state.nvidia_rotator)
-		is_safe, safety_reason = safety_guard.check_user_query(message)
-		if not is_safe:
-			logger().warning(f"Safety guard blocked user query: {safety_reason}")
-			raise HTTPException(
-				status_code=status.HTTP_400_BAD_REQUEST,
-				detail=f"Query blocked for safety reasons: {safety_reason}"
-			)
-		logger().info(f"User query passed safety validation: {safety_reason}")
 	except Exception as e:
-		logger().error(f"Safety guard error: {e}")
-		raise e
+		logger().warning("Safety guard failed to be created, ignoring")
 
-	# 1. Get Enhanced Context
-	# TODO Implement RAG
-	try:
-		medical_context = await state.memory_manager.get_enhanced_context(
-			session_id=session_id,
-			patient_id=patient_id,
-			question=message,
-			nvidia_rotator=state.nvidia_rotator
-		)
-	except Exception as e:
-		logger().error(f"Error getting medical context: {e}")
-		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to build medical context.")
+	# 1. Validate User Query
+	_validate_user_query(message, safety_guard)
 
+	# 2. Retrieve Context (RAG Entry Point)
+	medical_context = await _retrieve_context(state, session_id, patient_id, message)
+
+	# 3. Fetch Account Details
 	account = state.memory_manager.get_account(account_id)
 	if not account:
-		raise Exception("Account not found")
+		logger().error(f"Account not found for account_id: {account_id}")
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
 
-	# 2. Generate AI Response
+	# 4. Generate AI Response
 	try:
-		response_text = await generate_medical_response(
+		response_text = await generate_llm_response(
 			message=message,
 			account=account,
 			rotator=state.gemini_rotator,
-			medical_context=medical_context,
-			nvidia_rotator=state.nvidia_rotator
+			medical_context=medical_context
 		)
+		# If LLM fails, use a fallback
+		if not response_text:
+			logger().warning("LLM response failed, using fallback.")
+			response_text = _generate_fallback_response(message=message, account=account)
+
 	except Exception as e:
 		logger().error(f"Error generating medical response: {e}")
-		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate AI response.")
+		raise HTTPException(
+			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			detail="Failed to generate AI response."
+		) from e
 
-	# TODO Safety guard is applied twice
-	# 2.5. Safety Guard: Validate AI response
-	try:
-		is_safe, safety_reason = safety_guard.check_model_answer(message, response_text) # type: ignore
-		if not is_safe:
-			logger().warning(f"Safety guard blocked AI response: {safety_reason}")
-			response_text = "I apologize, but I cannot provide a response to that query as it may contain unsafe content. Please consult with a qualified healthcare professional for medical advice."
-		else:
-			logger().info(f"AI response passed safety validation: {safety_reason}")
-	except Exception as e:
-		logger().error(f"Safety guard error for response: {e}")
-		logger().warning("Safety guard failed for response, allowing through")
+	# 5. Validate Model's Response
+	final_response = _validate_model_response(message, response_text, safety_guard)
 
-	# 3. Process and Store the Exchange
-	summary = await state.memory_manager.process_medical_exchange(
+	# 6. Persist the Exchange (Asynchronously)
+	# This can be done in the background if it's not critical for the user response
+	await _persist_exchange(
+		state=state,
 		session_id=session_id,
 		patient_id=patient_id,
-		doctor_id=account_id,
+		account_id=account_id,
 		question=message,
-		answer=response_text,
-		gemini_rotator=state.gemini_rotator,
-		nvidia_rotator=state.nvidia_rotator
-	)
-	if not summary:
-		logger().warning(f"Failed to process and store medical exchange for session {session_id}")
-
-	return response_text
-
-async def generate_medical_response(
-	account: Account,
-	message: str,
-	rotator: APIKeyRotator,
-	medical_context: str = "",
-	nvidia_rotator: APIKeyRotator | None = None
-) -> str:
-	"""Generates an intelligent, contextual medical response using Gemini AI."""
-	prompt = prompt_builder.medical_response_prompt(
-		account=account,
-		user_message=message,
-		medical_context=medical_context
+		answer=final_response
 	)
 
-	# Generate response using Gemini
-	response_text = await gemini_chat(prompt, rotator)
-
-	if response_text:
-		# Add medical disclaimer if not already present
-		if "disclaimer" not in response_text.lower() and "consult" not in response_text.lower():
-			response_text += "\n\n⚠️ **Important Disclaimer:** This information is for educational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals."
-
-		# TODO Safety guard is applied to the response twice
-		# Safety Guard: Validate the generated response
-		if nvidia_rotator:
-			try:
-				safety_guard = SafetyGuard(nvidia_rotator)
-				is_safe, safety_reason = safety_guard.check_model_answer(message, response_text)
-				if not is_safe:
-					logger().warning(f"Safety guard blocked generated response: {safety_reason}")
-					# Return safe fallback response
-					return "I apologize, but I cannot provide a response to that query as it may contain unsafe content. Please consult with a qualified healthcare professional for medical advice."
-				else:
-					logger().info(f"Generated response passed safety validation: {safety_reason}")
-			except Exception as e:
-				logger().error(f"Safety guard error in medical response: {e}")
-				# Fail open for now - allow response through if guard fails
-				logger().warning("Safety guard failed, allowing generated response through")
-
-		logger().info(f"Gemini response generated, length: {len(response_text)} chars")
-		return response_text
-
-	logger().warning("Gemini response failed, using fallback.")
-	return _generate_fallback_response(message=message, account=account)
+	return final_response
 
 def _generate_fallback_response(
 	message: str,
