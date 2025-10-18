@@ -32,7 +32,7 @@ async def summarise_qa_with_gemini(
 	question: str,
 	answer: str,
 	rotator: APIKeyRotator
-) -> str:
+) -> str | None:
 	"""Summarizes a Q&A pair into a 'q: ... a: ...' format using the Gemini API."""
 	prompt = prompt_builder.qa_summary_gemini_prompt(question, answer)
 	response = await gemini_chat(prompt, rotator)
@@ -45,14 +45,15 @@ async def summarise_qa_with_gemini(
 		if q_line and a_line:
 			return f"{q_line}\n{a_line}"
 
-	logger().warning("Gemini summarization failed, using fallback.")
-	return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
+	#logger().warning("Gemini summarization failed, using fallback.")
+	#return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"
+	return None
 
 async def summarise_qa_with_nvidia(
 	question: str,
 	answer: str,
 	rotator: APIKeyRotator
-) -> str:
+) -> str | None:
 	"""Summarizes a Q&A pair into a 'q: ... a: ...' format using the NVIDIA API."""
 	sys_prompt = "You are a terse summariser. Output exactly two lines:\nq: <short question summary>\na: <short answer summary>\nNo extra text."
 	user_prompt = f"Question:\n{question}\n\nAnswer:\n{answer}"
@@ -65,6 +66,11 @@ async def summarise_qa_with_nvidia(
 	if q_line and a_line:
 		return f"{q_line}\n{a_line}"
 
-	q_fallback = "q: " + (question.strip()[:160] + "…")
-	a_fallback = "a: " + (answer.strip()[:220] + "…")
-	return f"{q_fallback}\n{a_fallback}"
+	#q_fallback = "q: " + (question.strip()[:160] + "…")
+	#a_fallback = "a: " + (answer.strip()[:220] + "…")
+	#return f"{q_fallback}\n{a_fallback}"
+
+	return None
+
+def summarise_fallback(question: str, answer: str):
+	return f"q: {question.strip()[:160]}\na: {answer.strip()[:220]}"

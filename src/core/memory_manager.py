@@ -177,9 +177,12 @@ class MemoryManager:
 			session_repo.add_message(session_id, answer, sent_by_user=False)
 
 			# 2. Generate a concise summary of the exchange
-			summary = await self._generate_summary(question, answer, gemini_rotator, nvidia_rotator)
-			if not summary:
-				return None # Could not generate a summary
+			summary = await self._generate_summary(
+				question=question,
+				answer=answer,
+				gemini_rotator=gemini_rotator,
+				nvidia_rotator=nvidia_rotator
+			)
 
 			# 3. Generate an embedding for the summary for semantic search
 			embedding = None
@@ -199,7 +202,11 @@ class MemoryManager:
 			)
 
 			# 5. Update the session title if this was the first exchange
-			await self._update_session_title_if_first_message(session_id, question, nvidia_rotator)
+			await self._update_session_title_if_first_message(
+				session_id=session_id,
+				question=question,
+				nvidia_rotator=nvidia_rotator
+			)
 
 			return summary
 		except ActionFailed as e:
@@ -228,7 +235,9 @@ class MemoryManager:
 			if recent_memories:
 				# Use NVIDIA to reason about relevance
 				relevant_stm = await self._filter_summaries_for_relevance(
-					question, [mem.summary for mem in recent_memories], nvidia_rotator
+					question=question,
+					summaries=[mem.summary for mem in recent_memories],
+					nvidia_rotator=nvidia_rotator
 				)
 				if relevant_stm:
 					context_parts.append("Recent relevant medical context (STM):\n" + "\n".join(relevant_stm))
@@ -239,14 +248,21 @@ class MemoryManager:
 		if self.embedder:
 			try:
 				query_embedding = self.embedder.embed([question])[0]
-				ltm_results = memory_repo.search_memories_semantic(patient_id, query_embedding, limit=2)
+				ltm_results = memory_repo.search_memories_semantic(
+					patient_id=patient_id,
+					query_embedding=query_embedding,
+					limit=2
+				)
 				if ltm_results:
 					ltm_summaries = [result.summary for result in ltm_results]
 					context_parts.append("Semantically relevant medical history (LTM):\n" + "\n".join(ltm_summaries))
 			except (ActionFailed, Exception) as e:
 				logger().warning(f"Failed to perform LTM semantic search: {e}")
 
-		# 3. Get current conversation context
+		# 3. Consult knowledge base
+		# TODO
+
+		# 4. Get current conversation context
 		try:
 			session = session_repo.get_session(session_id)
 			if session and session.messages:
@@ -273,10 +289,10 @@ class MemoryManager:
 			session = self.get_session(session_id)
 			# Check if it's the first user message and first assistant response
 			if session and len(session.messages) == 2:
-				title = await summariser.summarise_title_with_nvidia(question, nvidia_rotator, max_words=5)
+				title = await summariser.summarise_title_with_nvidia(text=question, rotator=nvidia_rotator, max_words=5)
 				if not title:
 					title = question[:80] # Fallback to first 80 chars
-				self.update_session_title(session_id, title)
+				self.update_session_title(session_id=session_id, title=title)
 		except Exception as e:
 			logger().warning(f"Failed to auto-update session title for session '{session_id}': {e}")
 
@@ -289,18 +305,25 @@ class MemoryManager:
 	) -> str:
 		"""Generates a summary of a Q&A exchange, falling back to a basic format if AI fails."""
 		try:
-			summary = await summariser.summarise_qa_with_gemini(question, answer, gemini_rotator)
-			if summary:
-				return summary
+			summary = await summariser.summarise_qa_with_gemini(
+				question=question,
+				answer=answer,
+				rotator=gemini_rotator
+			)
+			if summary: return summary
+
 			# Fallback to NVIDIA if Gemini fails
-			summary = await summariser.summarise_qa_with_nvidia(question, answer, nvidia_rotator)
-			if summary:
-				return summary
+			summary = await summariser.summarise_qa_with_nvidia(
+				question=question,
+				answer=answer,
+				rotator=nvidia_rotator
+			)
+			if summary: return summary
 		except Exception as e:
 			logger().warning(f"Failed to generate AI summary: {e}")
 
 		# Fallback for both exceptions and cases where services return None
-		return f"Question: {question}\nAnswer: {answer}"
+		return summariser.summarise_fallback(question=question, answer=answer)
 
 	async def _filter_summaries_for_relevance(
 		self,
