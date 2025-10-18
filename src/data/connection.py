@@ -16,6 +16,7 @@ class Collections:
 	SESSION = "sessions"
 	MEDICAL_RECORDS = "medical_records"
 	MEDICAL_MEMORY = "medical_memory"
+	INFORMATION = "chunks"
 
 class ActionFailed(Exception):
 	"""
