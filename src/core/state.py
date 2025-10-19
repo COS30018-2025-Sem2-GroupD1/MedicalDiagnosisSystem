@@ -1,5 +1,6 @@
 # src/core/state.py
 
+from src.config.settings import settings
 from src.core.memory_manager import MemoryManager
 from src.utils.embeddings import EmbeddingClient
 from src.utils.rotator import APIKeyRotator
@@ -34,7 +35,7 @@ class AppState:
 	def initialize(self):
 		"""Initializes all core application components in the correct order."""
 		# Initialize components with no dependencies first
-		self.embedding_client = EmbeddingClient(model_name="all-MiniLM-L6-v2", dimension=384)
+		self.embedding_client = EmbeddingClient(model_name=settings.EMBEDDING_MODEL_NAME)
 		self.gemini_rotator = APIKeyRotator("GEMINI_API_", max_slots=5)
 		self.nvidia_rotator = APIKeyRotator("NVIDIA_API_", max_slots=5)
 

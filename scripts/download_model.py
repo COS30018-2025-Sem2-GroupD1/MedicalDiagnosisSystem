@@ -6,7 +6,7 @@ import os
 from huggingface_hub import snapshot_download
 
 # Set up paths
-MODEL_REPO = "sentence-transformers/all-MiniLM-L6-v2"
+MODEL_REPO = "abhinand/MedEmbed-large-v0.1"
 MODEL_CACHE_DIR = "/app/model_cache"
 HF_CACHE_DIR = os.getenv("HF_HOME", "/home/user/.cache/huggingface")
 

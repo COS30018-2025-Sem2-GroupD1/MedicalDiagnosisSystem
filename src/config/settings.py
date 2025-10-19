@@ -8,7 +8,8 @@ class Settings:
 	DEFAULT_TOP_K: int = 5
 	SEMANTIC_CONTEXT_SIZE: int = 17
 	SIMILARITY_THRESHOLD: float = 0.15
-	
+	EMBEDDING_MODEL_NAME: str = "MedEmbed-large-v0.1"
+
 	# Safety Guard settings
 	SAFETY_GUARD_ENABLED: bool = os.getenv("SAFETY_GUARD_ENABLED", "true").lower() == "true"
 	SAFETY_GUARD_TIMEOUT: int = int(os.getenv("SAFETY_GUARD_TIMEOUT", "30"))
