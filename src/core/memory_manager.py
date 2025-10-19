@@ -2,13 +2,14 @@
 
 from src.data.connection import ActionFailed
 from src.data.repositories import account as account_repo
+from src.data.repositories import information as info_repo
 from src.data.repositories import medical_memory as memory_repo
 from src.data.repositories import patient as patient_repo
 from src.data.repositories import session as session_repo
 from src.models.account import Account
 from src.models.patient import Patient
 from src.models.session import Message, Session
-from src.services import summariser
+from src.services import reranker, summariser
 from src.services.nvidia import nvidia_chat
 from src.utils.embeddings import EmbeddingClient
 from src.utils.logger import logger
@@ -245,23 +246,28 @@ class MemoryManager:
 			logger().warning(f"Could not retrieve recent memories for enhanced context: {e}")
 
 		# 2. Get semantically similar summaries (Long-Term Memory)
-		if self.embedder:
+		if self.embedder and self.embedder.is_available():
 			try:
 				query_embedding = self.embedder.embed([question])[0]
-				ltm_results = memory_repo.search_memories_semantic(
-					patient_id=patient_id,
-					query_embedding=query_embedding,
-					limit=2
-				)
-				if ltm_results:
-					ltm_summaries = [result.summary for result in ltm_results]
-					context_parts.append("Semantically relevant medical history (LTM):\n" + "\n".join(ltm_summaries))
+				if query_embedding:
+					ltm_results = memory_repo.search_memories_semantic(
+						patient_id=patient_id,
+						query_embedding=query_embedding,
+						limit=2
+					)
+					if ltm_results:
+						ltm_summaries = [result.summary for result in ltm_results]
+						context_parts.append("Semantically relevant medical history (LTM):\n" + "\n".join(ltm_summaries))
 			except (ActionFailed, Exception) as e:
 				logger().warning(f"Failed to perform LTM semantic search: {e}")
 
 		# 3. Consult knowledge base
-		info = self._consult_knowledge_base(question=question)
-		context_parts.append(info)
+		info = await self._consult_knowledge_base(
+			question=question,
+			nvidia_rotator=nvidia_rotator
+		)
+		if info:
+			context_parts.append(info)
 
 		# 4. Get current conversation context
 		try:
@@ -275,17 +281,65 @@ class MemoryManager:
 		except ActionFailed as e:
 			logger().warning(f"Could not retrieve current session context: {e}")
 
-		return "\n\n".join(context_parts)
+		return "\n\n".join(filter(None, context_parts))
 
 	# --- Private Helper Methods ---
 
-	def _consult_knowledge_base(self, question: str) -> str:
-		# 1. Embedding
-		#    Cannot use src/utils/embeddings.py because it uses sentence transformers while the knowledge base uses torch for embedding.
-		# 2. Query
-		#    Use src/data/repositories/information.py to access the knowledge base stored on mongodb.
-		# 3. Reponse
-		#    The result will need to be semanticly ranked. Suggested: https://build.nvidia.com/nvidia/rerank-qa-mistral-4b
+	async def _consult_knowledge_base(
+		self,
+		question: str,
+		nvidia_rotator: APIKeyRotator
+	) -> str:
+		"""
+		Embeds a question, queries the knowledge base for relevant chunks,
+		reranks them, and formats them into a context string.
+		"""
+		if not self.embedder or not self.embedder.is_available():
+			logger().warning("Embedder not available, skipping knowledge base consultation.")
+			return ""
+
+		try:
+			# 1. Embed the user's question
+			query_embedding = self.embedder.embed([question])[0]
+			if not query_embedding:
+				logger().warning("Failed to generate query embedding.")
+				return ""
+
+			# 2. Retrieve initial candidates from MongoDB
+			initial_chunks = info_repo.search_chunks_semantic(
+				query_embedding=query_embedding,
+				limit=10 # Retrieve more candidates for the reranker to process
+			)
+			if not initial_chunks:
+				logger().info("No relevant chunks found in the knowledge base.")
+				return ""
+
+			# 3. Rerank the results for semantic relevance
+			reranked_chunks = await reranker.rerank_documents(
+				query=question,
+				documents=initial_chunks,
+				rotator=nvidia_rotator,
+				top_k=3 # Keep the top 3 most relevant results
+			)
+			if not reranked_chunks:
+				logger().warning("Reranking failed to return any chunks.")
+				return ""
+
+			# 4. Format the final response
+			context_header = "Consulted Knowledge Base for context:"
+			formatted_chunks = []
+			for chunk in reranked_chunks:
+				source = chunk.metadata.source
+				content = chunk.content.strip()
+				formatted_chunks.append(f"[Source: {source}]\n{content}")
+
+			return f"{context_header}\n\n" + "\n\n".join(formatted_chunks)
+
+		except ActionFailed as e:
+			logger().error(f"A database error occurred while consulting the knowledge base: {e}")
+		except Exception as e:
+			logger().error(f"An unexpected error occurred during knowledge base consultation: {e}")
+
 		return ""
 
 	async def _update_session_title_if_first_message(
