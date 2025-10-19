@@ -260,7 +260,8 @@ class MemoryManager:
 				logger().warning(f"Failed to perform LTM semantic search: {e}")
 
 		# 3. Consult knowledge base
-		# TODO
+		info = self._consult_knowledge_base(question=question)
+		context_parts.append(info)
 
 		# 4. Get current conversation context
 		try:
@@ -277,6 +278,15 @@ class MemoryManager:
 		return "\n\n".join(context_parts)
 
 	# --- Private Helper Methods ---
+
+	def _consult_knowledge_base(self, question: str) -> str:
+		# 1. Embedding
+		#    Cannot use src/utils/embeddings.py because it uses sentence transformers while the knowledge base uses torch for embedding.
+		# 2. Query
+		#    Use src/data/repositories/information.py to access the knowledge base stored on mongodb.
+		# 3. Reponse
+		#    The result will need to be semanticly ranked. Suggested: https://build.nvidia.com/nvidia/rerank-qa-mistral-4b
+		return ""
 
 	async def _update_session_title_if_first_message(
 		self,
