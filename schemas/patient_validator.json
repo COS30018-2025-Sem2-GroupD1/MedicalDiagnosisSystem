@@ -19,7 +19,7 @@
 				"bsonType": "int",
 				"minimum": 0,
 				"maximum": 200,
-				"description": "'description' must be an unsigned int and is required."
+				"description": "'description' must be an int greater than 0 and less than 200 and is required."
 			},
 			"sex": {
 				"enum": [
