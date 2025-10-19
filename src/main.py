@@ -36,6 +36,7 @@ from src.api.routes import system as system_route
 from src.core.state import AppState, get_state
 from src.data.repositories import account as account_repo
 from src.data.repositories import emr as emr_repo
+from src.data.repositories import information as information_repo
 from src.data.repositories import medical_memory as medical_memory_repo
 from src.data.repositories import medical_record as medical_record_repo
 from src.data.repositories import patient as patient_repo
@@ -87,7 +88,8 @@ def startup_event(state: AppState):
 	medical_memory_repo.init()
 	medical_record_repo.init()
 	emr_repo.init()
-	
+	information_repo.init()
+
 	# Run database migration to fix any existing records with missing required fields
 	try:
 		from src.data.migration import run_database_migration

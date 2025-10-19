@@ -1,0 +1,26 @@
+{
+	"bsonType": "object",
+	"required": ["chunk_id", "content", "embedding", "metadata", "embedding_model", "embedding_dim"],
+	"properties": {
+		"chunk_id": {"bsonType": "string"},
+		"content": {"bsonType": "string"},
+		"embedding": {"bsonType": "array", "items": {"bsonType": "double"}},
+		"embedding_model": {"bsonType": "string"},
+		"embedding_dim": {"bsonType": "int", "minimum": 1},
+		"metadata": {
+			"bsonType": "object",
+			"required": ["parent_id", "source", "task", "sequence", "total_chunks", "content_type"],
+			"properties": {
+				"parent_id": {"bsonType": "string"},
+				"source": {"bsonType": "string"},
+				"task": {"bsonType": "string"},
+				"sequence": {"bsonType": "int"},
+				"total_chunks": {"bsonType": "int"},
+				"content_type": {"bsonType": "string"},
+				"related_chunks": {"bsonType": "array", "items": {"bsonType": "string"}},
+				"chunk_length": {"bsonType": "int"},
+				"created_timestamp": {"bsonType": "date"}
+			}
+		}
+	}
+}
