@@ -1,85 +1,87 @@
 {
-	"bsonType": "object",
-	"title": "Information validator",
-	"required": [
-		"chunk_id",
-		"content",
-		"embedding",
-		"embedding_model",
-		"embedding_dim",
-		"metadata"
-	],
-	"properties": {
-		"chunk_id": {
-			"bsonType": "string",
-			"description": "'chunk_id' must be a string and is required."
-		},
-		"content": {
-			"bsonType": "string",
-			"description": "'content' must be a string and is required."
-		},
-		"embedding": {
-			"bsonType": "array",
-			"items": { "bsonType": "double" },
-			"description": "'embedding' must be an array of floats and is required."
-		},
-		"embedding_model": {
-			"bsonType": "string",
-			"description": "'embedding_model' must be a string and is required."
-		},
-		"embedding_dim": {
-			"bsonType": "int",
-			"minimum": 1,
-			"description": "'embedding_dim' must be an int greater than 1 and is required."
-		},
-		"metadata": {
-			"bsonType": "object",
-			"title": "Metadata validator",
-			"required": [
-				"parent_id",
-				"source",
-				"task",
-				"sequence",
-				"total_chunks",
-				"content_type"
-			],
-			"properties": {
-				"parent_id": {
-					"bsonType": "string",
-					"description": "'parent_id' must be a string and is required."
-				},
-				"source": {
-					"bsonType": "string",
-					"description": "'source' must be a string and is required."
-				},
-				"task": {
-					"bsonType": "string",
-					"description": "'task' must be a string and is required."
-				},
-				"sequence": {
-					"bsonType": "int",
-					"description": "'sequence' must be an int and is required."
-				},
-				"total_chunks": {
-					"bsonType": "int",
-					"description": "'total_chunks' must be an int and is required."
-				},
-				"content_type": {
-					"bsonType": "string",
-					"description": "'content_type' must be a string and is required."
-				},
-				"related_chunks": {
-					"bsonType": "array",
-					"items": { "bsonType": "string" },
-					"description": "'related_chunks' must be an array of strings and is optional."
-				},
-				"chunk_length": {
-					"bsonType": "int",
-					"description": "'chunk_length' must be an int and is optional."
-				},
-				"created_timestamp": {
-					"bsonType": "date",
-					"description": "'created_timestamp' must be a date and is optional."
+	"$jsonSchema": {
+		"bsonType": "object",
+		"title": "Information validator",
+		"required": [
+			"chunk_id",
+			"content",
+			"embedding",
+			"embedding_model",
+			"embedding_dim",
+			"metadata"
+		],
+		"properties": {
+			"chunk_id": {
+				"bsonType": "string",
+				"description": "'chunk_id' must be a string and is required."
+			},
+			"content": {
+				"bsonType": "string",
+				"description": "'content' must be a string and is required."
+			},
+			"embedding": {
+				"bsonType": "array",
+				"items": { "bsonType": "double" },
+				"description": "'embedding' must be an array of floats and is required."
+			},
+			"embedding_model": {
+				"bsonType": "string",
+				"description": "'embedding_model' must be a string and is required."
+			},
+			"embedding_dim": {
+				"bsonType": "int",
+				"minimum": 1,
+				"description": "'embedding_dim' must be an int greater than 1 and is required."
+			},
+			"metadata": {
+				"bsonType": "object",
+				"title": "Metadata validator",
+				"required": [
+					"parent_id",
+					"source",
+					"task",
+					"sequence",
+					"total_chunks",
+					"content_type"
+				],
+				"properties": {
+					"parent_id": {
+						"bsonType": "string",
+						"description": "'parent_id' must be a string and is required."
+					},
+					"source": {
+						"bsonType": "string",
+						"description": "'source' must be a string and is required."
+					},
+					"task": {
+						"bsonType": "string",
+						"description": "'task' must be a string and is required."
+					},
+					"sequence": {
+						"bsonType": "int",
+						"description": "'sequence' must be an int and is required."
+					},
+					"total_chunks": {
+						"bsonType": "int",
+						"description": "'total_chunks' must be an int and is required."
+					},
+					"content_type": {
+						"bsonType": "string",
+						"description": "'content_type' must be a string and is required."
+					},
+					"related_chunks": {
+						"bsonType": "array",
+						"items": { "bsonType": "string" },
+						"description": "'related_chunks' must be an array of strings and is optional."
+					},
+					"chunk_length": {
+						"bsonType": "int",
+						"description": "'chunk_length' must be an int and is optional."
+					},
+					"created_timestamp": {
+						"bsonType": "date",
+						"description": "'created_timestamp' must be a date and is optional."
+					}
 				}
 			}
 		}
