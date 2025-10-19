@@ -226,7 +226,7 @@ class MemoryManager:
 	) -> str:
 		"""
 		Builds a rich, multi-source context string for a new question, combining
-		short-term memory, long-term semantic memory, and current conversation.
+		short-term memory, long-term semantic memory, information from the knowledge base, and current conversation.
 		"""
 		context_parts = []
 

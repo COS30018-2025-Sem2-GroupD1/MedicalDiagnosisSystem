@@ -36,7 +36,11 @@ def _validate_user_query(message: str, safety_guard: SafetyGuard | None):
 			detail="Failed to validate user query safety."
 		) from e
 
-def _validate_model_response(query: str, response: str, safety_guard: SafetyGuard | None) -> str:
+def _validate_model_response(
+	query: str,
+	response: str,
+	safety_guard: SafetyGuard | None
+) -> str:
 	"""
 	Checks the generated model response against the safety guard.
 	Returns a safe fallback message if the response is deemed unsafe.
@@ -57,16 +61,12 @@ def _validate_model_response(query: str, response: str, safety_guard: SafetyGuar
 		return response
 
 async def _retrieve_context(
-	state: AppState, session_id: str, patient_id: str, message: str
+	state: AppState,
+	session_id: str,
+	patient_id: str,
+	message: str
 ) -> str:
-	"""
-	Retrieves enhanced medical context. This is the entry point for RAG.
-
-	Future RAG Implementation:
-	1. Augment this function to query a vector database or knowledge base.
-	2. Combine the results with the existing memory manager context.
-	3. Return the consolidated context string.
-	"""
+	"""Retrieves enhanced medical context. This is the entry point for RAG."""
 	try:
 		return await state.memory_manager.get_enhanced_context(
 			session_id=session_id,
