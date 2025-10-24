@@ -30,13 +30,13 @@ AI-powered medical chatbot with patient-centric memory, MongoDB persistence, and
 ## 🏗️ Architecture (high-level)
 
 ### Medical Features
-- **Medical Knowledge Base**: Built-in medical information for common symptoms, 
+- **Medical Knowledge Base**: Built-in medical information for common symptoms,
 conditions, and medications
-- **Context Awareness**: Remembers previous conversations and provides relevant medical 
+- **Context Awareness**: Remembers previous conversations and provides relevant medical
 context
 - **Role-Based Responses**: Tailored responses based on user's medical role and specialty
 - **Medical Disclaimers**: Appropriate warnings and disclaimers for medical information
-- **Export Functionality**: Export chat sessions for medical records or educational 
+- **Export Functionality**: Export chat sessions for medical records or educational
 purposes
 
 Backend (FastAPI):
@@ -179,6 +179,6 @@ MedAI/
 ```
 
 ## 🧾 License & Disclaimer
-- MIT License (see [LICENSE](https://huggingface.co/spaces/MedAI-COS30018/MedicalDiagnosisSystem/blob/main/LICENSE))
+- Apache 2.0 License (see [LICENSE](./LICENSE))
 - Educational information only; not a substitute for professional medical advice
 - Team D1 - COS30018, Swinburne University of Technology
