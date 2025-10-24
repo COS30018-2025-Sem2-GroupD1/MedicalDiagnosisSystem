@@ -7,7 +7,7 @@
 .vscode/
 
 **/.env
-**.DS_STORE
+**/.DS_STORE
 
 review_vi.txt
 key
