@@ -36,7 +36,7 @@ The system's contextual memory is built upon a RAG architecture to provide relev
 - **Short-Term Memory**: An in-memory LRU (Least Recently Used) cache stores the summaries of the last three interactions. This allows for immediate context recall within an ongoing conversation.
 - **Long-Term Memory**: The summaries of the last twenty interactions for each patient are persisted in MongoDB. This provides a deeper historical context for recurring patients, allowing the system to reference past conversations and maintain continuity over time.
 
-When a query is received, the system retrieves the relevant short and long-term memory summaries to build a comprehensive context. This context is then provided to the LLM model along with the user's query to generate an accurate and context-aware response.
+When a query is received, the system retrieves the relevant short and long-term memory summaries to build a comprehensive context. This context is then provided to the LLM along with the user's query to generate an accurate and context-aware response.
 
 ## Key Features
 
