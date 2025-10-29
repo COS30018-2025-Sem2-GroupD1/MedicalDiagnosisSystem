@@ -31,18 +31,18 @@ ENV SENTENCE_TRANSFORMERS_HOME="/home/user/.cache/huggingface/sentence-transform
 ENV MEDGEMMA_HOME="/home/user/.cache/huggingface/sentence-transformers"
 
 # Create cache directories and set permissions
-RUN mkdir -p /app/model_cache /home/user/.cache/huggingface/sentence-transformers && \
-    chown -R user:user /app/model_cache /home/user/.cache/huggingface
+RUN mkdir -p /app/embedding_model_cache /app/llm_cache /home/user/.cache/huggingface/sentence-transformers && \
+    chown -R user:user /app/embedding_model_cache /app/llm_cache /home/user/.cache/huggingface
 
 # Control preloading flags
 ENV PRELOAD_TRANSLATORS="0"
 ENV EMBEDDING_HALF="0"
 
 # Preload embedding model and warmup
-RUN test -f /app/scripts/download_embedding_model.py && python /app/scripts/download_embedding_model.py || true
+RUN test -f /app/scripts/download_models.py && python /app/scripts/download_models.py || true
 
 # Ensure ownership stays correct
-RUN chown -R user:user /app/model_cache
+RUN chown -R user:user /app/embedding_model_cache /app/llm_cache
 
 # Expose port for HF Spaces
 ENV PORT=7860
