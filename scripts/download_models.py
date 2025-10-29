@@ -6,7 +6,7 @@ from huggingface_hub import snapshot_download
 
 # --- Configuration ---
 # Read the HF token from environment variables, essential for private models.
-HUGGING_FACE_TOKEN = os.getenv("HF_TOKEN", None)
+HUGGING_FACE_TOKEN = os.getenv("HUGGING_FACE_HUB_TOKEN", None)
 
 # Central Hugging Face cache directory within the container.
 HF_CACHE_DIR = os.getenv("HF_HOME", "/home/user/.cache/huggingface")
@@ -47,13 +47,13 @@ if __name__ == "__main__":
 	download_model(EMBEDDING_MODEL_REPO, EMBEDDING_MODEL_DIR)
 
 	if HUGGING_FACE_TOKEN:
-		print("✅ HF_TOKEN environment variable found.")
+		print("✅ HUGGING_FACE_HUB_TOKEN environment variable found.")
 		# WARNING: Do NOT print the full token. Just print the first few chars to confirm it's loaded.
 		print(f"   Token starts with: '{HUGGING_FACE_TOKEN[:4]}...'")
 
 		# Download the private LLM (requires a token)
 		download_model(LLM_REPO, LLM_DIR, token=HUGGING_FACE_TOKEN)
 	else:
-		print("❌ HF_TOKEN environment variable NOT found.")
+		print("❌ HUGGING_FACE_HUB_TOKEN environment variable NOT found.")
 
 	print("\nAll models downloaded successfully.")
