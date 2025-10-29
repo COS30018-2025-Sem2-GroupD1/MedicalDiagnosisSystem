@@ -41,7 +41,7 @@ ENV EMBEDDING_HALF="0"
 # Preload embedding model and warmup
 RUN --mount=type=secret,id=HUGGING_FACE_HUB_TOKEN,uid=1000 \
     test -f /app/scripts/download_models.py && \
-    python /app/scripts/download_models.py --token-path /run/secrets/HUGGING_FACE_HUB_TOKEN || true
+    HUGGING_FACE_HUB_TOKEN=$(cat /run/secrets/HUGGING_FACE_HUB_TOKEN) python /app/scripts/download_models.py || true
 
 # Ensure ownership stays correct
 RUN chown -R user:user /app/embedding_model_cache /app/llm_cache
