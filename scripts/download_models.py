@@ -47,13 +47,11 @@ if __name__ == "__main__":
 	download_model(EMBEDDING_MODEL_REPO, EMBEDDING_MODEL_DIR)
 
 	if HUGGING_FACE_TOKEN:
-		print("✅ HUGGING_FACE_HUB_TOKEN environment variable found.")
+		print("HUGGING_FACE_HUB_TOKEN environment variable found.")
 		# WARNING: Do NOT print the full token. Just print the first few chars to confirm it's loaded.
 		print(f"   Token starts with: '{HUGGING_FACE_TOKEN[:4]}...'")
 
 		# Download the private LLM (requires a token)
 		download_model(LLM_REPO, LLM_DIR, token=HUGGING_FACE_TOKEN)
 	else:
-		print("❌ HUGGING_FACE_HUB_TOKEN environment variable NOT found.")
-
-	print("\nAll models downloaded successfully.")
+		print("HUGGING_FACE_HUB_TOKEN environment variable NOT found.")
