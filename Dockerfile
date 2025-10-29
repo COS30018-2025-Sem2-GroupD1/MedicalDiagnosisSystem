@@ -39,7 +39,7 @@ ENV PRELOAD_TRANSLATORS="0"
 ENV EMBEDDING_HALF="0"
 
 # Preload embedding model and warmup
-RUN test -f /app/scripts/download_model.py && python /app/scripts/download_model.py || true
+RUN test -f /app/scripts/download_embedding_model.py && python /app/scripts/download_embedding_model.py || true
 
 # Ensure ownership stays correct
 RUN chown -R user:user /app/model_cache

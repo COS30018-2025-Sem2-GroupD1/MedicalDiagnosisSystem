@@ -1,5 +1,4 @@
-# dw_model.py
-### --- A. transformer and embedder ---
+# scripts/download_embedding_model.py
 
 import os
 
@@ -10,7 +9,10 @@ MODEL_REPO = "abhinand/MedEmbed-large-v0.1"
 MODEL_CACHE_DIR = "/app/model_cache"
 HF_CACHE_DIR = os.getenv("HF_HOME", "/home/user/.cache/huggingface")
 
-print("⏳ Downloading the SentenceTransformer model...")
+if not os.path.exists(MODEL_CACHE_DIR):
+	os.makedirs(MODEL_CACHE_DIR)
+
+print("⏳ Downloading the embedding model...")
 # Download directly into /app/model_cache to avoid duplicating files from HF cache
 model_path = snapshot_download(
 	repo_id=MODEL_REPO,
@@ -20,8 +22,6 @@ model_path = snapshot_download(
 )
 
 print("Model path: ", model_path)
-if not os.path.exists(MODEL_CACHE_DIR):
-	os.makedirs(MODEL_CACHE_DIR)
 
 # Verify structure after moving
 print("\n📂 LLM Model Structure (Build Level):")
