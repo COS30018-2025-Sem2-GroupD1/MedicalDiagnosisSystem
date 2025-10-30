@@ -2,11 +2,18 @@
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from src.utils.logger import logger
+
 
 # Model will be loaded once when the module is first imported.
-model_name = "/app/llm_cache"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+try:
+	model_loaded = True
+	model_name = "/app/llm_cache"
+	tokenizer = AutoTokenizer.from_pretrained(model_name)
+	model = AutoModelForCausalLM.from_pretrained(model_name)
+except Exception as e:
+	logger().error("Failed to load model")
+	model_loaded = False
 
 def get_inference(prompt: str) -> str:
 	"""
