@@ -103,7 +103,7 @@ def startup_event(state: AppState):
 	except Exception as e:
 		logger(tag="startup").warning(f"Database migration error: {e}")
 
-	local_llm_service.load_model()
+	#local_llm_service.load_model()
 
 def shutdown_event():
 	"""Cleanup on shutdown"""
