@@ -8,6 +8,7 @@ from src.utils.logger import logger
 # Model will be loaded once when the module is first imported.
 try:
 	model_loaded = True
+	logger().info("Starting model loading")
 	model_name = "/app/llm_cache"
 	tokenizer = AutoTokenizer.from_pretrained(model_name)
 	model = AutoModelForCausalLM.from_pretrained(model_name)
