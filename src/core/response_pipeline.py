@@ -6,8 +6,9 @@ from src.core import prompt_builder
 from src.core.state import AppState
 from src.data.medical_kb import search_medical_kb
 from src.models.account import Account
-from src.services.gemini import gemini_chat
+#from src.services.gemini import gemini_chat
 from src.services.guard import SafetyGuard
+from src.services.local_llm_service import get_inference
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
@@ -128,7 +129,8 @@ async def generate_llm_response(
 		medical_context=medical_context
 	)
 
-	response_text = await gemini_chat(prompt, rotator)
+	#response_text = await gemini_chat(prompt, rotator)
+	response_text = get_inference(prompt=prompt)
 
 	if not response_text:
 		return None

@@ -1,13 +1,14 @@
 # src/services/extractor.py
 
-import json
-import re
 import base64
+import json
 import mimetypes
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.models.emr import ExtractedData, LabResult, Medication, VitalSigns
-from src.services.gemini import gemini_chat
+#from src.services.gemini import gemini_chat
+from src.services.local_llm_service import get_inference
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
@@ -128,7 +129,8 @@ Return the JSON followed by the confidence score on a new line."""
         """Call the Gemini API with the extraction prompt."""
         try:
             # Use the gemini_chat function with the rotator
-            response = await gemini_chat(prompt, self.gemini_rotator)
+            #response = await gemini_chat(prompt, self.gemini_rotator)
+            response = get_inference(prompt=prompt)
             return response
         except Exception as e:
             logger().error(f"Error calling Gemini API: {e}")
@@ -276,14 +278,14 @@ Return the JSON followed by the confidence score on a new line."""
         try:
             # Determine file type and prepare content for Gemini
             mime_type, _ = mimetypes.guess_type(filename)
-            
+
             if not mime_type:
                 logger().warning(f"Unknown file type for {filename}")
                 return ExtractedData(), 0.0
 
             # Encode file content to base64
             file_base64 = base64.b64encode(file_content).decode('utf-8')
-            
+
             # Build the prompt for document analysis
             prompt = self._build_document_analysis_prompt(file_base64, mime_type, filename, patient_context)
 
@@ -303,7 +305,7 @@ Return the JSON followed by the confidence score on a new line."""
 
     def _build_document_analysis_prompt(self, file_base64: str, mime_type: str, filename: str, patient_context: Optional[Dict[str, Any]] = None) -> str:
         """Build the prompt for Gemini AI to analyze medical documents."""
-        
+
         context_info = ""
         if patient_context:
             context_info = f"""
