@@ -1,8 +1,8 @@
 # src/services/summariser.py
 
 from src.core import prompt_builder
-#from src.services.gemini import gemini_chat
-from src.services.local_llm_service import get_inference
+from src.services import local_llm_service
+from src.services.gemini import gemini_chat
 from src.services.nvidia import nvidia_chat
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
@@ -36,8 +36,11 @@ async def summarise_qa_with_gemini(
 ) -> str | None:
 	"""Summarizes a Q&A pair into a 'q: ... a: ...' format using the Gemini API."""
 	prompt = prompt_builder.qa_summary_gemini_prompt(question, answer)
-	#response = await gemini_chat(prompt, rotator)
-	response = get_inference(prompt=prompt)
+
+	if local_llm_service.model_loaded:
+		response = local_llm_service.get_inference(prompt=prompt)
+	else:
+		response = await gemini_chat(prompt, rotator)
 
 	if response:
 		# Parse the response to extract q: and a: lines

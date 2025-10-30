@@ -7,8 +7,8 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.models.emr import ExtractedData, LabResult, Medication, VitalSigns
-#from src.services.gemini import gemini_chat
-from src.services.local_llm_service import get_inference
+from src.services import local_llm_service
+from src.services.gemini import gemini_chat
 from src.utils.logger import logger
 from src.utils.rotator import APIKeyRotator
 
@@ -34,8 +34,11 @@ class EMRExtractor:
             # Prepare the prompt for Gemini
             prompt = self._build_extraction_prompt(message, patient_context)
 
-            # Get response from Gemini
-            response = await self._call_gemini_api(prompt)
+            if local_llm_service.model_loaded:
+                response = local_llm_service.get_inference(prompt=prompt)
+            else:
+                # Get response from Gemini
+                response = await self._call_gemini_api(prompt)
 
             # Parse the response
             extracted_data, confidence = self._parse_gemini_response(response)
@@ -129,8 +132,7 @@ Return the JSON followed by the confidence score on a new line."""
         """Call the Gemini API with the extraction prompt."""
         try:
             # Use the gemini_chat function with the rotator
-            #response = await gemini_chat(prompt, self.gemini_rotator)
-            response = get_inference(prompt=prompt)
+            response = await gemini_chat(prompt, self.gemini_rotator)
             return response
         except Exception as e:
             logger().error(f"Error calling Gemini API: {e}")
@@ -289,8 +291,11 @@ Return the JSON followed by the confidence score on a new line."""
             # Build the prompt for document analysis
             prompt = self._build_document_analysis_prompt(file_base64, mime_type, filename, patient_context)
 
-            # Get response from Gemini
-            response = await self._call_gemini_api(prompt)
+            if local_llm_service.model_loaded:
+                response = local_llm_service.get_inference(prompt=prompt)
+            else:
+                # Get response from Gemini
+                response = await self._call_gemini_api(prompt)
 
             # Parse the response
             extracted_data, confidence = self._parse_gemini_response(response)

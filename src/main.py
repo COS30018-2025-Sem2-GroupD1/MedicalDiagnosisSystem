@@ -41,6 +41,7 @@ from src.data.repositories import medical_memory as medical_memory_repo
 from src.data.repositories import medical_record as medical_record_repo
 from src.data.repositories import patient as patient_repo
 from src.data.repositories import session as session_repo
+from src.services import local_llm_service
 
 
 def startup_event(state: AppState):
@@ -101,6 +102,8 @@ def startup_event(state: AppState):
 			logger(tag="startup").warning(f"Database migration failed: {migration_result.get('error', 'Unknown error')}")
 	except Exception as e:
 		logger(tag="startup").warning(f"Database migration error: {e}")
+
+	local_llm_service.load_model()
 
 def shutdown_event():
 	"""Cleanup on shutdown"""
