@@ -4,7 +4,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Model will be loaded once when the module is first imported.
-model_name = "MedAI-COS30018/medalpaca-merge"
+model_name = "/app/llm_cache"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
