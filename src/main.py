@@ -1,6 +1,7 @@
 # src/main.py
 # Access via: https://medai-cos30018-medicaldiagnosissystem.hf.space/
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -103,7 +104,8 @@ def startup_event(state: AppState):
 	except Exception as e:
 		logger(tag="startup").warning(f"Database migration error: {e}")
 
-	#local_llm_service.load_model()
+	if os.getenv("USE_LOCAL_MODEL", "False") == "True":
+		local_llm_service.load_model()
 
 def shutdown_event():
 	"""Cleanup on shutdown"""
